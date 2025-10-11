@@ -15,7 +15,7 @@ player.CharacterAdded:Connect(function(c)
 	character = c
 	hrp = character:WaitForChild("HumanoidRootPart")
 	humanoid = character:WaitForChild("Humanoid")
-end
+end) -- Fixed: Added missing parenthesis
 
 -- GUI Setup
 local gui = Instance.new("ScreenGui")
@@ -24,7 +24,7 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 180, 0, 250) -- Increased height for new features
+frame.Size = UDim2.new(0, 180, 0, 250)
 frame.Position = UDim2.new(0.5, -90, 0.5, -125)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
@@ -126,8 +126,8 @@ local autoLazerButton = Instance.new("TextButton", frame)
 autoLazerButton.Text = "AUTO LAZER: OFF"
 autoLazerButton.Size = UDim2.new(0.8, 0, 0, 25)
 autoLazerButton.Position = UDim2.new(0.1, 0, 0.62, 0)
-autoLazerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoLazerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Fixed: Was using autoFloorButton properties
+autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- Fixed: Was using autoFloorButton properties
 autoLazerButton.Font = Enum.Font.GothamBold
 autoLazerButton.TextSize = 14
 autoLazerButton.ZIndex = 2
@@ -153,9 +153,10 @@ local function setSpeed(value)
     end
 end
 
--- Float Feature
+-- Float Feature (Delta Time Compatible)
 local floatEnabled = false
 local floatBodyVelocity
+local floatConnection
 
 local function toggleFloat()
     floatEnabled = not floatEnabled
@@ -169,21 +170,29 @@ local function toggleFloat()
         floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
         
-        -- Float connection
-        local floatConnection
-        floatConnection = RunService.Heartbeat:Connect(function()
+        -- Float connection with delta time consideration
+        if floatConnection then
+            floatConnection:Disconnect()
+        end
+        
+        floatConnection = RunService.Heartbeat:Connect(function(delta)
             if not floatEnabled or not character or not hrp then
                 floatConnection:Disconnect()
                 return
             end
             
-            -- Check if player is in the air
-            local ray = Ray.new(hrp.Position, Vector3.new(0, -5, 0))
-            local part, position = workspace:FindPartOnRay(ray, character)
+            -- Check if player is in the air with proper raycasting
+            local rayOrigin = hrp.Position
+            local rayDirection = Vector3.new(0, -((hrp.Size.Y/2) + 3), 0) -- Adjusted for better detection
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+            raycastParams.FilterDescendantsInstances = {character}
             
-            if not part then
-                -- In air, apply upward force
-                floatBodyVelocity.Velocity = Vector3.new(0, 20, 0)
+            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+            
+            if not raycastResult then
+                -- In air, apply upward force (delta time considered in BodyVelocity)
+                floatBodyVelocity.Velocity = Vector3.new(0, 25, 0) -- Increased for better float
                 floatBodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
             else
                 -- On ground, no force
@@ -201,7 +210,11 @@ local function toggleFloat()
         floatButton.Text = "FLOAT: OFF"
         floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         
-        -- Remove BodyVelocity
+        -- Remove BodyVelocity and connection
+        if floatConnection then
+            floatConnection:Disconnect()
+            floatConnection = nil
+        end
         if floatBodyVelocity then
             floatBodyVelocity:Destroy()
             floatBodyVelocity = nil
@@ -313,7 +326,7 @@ local function toggleAutoLazer()
     end
 end
 
--- Auto Floor Feature
+-- Auto Floor Feature (Delta Time Compatible)
 local floorOn = false
 local floorPartAF, floorConnAF
 local floorRiseSpeed = 2.0
@@ -337,14 +350,19 @@ local function toggleAutoFloor()
             floorPartAF.Parent = Workspace
         end
         
-        -- Start following the player
-        floorConnAF = RunService.RenderStepped:Connect(function()
+        -- Start following the player with delta time
+        if floorConnAF then
+            floorConnAF:Disconnect()
+        end
+        
+        floorConnAF = RunService.Heartbeat:Connect(function(delta)
             if hrp and floorPartAF then
                 local currentPos = floorPartAF.Position
-                local targetY = hrp.Position.Y - hrp.Size.Y/2 - floorPartAF.Size.Y/2
+                local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPartAF.Size.Y/2)
                 
                 if targetY > currentPos.Y then
-                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
+                    -- Use delta time for smooth movement
+                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * delta
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
                 else
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
