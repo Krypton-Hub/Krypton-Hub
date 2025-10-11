@@ -418,7 +418,7 @@ local function toggleAutoFloor()
                 local targetY = hrp.Position.Y - hrp.Size.Y/2 - floorPartAF.Size.Y/2
                 
                 if targetY > currentPos.Y then
-                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (5/60)
+                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
                 else
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
