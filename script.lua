@@ -17,15 +17,15 @@ player.CharacterAdded:Connect(function(c)
 	humanoid = character:WaitForChild("Humanoid")
 end)
 
--- GUI Setup
+-- GUI Setup (Increased height for new features)
 local gui = Instance.new("ScreenGui")
 gui.Name = "RxyalsScriptsGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 180, 0, 200)
-frame.Position = UDim2.new(0.5, -90, 0.5, -100)
+frame.Size = UDim2.new(0, 200, 0, 280) -- Increased height
+frame.Position = UDim2.new(0.5, -100, 0.5, -140)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -53,11 +53,47 @@ tweenButton.TextSize = 14
 tweenButton.ZIndex = 2
 Instance.new("UICorner", tweenButton).CornerRadius = UDim.new(0, 6)
 
+-- Speed Controller
+local speedLabel = Instance.new("TextLabel", frame)
+speedLabel.Text = "Speed: 24 (Suggested)"
+speedLabel.Size = UDim2.new(0.8, 0, 0, 16)
+speedLabel.Position = UDim2.new(0.1, 0, 0.20, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 10
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local speedSlider = Instance.new("Frame", frame)
+speedSlider.Size = UDim2.new(0.8, 0, 0, 20)
+speedSlider.Position = UDim2.new(0.1, 0, 0.26, 0)
+speedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+speedSlider.BorderSizePixel = 0
+Instance.new("UICorner", speedSlider).CornerRadius = UDim.new(0, 4)
+
+local speedFill = Instance.new("Frame", speedSlider)
+speedFill.Size = UDim2.new(0.5, 0, 1, 0) -- Start at 50% (24 speed)
+speedFill.Position = UDim2.new(0, 0, 0, 0)
+speedFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+speedFill.BorderSizePixel = 0
+speedFill.ZIndex = 2
+Instance.new("UICorner", speedFill).CornerRadius = UDim.new(0, 4)
+
+local speedValue = Instance.new("TextLabel", speedSlider)
+speedValue.Text = "24"
+speedValue.Size = UDim2.new(1, 0, 1, 0)
+speedValue.Position = UDim2.new(0, 0, 0, 0)
+speedValue.BackgroundTransparency = 1
+speedValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedValue.Font = Enum.Font.GothamBold
+speedValue.TextSize = 12
+speedValue.ZIndex = 3
+
 -- Jump Power input
 local jumpLabel = Instance.new("TextLabel", frame)
 jumpLabel.Text = "Jump Power:"
 jumpLabel.Size = UDim2.new(0.8, 0, 0, 16)
-jumpLabel.Position = UDim2.new(0.1, 0, 0.20, 0)
+jumpLabel.Position = UDim2.new(0.1, 0, 0.36, 0)
 jumpLabel.BackgroundTransparency = 1
 jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 jumpLabel.Font = Enum.Font.Gotham
@@ -66,7 +102,7 @@ jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local jumpInput = Instance.new("TextBox", frame)
 jumpInput.Size = UDim2.new(0.3, 0, 0, 16)
-jumpInput.Position = UDim2.new(0.65, 0, 0.20, 0)
+jumpInput.Position = UDim2.new(0.65, 0, 0.36, 0)
 jumpInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 jumpInput.Font = Enum.Font.Gotham
@@ -75,11 +111,11 @@ jumpInput.Text = "50"
 jumpInput.PlaceholderText = "Jump"
 Instance.new("UICorner", jumpInput).CornerRadius = UDim.new(0, 4)
 
--- Auto Floor button
+-- Buttons
 local autoFloorButton = Instance.new("TextButton", frame)
 autoFloorButton.Text = "AUTO FLOOR: OFF"
 autoFloorButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoFloorButton.Position = UDim2.new(0.1, 0, 0.32, 0)
+autoFloorButton.Position = UDim2.new(0.1, 0, 0.48, 0)
 autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoFloorButton.Font = Enum.Font.GothamBold
@@ -87,16 +123,26 @@ autoFloorButton.TextSize = 14
 autoFloorButton.ZIndex = 2
 Instance.new("UICorner", autoFloorButton).CornerRadius = UDim.new(0, 6)
 
--- Auto Lazer button
+local floatButton = Instance.new("TextButton", frame)
+floatButton.Text = "FLOAT: OFF"
+floatButton.Size = UDim2.new(0.8, 0, 0, 25)
+floatButton.Position = UDim2.new(0.1, 0, 0.60, 0)
+floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+floatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+floatButton.Font = Enum.Font.GothamBold
+floatButton.TextSize = 14
+floatButton.ZIndex = 2
+Instance.new("UICorner", floatButton).CornerRadius = UDim.new(0, 6)
+
 local autoLazerButton = Instance.new("TextButton", frame)
 autoLazerButton.Text = "AUTO LAZER: OFF"
 autoLazerButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoLazerButton.Position = UDim2.new(0.1, 0, 0.44, 0)
-autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoFloorButton.Font = Enum.Font.GothamBold
-autoFloorButton.TextSize = 14
-autoFloorButton.ZIndex = 2
+autoLazerButton.Position = UDim2.new(0.1, 0, 0.72, 0)
+autoLazerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoLazerButton.Font = Enum.Font.GothamBold
+autoLazerButton.TextSize = 14
+autoLazerButton.ZIndex = 2
 Instance.new("UICorner", autoLazerButton).CornerRadius = UDim.new(0, 6)
 
 local statusLabel = Instance.new("TextLabel", frame)
@@ -108,6 +154,134 @@ statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 10
 statusLabel.ZIndex = 2
+
+-- Speed Controller Variables
+local currentSpeed = 24
+local minSpeed = 16
+local maxSpeed = 100
+local suggestedSpeeds = {
+    {16, "Very Safe"},
+    {24, "Recommended"},
+    {32, "Fast"},
+    {50, "Risky"},
+    {75, "Very Risky"},
+    {100, "May Glitch"}
+}
+
+-- Speed Controller Function
+local function updateSpeedDisplay(speed)
+    currentSpeed = speed
+    local fillAmount = (speed - minSpeed) / (maxSpeed - minSpeed)
+    speedFill.Size = UDim2.new(fillAmount, 0, 1, 0)
+    speedValue.Text = tostring(speed)
+    
+    -- Find closest suggested speed and display warning
+    local closestSuggestion = suggestedSpeeds[1]
+    for _, suggestion in ipairs(suggestedSpeeds) do
+        if math.abs(speed - suggestion[1]) < math.abs(speed - closestSuggestion[1]) then
+            closestSuggestion = suggestion
+        end
+    end
+    
+    speedLabel.Text = "Speed: " .. speed .. " (" .. closestSuggestion[2] .. ")"
+    
+    -- Change color based on risk level
+    if speed <= 24 then
+        speedFill.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Green (safe)
+    elseif speed <= 50 then
+        speedFill.BackgroundColor3 = Color3.fromRGB(255, 170, 0) -- Orange (warning)
+    else
+        speedFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Red (danger)
+    end
+end
+
+-- Speed Slider Interaction
+local speedDragging = false
+speedSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        speedDragging = true
+    end
+end)
+
+speedSlider.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        speedDragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if speedDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mousePos = UserInputService:GetMouseLocation()
+        local sliderPos = speedSlider.AbsolutePosition
+        local sliderSize = speedSlider.AbsoluteSize
+        
+        local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+        local newSpeed = math.floor(minSpeed + (maxSpeed - minSpeed) * relativeX)
+        
+        updateSpeedDisplay(newSpeed)
+    end
+end)
+
+-- Click to set speed
+speedSlider.MouseButton1Click:Connect(function()
+    local mousePos = UserInputService:GetMouseLocation()
+    local sliderPos = speedSlider.AbsolutePosition
+    local sliderSize = speedSlider.AbsoluteSize
+    
+    local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+    local newSpeed = math.floor(minSpeed + (maxSpeed - minSpeed) * relativeX)
+    
+    updateSpeedDisplay(newSpeed)
+end)
+
+-- Float Feature
+local floatEnabled = false
+local floatBodyForce
+local floatConnection
+
+local function toggleFloat()
+    floatEnabled = not floatEnabled
+    
+    if floatEnabled then
+        floatButton.Text = "FLOAT: ON"
+        floatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        
+        -- Create BodyForce for floating
+        floatBodyForce = Instance.new("BodyForce")
+        floatBodyForce.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass(), 0)
+        floatBodyForce.Parent = hrp
+        
+        -- Update force when character changes
+        floatConnection = player.CharacterAdded:Connect(function(char)
+            task.wait(1) -- Wait for character to load
+            hrp = char:WaitForChild("HumanoidRootPart")
+            if floatBodyForce then
+                floatBodyForce:Destroy()
+            end
+            floatBodyForce = Instance.new("BodyForce")
+            floatBodyForce.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass(), 0)
+            floatBodyForce.Parent = hrp
+        end)
+        
+        statusLabel.Text = "Status: Floating Enabled"
+    else
+        floatButton.Text = "FLOAT: OFF"
+        floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        
+        -- Clean up floating
+        if floatBodyForce then
+            floatBodyForce:Destroy()
+            floatBodyForce = nil
+        end
+        
+        if floatConnection then
+            floatConnection:Disconnect()
+            floatConnection = nil
+        end
+        
+        statusLabel.Text = "Status: Floating Disabled"
+    end
+end
 
 -- Jump Power Function
 local function setJumpPower(value)
@@ -244,7 +418,7 @@ local function toggleAutoFloor()
                 local targetY = hrp.Position.Y - hrp.Size.Y/2 - floorPartAF.Size.Y/2
                 
                 if targetY > currentPos.Y then
-                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
+                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (5/60)
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
                 else
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
@@ -263,7 +437,7 @@ local function toggleAutoFloor()
     end
 end
 
--- Teleport UI
+-- Teleport UI (same as before)
 local teleportGui = Instance.new("ScreenGui")
 teleportGui.Name = "TeleportGui"
 teleportGui.ResetOnSpawn = false
@@ -368,7 +542,6 @@ end
 
 local Y_OFFSET = 3
 local STOP_DISTANCE = 10
-local tweenSpeed = 24
 
 local currentTween
 local function tweenWalkTo(position)
@@ -380,8 +553,7 @@ local function tweenWalkTo(position)
 	local startPos = hrp.Position
 	local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
 	local distance = (targetPos - startPos).Magnitude
-	local speed = math.max(tweenSpeed, 16)
-	local duration = distance / speed
+	local duration = distance / currentSpeed
 	local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
 
 	currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
@@ -482,7 +654,7 @@ function startTweenToBase()
 	
 	active = true
 	applyAntiDeath(true)
-	humanoid.WalkSpeed = tweenSpeed
+	humanoid.WalkSpeed = currentSpeed
 	statusLabel.Text = "Status: Walking to Base..."
 	tweenButton.Text = "■ STOP"
 
@@ -531,6 +703,10 @@ autoFloorButton.MouseButton1Click:Connect(function()
     toggleAutoFloor()
 end)
 
+floatButton.MouseButton1Click:Connect(function()
+    toggleFloat()
+end)
+
 autoLazerButton.MouseButton1Click:Connect(function()
     toggleAutoLazer()
 end)
@@ -564,7 +740,11 @@ gui.Destroying:Connect(function()
     if autoLazerEnabled then
         toggleAutoLazer()
     end
+    if floatEnabled then
+        toggleFloat()
+    end
 end)
 
--- Set initial jump power
+-- Set initial values
 setJumpPower(50)
+updateSpeedDisplay(24) -- Start with recommended speed
