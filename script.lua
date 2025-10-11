@@ -17,47 +17,60 @@ player.CharacterAdded:Connect(function(c)
 	humanoid = character:WaitForChild("Humanoid")
 end)
 
--- GUI Setup (Increased height for new features)
+-- GUI Setup
 local gui = Instance.new("ScreenGui")
 gui.Name = "RxyalsScriptsGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 280) -- Increased height
-frame.Position = UDim2.new(0.5, -100, 0.5, -140)
+frame.Size = UDim2.new(0, 220, 0, 320) -- Increased size to fit all buttons
+frame.Position = UDim2.new(0.5, -110, 0.5, -160)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.Active = true
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
+-- Make frame draggable
+local dragging, dragInput, dragStart, startPos
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+frame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input == dragInput then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
 local title = Instance.new("TextLabel", frame)
 title.Text = "Rxyals Scripts"
-title.Size = UDim2.new(1, 0, 0, 16)
-title.Position = UDim2.new(0, 0, 0, 0)
+title.Size = UDim2.new(1, 0, 0, 20)
+title.Position = UDim2.new(0, 0, 0, 5)
 title.BackgroundTransparency = 1
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 12
+title.TextSize = 14
 title.ZIndex = 2
-
-local tweenButton = Instance.new("TextButton", frame)
-tweenButton.Text = "▶ START"
-tweenButton.Size = UDim2.new(0.8, 0, 0, 25)
-tweenButton.Position = UDim2.new(0.1, 0, 0.08, 0)
-tweenButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-tweenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-tweenButton.Font = Enum.Font.GothamBold
-tweenButton.TextSize = 14
-tweenButton.ZIndex = 2
-Instance.new("UICorner", tweenButton).CornerRadius = UDim.new(0, 6)
 
 -- Speed Controller
 local speedLabel = Instance.new("TextLabel", frame)
-speedLabel.Text = "Speed: 24 (Suggested)"
-speedLabel.Size = UDim2.new(0.8, 0, 0, 16)
-speedLabel.Position = UDim2.new(0.1, 0, 0.20, 0)
+speedLabel.Text = "Speed: 24 (Recommended)"
+speedLabel.Size = UDim2.new(0.9, 0, 0, 16)
+speedLabel.Position = UDim2.new(0.05, 0, 0.12, 0)
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 speedLabel.Font = Enum.Font.Gotham
@@ -65,8 +78,8 @@ speedLabel.TextSize = 10
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local speedSlider = Instance.new("Frame", frame)
-speedSlider.Size = UDim2.new(0.8, 0, 0, 20)
-speedSlider.Position = UDim2.new(0.1, 0, 0.26, 0)
+speedSlider.Size = UDim2.new(0.9, 0, 0, 20)
+speedSlider.Position = UDim2.new(0.05, 0, 0.18, 0)
 speedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 speedSlider.BorderSizePixel = 0
 Instance.new("UICorner", speedSlider).CornerRadius = UDim.new(0, 4)
@@ -92,8 +105,8 @@ speedValue.ZIndex = 3
 -- Jump Power input
 local jumpLabel = Instance.new("TextLabel", frame)
 jumpLabel.Text = "Jump Power:"
-jumpLabel.Size = UDim2.new(0.8, 0, 0, 16)
-jumpLabel.Position = UDim2.new(0.1, 0, 0.36, 0)
+jumpLabel.Size = UDim2.new(0.9, 0, 0, 16)
+jumpLabel.Position = UDim2.new(0.05, 0, 0.28, 0)
 jumpLabel.BackgroundTransparency = 1
 jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 jumpLabel.Font = Enum.Font.Gotham
@@ -101,8 +114,8 @@ jumpLabel.TextSize = 10
 jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local jumpInput = Instance.new("TextBox", frame)
-jumpInput.Size = UDim2.new(0.3, 0, 0, 16)
-jumpInput.Position = UDim2.new(0.65, 0, 0.36, 0)
+jumpInput.Size = UDim2.new(0.3, 0, 0, 20)
+jumpInput.Position = UDim2.new(0.65, 0, 0.28, 0)
 jumpInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 jumpInput.Font = Enum.Font.Gotham
@@ -111,11 +124,22 @@ jumpInput.Text = "50"
 jumpInput.PlaceholderText = "Jump"
 Instance.new("UICorner", jumpInput).CornerRadius = UDim.new(0, 4)
 
--- Buttons
+-- Buttons with better spacing
+local tweenButton = Instance.new("TextButton", frame)
+tweenButton.Text = "▶ START WALK"
+tweenButton.Size = UDim2.new(0.9, 0, 0, 30)
+tweenButton.Position = UDim2.new(0.05, 0, 0.38, 0)
+tweenButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+tweenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+tweenButton.Font = Enum.Font.GothamBold
+tweenButton.TextSize = 14
+tweenButton.ZIndex = 2
+Instance.new("UICorner", tweenButton).CornerRadius = UDim.new(0, 6)
+
 local autoFloorButton = Instance.new("TextButton", frame)
 autoFloorButton.Text = "AUTO FLOOR: OFF"
-autoFloorButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoFloorButton.Position = UDim2.new(0.1, 0, 0.48, 0)
+autoFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
+autoFloorButton.Position = UDim2.new(0.05, 0, 0.50, 0)
 autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoFloorButton.Font = Enum.Font.GothamBold
@@ -125,8 +149,8 @@ Instance.new("UICorner", autoFloorButton).CornerRadius = UDim.new(0, 6)
 
 local floatButton = Instance.new("TextButton", frame)
 floatButton.Text = "FLOAT: OFF"
-floatButton.Size = UDim2.new(0.8, 0, 0, 25)
-floatButton.Position = UDim2.new(0.1, 0, 0.60, 0)
+floatButton.Size = UDim2.new(0.9, 0, 0, 30)
+floatButton.Position = UDim2.new(0.05, 0, 0.62, 0)
 floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 floatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 floatButton.Font = Enum.Font.GothamBold
@@ -136,8 +160,8 @@ Instance.new("UICorner", floatButton).CornerRadius = UDim.new(0, 6)
 
 local autoLazerButton = Instance.new("TextButton", frame)
 autoLazerButton.Text = "AUTO LAZER: OFF"
-autoLazerButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoLazerButton.Position = UDim2.new(0.1, 0, 0.72, 0)
+autoLazerButton.Size = UDim2.new(0.9, 0, 0, 30)
+autoLazerButton.Position = UDim2.new(0.05, 0, 0.74, 0)
 autoLazerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoLazerButton.Font = Enum.Font.GothamBold
@@ -146,9 +170,9 @@ autoLazerButton.ZIndex = 2
 Instance.new("UICorner", autoLazerButton).CornerRadius = UDim.new(0, 6)
 
 local statusLabel = Instance.new("TextLabel", frame)
-statusLabel.Text = "Status: Idle"
+statusLabel.Text = "Status: Ready - Drag to move"
 statusLabel.Size = UDim2.new(1, 0, 0, 16)
-statusLabel.Position = UDim2.new(0, 0, 0.96, 0)
+statusLabel.Position = UDim2.new(0, 0, 0.92, 0)
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 statusLabel.Font = Enum.Font.Gotham
@@ -373,17 +397,20 @@ end
 local function toggleAutoLazer()
     autoLazerEnabled = not autoLazerEnabled
     autoLazerButton.Text = autoLazerEnabled and "AUTO LAZER: ON" or "AUTO LAZER: OFF"
+    autoLazerButton.BackgroundColor3 = autoLazerEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(40, 40, 40)
     
     if autoLazerEnabled then
         if autoLazerThread then
             task.cancel(autoLazerThread)
         end
         autoLazerThread = task.spawn(autoLazerWorker)
+        statusLabel.Text = "Status: Auto Lazer Enabled"
     else
         if autoLazerThread then
             task.cancel(autoLazerThread)
             autoLazerThread = nil
         end
+        statusLabel.Text = "Status: Auto Lazer Disabled"
     end
 end
 
@@ -425,6 +452,8 @@ local function toggleAutoFloor()
                 end
             end
         end)
+        
+        statusLabel.Text = "Status: Auto Floor Enabled"
     else
         autoFloorButton.Text = "AUTO FLOOR: OFF"
         autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -434,10 +463,12 @@ local function toggleAutoFloor()
             floorConnAF:Disconnect()
             floorConnAF = nil
         end
+        
+        statusLabel.Text = "Status: Auto Floor Disabled"
     end
 end
 
--- Teleport UI (same as before)
+-- Teleport UI
 local teleportGui = Instance.new("ScreenGui")
 teleportGui.Name = "TeleportGui"
 teleportGui.ResetOnSpawn = false
@@ -479,30 +510,6 @@ local function pulseText()
         end
     end
 end
-
--- Drag GUI
-local dragging, dragInput, dragStart, startPos
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = frame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then dragging = false end
-		end)
-	end
-end)
-frame.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
-end)
-UserInputService.InputChanged:Connect(function(input)
-	if dragging and input == dragInput then
-		local delta = input.Position - dragStart
-		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
 
 -- Anti Death
 local function applyAntiDeath(state)
@@ -656,7 +663,8 @@ function startTweenToBase()
 	applyAntiDeath(true)
 	humanoid.WalkSpeed = currentSpeed
 	statusLabel.Text = "Status: Walking to Base..."
-	tweenButton.Text = "■ STOP"
+	tweenButton.Text = "■ STOP WALK"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 
 	walkThread = task.spawn(function()
 		while active do
@@ -680,7 +688,8 @@ function stopTweenToBase()
 	end
 	humanoid.WalkSpeed = 16
 	statusLabel.Text = "Status: Stopped"
-	tweenButton.Text = "▶ START"
+	tweenButton.Text = "▶ START WALK"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 	
 	teleportGui.Enabled = false
 	blackScreen.Visible = false
@@ -748,3 +757,10 @@ end)
 -- Set initial values
 setJumpPower(50)
 updateSpeedDisplay(24) -- Start with recommended speed
+
+-- Send notification that script loaded
+StarterGui:SetCore("SendNotification", {
+    Title = "Rxyals Scripts",
+    Text = "GUI loaded successfully! Drag to move.",
+    Duration = 5
+})
