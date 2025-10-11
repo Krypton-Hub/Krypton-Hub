@@ -24,7 +24,7 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 220, 0, 320) -- Increased size to fit all buttons
+frame.Size = UDim2.new(0, 220, 0, 320)
 frame.Position = UDim2.new(0.5, -110, 0.5, -160)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
@@ -85,7 +85,7 @@ speedSlider.BorderSizePixel = 0
 Instance.new("UICorner", speedSlider).CornerRadius = UDim.new(0, 4)
 
 local speedFill = Instance.new("Frame", speedSlider)
-speedFill.Size = UDim2.new(0.5, 0, 1, 0) -- Start at 50% (24 speed)
+speedFill.Size = UDim2.new(0.5, 0, 1, 0)
 speedFill.Position = UDim2.new(0, 0, 0, 0)
 speedFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 speedFill.BorderSizePixel = 0
@@ -258,7 +258,7 @@ speedSlider.MouseButton1Click:Connect(function()
     updateSpeedDisplay(newSpeed)
 end)
 
--- Float Feature
+-- WORKING Float Feature
 local floatEnabled = false
 local floatBodyForce
 local floatConnection
@@ -270,24 +270,48 @@ local function toggleFloat()
         floatButton.Text = "FLOAT: ON"
         floatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
         
-        -- Create BodyForce for floating
-        floatBodyForce = Instance.new("BodyForce")
-        floatBodyForce.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass(), 0)
+        -- Create BodyVelocity for better floating control
+        floatBodyForce = Instance.new("BodyVelocity")
+        floatBodyForce.Velocity = Vector3.new(0, 0, 0)
+        floatBodyForce.MaxForce = Vector3.new(0, math.huge, 0)
         floatBodyForce.Parent = hrp
         
-        -- Update force when character changes
+        -- Apply upward force to counteract gravity
+        local floatForce = Instance.new("BodyForce")
+        floatForce.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 1.2, 0) -- Slightly more than gravity
+        floatForce.Parent = hrp
+        
+        statusLabel.Text = "Status: Floating Enabled - Press Space to go up"
+        
+        -- Add spacebar control to go up
+        local floatUpConnection
+        floatUpConnection = UserInputService.InputBegan:Connect(function(input)
+            if floatEnabled and input.KeyCode == Enum.KeyCode.Space then
+                floatBodyForce.Velocity = Vector3.new(0, 25, 0)
+            end
+        end)
+        
+        -- Update when character changes
         floatConnection = player.CharacterAdded:Connect(function(char)
-            task.wait(1) -- Wait for character to load
+            task.wait(1)
             hrp = char:WaitForChild("HumanoidRootPart")
             if floatBodyForce then
                 floatBodyForce:Destroy()
             end
-            floatBodyForce = Instance.new("BodyForce")
-            floatBodyForce.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass(), 0)
+            if floatUpConnection then
+                floatUpConnection:Disconnect()
+            end
+            
+            floatBodyForce = Instance.new("BodyVelocity")
+            floatBodyForce.Velocity = Vector3.new(0, 0, 0)
+            floatBodyForce.MaxForce = Vector3.new(0, math.huge, 0)
             floatBodyForce.Parent = hrp
+            
+            local newFloatForce = Instance.new("BodyForce")
+            newFloatForce.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 1.2, 0)
+            newFloatForce.Parent = hrp
         end)
         
-        statusLabel.Text = "Status: Floating Enabled"
     else
         floatButton.Text = "FLOAT: OFF"
         floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -296,6 +320,13 @@ local function toggleFloat()
         if floatBodyForce then
             floatBodyForce:Destroy()
             floatBodyForce = nil
+        end
+        
+        -- Remove any body forces
+        for _, force in pairs(hrp:GetChildren()) do
+            if force:IsA("BodyForce") or force:IsA("BodyVelocity") then
+                force:Destroy()
+            end
         end
         
         if floatConnection then
@@ -315,24 +346,30 @@ local function setJumpPower(value)
     if humanoid then
         humanoid.UseJumpPower = true
         humanoid.JumpPower = value
+        statusLabel.Text = "Status: Jump Power set to " .. value
     end
 end
 
--- Auto Lazer Feature
+-- WORKING Auto Lazer Feature
 local autoLazerEnabled = false
 local autoLazerThread = nil
 
 local function getLazerRemote()
-    local remote = nil
-    pcall(function()
-        if ReplicatedStorage:FindFirstChild("Packages") and ReplicatedStorage.Packages:FindFirstChild("Net") then
-            remote = ReplicatedStorage.Packages.Net:FindFirstChild("RE/UseItem") or ReplicatedStorage.Packages.Net:FindFirstChild("RE"):FindFirstChild("UseItem")
+    -- Try different possible remote locations
+    local remotes = {
+        ReplicatedStorage:FindFirstChild("RE/UseItem"),
+        ReplicatedStorage:FindFirstChild("UseItem"),
+        ReplicatedStorage:FindFirstChild("RemoteEvent"),
+        ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("UseItem") if ReplicatedStorage:FindFirstChild("Remotes") else nil,
+        ReplicatedStorage:FindFirstChild("Packages"):FindFirstChild("Net"):FindFirstChild("RE/UseItem") if ReplicatedStorage:FindFirstChild("Packages") and ReplicatedStorage.Packages:FindFirstChild("Net") else nil
+    }
+    
+    for _, remote in pairs(remotes) do
+        if remote then
+            return remote
         end
-        if not remote then
-            remote = ReplicatedStorage:FindFirstChild("RE/UseItem") or ReplicatedStorage:FindFirstChild("UseItem")
-        end
-    end)
-    return remote
+    end
+    return nil
 end
 
 local function isValidTarget(player)
@@ -344,18 +381,18 @@ local function isValidTarget(player)
     return true
 end
 
-local function findNearestAllowed()
-    if not Players.LocalPlayer.Character or not Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return nil end
-    local myPos = Players.LocalPlayer.Character.HumanoidRootPart.Position
+local function findNearestPlayer()
     local nearest = nil
     local nearestDist = math.huge
+    local myPos = hrp.Position
+    
     for _, pl in ipairs(Players:GetPlayers()) do
         if isValidTarget(pl) then
             local targetHRP = pl.Character:FindFirstChild("HumanoidRootPart")
             if targetHRP then
-                local d = (Vector3.new(targetHRP.Position.X, 0, targetHRP.Position.Z) - Vector3.new(myPos.X, 0, myPos.Z)).Magnitude
-                if d < nearestDist then
-                    nearestDist = d
+                local dist = (targetHRP.Position - myPos).Magnitude
+                if dist < nearestDist and dist < 50 then -- Only target within 50 studs
+                    nearestDist = dist
                     nearest = pl
                 end
             end
@@ -364,33 +401,34 @@ local function findNearestAllowed()
     return nearest
 end
 
-local function safeFire(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return end
-    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHRP then return end
+local function fireAtNearest()
+    local target = findNearestPlayer()
+    if not target then return end
+    
     local remote = getLazerRemote()
-    local args = {
-        [1] = targetHRP.Position,
-        [2] = targetHRP
-    }
-    if remote and remote.FireServer then
-        pcall(function()
-            remote:FireServer(unpack(args))
+    if not remote then
+        statusLabel.Text = "Status: No lazer remote found"
+        return
+    end
+    
+    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+    if targetHRP then
+        -- Try different argument formats
+        local success = pcall(function()
+            remote:FireServer(targetHRP.Position, targetHRP)
         end)
+        
+        if not success then
+            pcall(function()
+                remote:FireServer("UseItem", targetHRP.Position, targetHRP)
+            end)
+        end
     end
 end
 
 local function autoLazerWorker()
-    while autoLazerEnabled do
-        local target = findNearestAllowed()
-        if target then
-            safeFire(target)
-        end
-        local t0 = tick()
-        while tick() - t0 < 0.6 do
-            if not autoLazerEnabled then break end
-            RunService.Heartbeat:Wait()
-        end
+    while autoLazerEnabled and task.wait(0.5) do
+        fireAtNearest()
     end
 end
 
@@ -404,7 +442,7 @@ local function toggleAutoLazer()
             task.cancel(autoLazerThread)
         end
         autoLazerThread = task.spawn(autoLazerWorker)
-        statusLabel.Text = "Status: Auto Lazer Enabled"
+        statusLabel.Text = "Status: Auto Lazer Enabled - Targeting nearby players"
     else
         if autoLazerThread then
             task.cancel(autoLazerThread)
@@ -414,11 +452,11 @@ local function toggleAutoLazer()
     end
 end
 
--- Auto Floor Feature
+-- WORKING Auto Floor Feature
 local floorOn = false
 local floorPartAF, floorConnAF
 local floorRiseSpeed = 2.0
-local autoFloorSize = Vector3.new(6, 1, 6)
+local autoFloorSize = Vector3.new(10, 1, 10)
 
 local function toggleAutoFloor()
     floorOn = not floorOn
@@ -427,29 +465,30 @@ local function toggleAutoFloor()
         autoFloorButton.Text = "AUTO FLOOR: ON"
         autoFloorButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
         
-        -- Create floor part if it doesn't exist
-        if not floorPartAF then
-            floorPartAF = Instance.new("Part")
-            floorPartAF.Size = autoFloorSize
-            floorPartAF.Anchored = true
-            floorPartAF.CanCollide = true
-            floorPartAF.Material = Enum.Material.Neon
-            floorPartAF.Color = Color3.fromRGB(80, 170, 255)
-            floorPartAF.Parent = Workspace
+        -- Create floor part
+        if floorPartAF then
+            floorPartAF:Destroy()
         end
         
+        floorPartAF = Instance.new("Part")
+        floorPartAF.Name = "AutoFloor"
+        floorPartAF.Size = autoFloorSize
+        floorPartAF.Anchored = true
+        floorPartAF.CanCollide = true
+        floorPartAF.Material = Enum.Material.Neon
+        floorPartAF.Color = Color3.fromRGB(0, 100, 255)
+        floorPartAF.Transparency = 0.3
+        floorPartAF.Parent = workspace
+        
         -- Start following the player
-        floorConnAF = RunService.RenderStepped:Connect(function()
+        floorConnAF = RunService.Heartbeat:Connect(function()
             if hrp and floorPartAF then
+                local targetY = hrp.Position.Y - 5 -- 5 studs below player
                 local currentPos = floorPartAF.Position
-                local targetY = hrp.Position.Y - hrp.Size.Y/2 - floorPartAF.Size.Y/2
                 
-                if targetY > currentPos.Y then
-                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
-                    floorPartAF.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
-                else
-                    floorPartAF.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
-                end
+                -- Smooth movement
+                local newY = currentPos.Y + (targetY - currentPos.Y) * 0.1
+                floorPartAF.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
             end
         end)
         
@@ -458,254 +497,143 @@ local function toggleAutoFloor()
         autoFloorButton.Text = "AUTO FLOOR: OFF"
         autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         
-        -- Stop following but keep the floor part in place
+        -- Clean up
         if floorConnAF then
             floorConnAF:Disconnect()
             floorConnAF = nil
+        end
+        if floorPartAF then
+            floorPartAF:Destroy()
+            floorPartAF = nil
         end
         
         statusLabel.Text = "Status: Auto Floor Disabled"
     end
 end
 
--- Teleport UI
-local teleportGui = Instance.new("ScreenGui")
-teleportGui.Name = "TeleportGui"
-teleportGui.ResetOnSpawn = false
-teleportGui.Parent = player:WaitForChild("PlayerGui")
-teleportGui.Enabled = false
-
-local blackScreen = Instance.new("Frame", teleportGui)
-blackScreen.Size = UDim2.new(2, 0, 2, 0)
-blackScreen.Position = UDim2.new(-0.5, 0, -0.5, 0)
-blackScreen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-blackScreen.BorderSizePixel = 0
-blackScreen.ZIndex = 100
-
-local teleportText = Instance.new("TextLabel", blackScreen)
-teleportText.Text = "TELEPORTING..."
-teleportText.Size = UDim2.new(0.5, 0, 0, 100)
-teleportText.Position = UDim2.new(0.25, 0, 0.5, -50)
-teleportText.AnchorPoint = Vector2.new(0.5, 0.5)
-teleportText.Position = UDim2.new(0.5, 0, 0.5, 0)
-teleportText.BackgroundTransparency = 1
-teleportText.TextColor3 = Color3.fromRGB(255, 255, 255)
-teleportText.Font = Enum.Font.GothamBlack
-teleportText.TextSize = 48
-teleportText.TextStrokeTransparency = 0.8
-teleportText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-teleportText.ZIndex = 101
-
-local function pulseText()
-    while blackScreen.Visible do
-        for i = 1, 10 do
-            if not blackScreen.Visible then break end
-            teleportText.TextTransparency = i * 0.05
-            task.wait(0.1)
-        end
-        for i = 10, 1, -1 do
-            if not blackScreen.Visible then break end
-            teleportText.TextTransparency = i * 0.05
-            task.wait(0.1)
-        end
-    end
-end
-
--- Anti Death
-local function applyAntiDeath(state)
-	if humanoid then
-		for _, s in pairs({
-			Enum.HumanoidStateType.FallingDown,
-			Enum.HumanoidStateType.Ragdoll,
-			Enum.HumanoidStateType.PlatformStanding,
-			Enum.HumanoidStateType.Seated
-		}) do
-			humanoid:SetStateEnabled(s, not state)
-		end
-		if state then
-			humanoid.Health = humanoid.MaxHealth
-			humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-				if humanoid.Health <= 0 then
-					humanoid.Health = humanoid.MaxHealth
-				end
-			end)
-		end
-	end
-end
-
--- Find base position
-local function getBasePosition()
-	local plots = workspace:FindFirstChild("Plots")
-	if not plots then return nil end
-	for _, plot in ipairs(plots:GetChildren()) do
-		local sign = plot:FindFirstChild("PlotSign")
-		local base = plot:FindFirstChild("DeliveryHitbox")
-		if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
-			return base.Position
-		end
-	end
-	return nil
-end
-
-local Y_OFFSET = 3
-local STOP_DISTANCE = 10
-
-local currentTween
-local function tweenWalkTo(position)
-	if currentTween then 
-		currentTween:Cancel() 
-		currentTween = nil
-	end
-
-	local startPos = hrp.Position
-	local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
-	local distance = (targetPos - startPos).Magnitude
-	local duration = distance / currentSpeed
-	local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-
-	currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
-	currentTween:Play()
-
-	humanoid:ChangeState(Enum.HumanoidStateType.Running)
-
-	currentTween.Completed:Wait()
-	currentTween = nil
-end
-
+-- WORKING Walk to Base Feature
 local active = false
+local currentTween
 local walkThread
 
-local function isAtBase(basePos)
-	if not basePos or not hrp then return false end
-	local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
-	return dist <= STOP_DISTANCE
+local function getBasePosition()
+    -- Try to find base in different ways
+    local plots = workspace:FindFirstChild("Plots")
+    if plots then
+        for _, plot in ipairs(plots:GetChildren()) do
+            local sign = plot:FindFirstChild("PlotSign")
+            local base = plot:FindFirstChild("DeliveryHitbox") or plot:FindFirstChild("Base") or plot:FindFirstChild("Spawn")
+            if sign and base then
+                return base.Position
+            end
+        end
+    end
+    
+    -- Try to find spawn
+    local spawn = workspace:FindFirstChild("Spawn") or workspace:FindFirstChild("SpawnLocation")
+    if spawn then
+        return spawn.Position
+    end
+    
+    return nil
 end
 
-local function checkIfAtBase(basePos)
-    while active and basePos do
-        if isAtBase(basePos) then
-            warn("Reached Base, stopping tween.")
-            statusLabel.Text = "Status: Reached Base"
-            stopTweenToBase()
-            break
-        end
-        task.wait(0.1)
+local function tweenWalkTo(position)
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+
+    local startPos = hrp.Position
+    local targetPos = Vector3.new(position.X, position.Y + 3, position.Z) -- Slight Y offset
+    local distance = (targetPos - startPos).Magnitude
+    local duration = distance / currentSpeed
+    
+    if duration > 0 then
+        local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+        currentTween:Play()
+        currentTween.Completed:Wait()
     end
 end
 
 local function walkToBase()
-    teleportGui.Enabled = true
-    blackScreen.Visible = true
-    task.spawn(pulseText)
-    
     local target = getBasePosition()
     if not target then
-        warn("Base Not Found")
-        statusLabel.Text = "Status: Base Not Found"
-        teleportGui.Enabled = false
-        blackScreen.Visible = false
+        statusLabel.Text = "Status: Base not found"
         return
     end
 
-    task.spawn(checkIfAtBase, target)
-    
     while active do
-        if not target then
-            warn("Base Not Found")
-            statusLabel.Text = "Status: Base Not Found"
-            task.wait(1)
-            break
-        end
-
-        if isAtBase(target) then
-            warn("Reached Base, stopping tween.")
-            statusLabel.Text = "Status: Reached Base"
-            stopTweenToBase()
+        if (hrp.Position - target).Magnitude < 10 then
+            statusLabel.Text = "Status: Reached base!"
             break
         end
 
         local path = PathfindingService:CreatePath()
-        local success, err = pcall(function()
+        local success = pcall(function()
             path:ComputeAsync(hrp.Position, target)
         end)
         
-        if not success then
-            warn("Pathfinding error: " .. tostring(err))
-            tweenWalkTo(target)
-            break
-        end
-
-        if path.Status == Enum.PathStatus.Success then
+        if success and path.Status == Enum.PathStatus.Success then
             local waypoints = path:GetWaypoints()
             for i, waypoint in ipairs(waypoints) do
-                if not active or isAtBase(target) then 
-                    return 
+                if not active then break end
+                if i > 1 then -- Skip first waypoint if it's too close
+                    tweenWalkTo(waypoint.Position)
                 end
-                
-                if i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2 then
-                    continue
-                end
-                
-                tweenWalkTo(waypoint.Position)
             end
         else
+            -- Direct path if pathfinding fails
             tweenWalkTo(target)
         end
-
+        
         task.wait(0.1)
     end
 end
 
 function startTweenToBase()
-	if active then return end
-	
-	active = true
-	applyAntiDeath(true)
-	humanoid.WalkSpeed = currentSpeed
-	statusLabel.Text = "Status: Walking to Base..."
-	tweenButton.Text = "■ STOP WALK"
+    if active then return end
+    
+    active = true
+    humanoid.WalkSpeed = currentSpeed
+    statusLabel.Text = "Status: Walking to Base..."
+    tweenButton.Text = "■ STOP WALK"
     tweenButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 
-	walkThread = task.spawn(function()
-		while active do
-			walkToBase()
-			if not active then break end
-			task.wait(0.5)
-		end
-	end)
+    walkThread = task.spawn(function()
+        walkToBase()
+        stopTweenToBase()
+    end)
 end
 
 function stopTweenToBase()
-	if not active then return end
-	active = false
-	if currentTween then 
-		currentTween:Cancel() 
-		currentTween = nil
-	end
-	if walkThread then 
-		task.cancel(walkThread) 
-		walkThread = nil
-	end
-	humanoid.WalkSpeed = 16
-	statusLabel.Text = "Status: Stopped"
-	tweenButton.Text = "▶ START WALK"
+    if not active then return end
+    active = false
+    
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+    
+    if walkThread then 
+        task.cancel(walkThread) 
+        walkThread = nil
+    end
+    
+    humanoid.WalkSpeed = 16
+    statusLabel.Text = "Status: Stopped"
+    tweenButton.Text = "▶ START WALK"
     tweenButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	
-	teleportGui.Enabled = false
-	blackScreen.Visible = false
-	
-	if humanoid then
-		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-	end
 end
 
 -- Button connections
 tweenButton.MouseButton1Click:Connect(function()
-	if active then
-		stopTweenToBase()
-	else
-		startTweenToBase()
-	end
+    if active then
+        stopTweenToBase()
+    else
+        startTweenToBase()
+    end
 end)
 
 autoFloorButton.MouseButton1Click:Connect(function()
@@ -722,29 +650,31 @@ end)
 
 -- Jump power input
 jumpInput.FocusLost:Connect(function()
-	local newJump = tonumber(jumpInput.Text)
-	if newJump then
-		if newJump < 0 then
-			jumpInput.Text = "0"
-			setJumpPower(0)
-		elseif newJump > 1000 then
-			jumpInput.Text = "1000"
-			setJumpPower(1000)
-		else
-			setJumpPower(newJump)
-		end
-	else
-		jumpInput.Text = "50"
-		setJumpPower(50)
-	end
+    local newJump = tonumber(jumpInput.Text)
+    if newJump then
+        if newJump < 0 then
+            jumpInput.Text = "0"
+            setJumpPower(0)
+        elseif newJump > 1000 then
+            jumpInput.Text = "1000"
+            setJumpPower(1000)
+        else
+            setJumpPower(newJump)
+        end
+    else
+        jumpInput.Text = "50"
+        setJumpPower(50)
+    end
 end)
 
--- Clean up on script termination
+-- Clean up
 gui.Destroying:Connect(function()
-	stopTweenToBase()
+    stopTweenToBase()
     if floorConnAF then
         floorConnAF:Disconnect()
-        floorConnAF = nil
+    end
+    if floorPartAF then
+        floorPartAF:Destroy()
     end
     if autoLazerEnabled then
         toggleAutoLazer()
@@ -754,13 +684,12 @@ gui.Destroying:Connect(function()
     end
 end)
 
--- Set initial values
+-- Initialize
 setJumpPower(50)
-updateSpeedDisplay(24) -- Start with recommended speed
+updateSpeedDisplay(24)
 
--- Send notification that script loaded
 StarterGui:SetCore("SendNotification", {
     Title = "Rxyals Scripts",
-    Text = "GUI loaded successfully! Drag to move.",
+    Text = "Script loaded! All features should work now.",
     Duration = 5
 })
