@@ -15,7 +15,7 @@ player.CharacterAdded:Connect(function(c)
 	character = c
 	hrp = character:WaitForChild("HumanoidRootPart")
 	humanoid = character:WaitForChild("Humanoid")
-end
+end) -- Fixed missing parenthesis
 
 -- GUI Setup
 local gui = Instance.new("ScreenGui")
@@ -24,8 +24,8 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 180, 0, 250) -- Increased height for new features
-frame.Position = UDim2.new(0.5, -90, 0.5, -125)
+frame.Size = UDim2.new(0, 180, 0, 280) -- Increased height for desync button
+frame.Position = UDim2.new(0.5, -90, 0.5, -140)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -97,11 +97,23 @@ jumpInput.Text = "50"
 jumpInput.PlaceholderText = "Jump"
 Instance.new("UICorner", jumpInput).CornerRadius = UDim.new(0, 4)
 
+-- Desync button
+local desyncButton = Instance.new("TextButton", frame)
+desyncButton.Text = "DESYNC: OFF"
+desyncButton.Size = UDim2.new(0.8, 0, 0, 25)
+desyncButton.Position = UDim2.new(0.1, 0, 0.38, 0)
+desyncButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+desyncButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+desyncButton.Font = Enum.Font.GothamBold
+desyncButton.TextSize = 14
+desyncButton.ZIndex = 2
+Instance.new("UICorner", desyncButton).CornerRadius = UDim.new(0, 6)
+
 -- Float button
 local floatButton = Instance.new("TextButton", frame)
 floatButton.Text = "FLOAT: OFF"
 floatButton.Size = UDim2.new(0.8, 0, 0, 25)
-floatButton.Position = UDim2.new(0.1, 0, 0.38, 0)
+floatButton.Position = UDim2.new(0.1, 0, 0.50, 0)
 floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 floatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 floatButton.Font = Enum.Font.GothamBold
@@ -113,7 +125,7 @@ Instance.new("UICorner", floatButton).CornerRadius = UDim.new(0, 6)
 local autoFloorButton = Instance.new("TextButton", frame)
 autoFloorButton.Text = "AUTO FLOOR: OFF"
 autoFloorButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoFloorButton.Position = UDim2.new(0.1, 0, 0.50, 0)
+autoFloorButton.Position = UDim2.new(0.1, 0, 0.62, 0)
 autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoFloorButton.Font = Enum.Font.GothamBold
@@ -125,7 +137,7 @@ Instance.new("UICorner", autoFloorButton).CornerRadius = UDim.new(0, 6)
 local autoLazerButton = Instance.new("TextButton", frame)
 autoLazerButton.Text = "AUTO LAZER: OFF"
 autoLazerButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoLazerButton.Position = UDim2.new(0.1, 0, 0.62, 0)
+autoLazerButton.Position = UDim2.new(0.1, 0, 0.74, 0)
 autoLazerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoLazerButton.Font = Enum.Font.GothamBold
@@ -143,6 +155,50 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 10
 statusLabel.ZIndex = 2
 
+-- Desync Feature
+local desyncEnabled = false
+local desyncConnection
+local originalCFrame = hrp.CFrame
+
+local function toggleDesync()
+    desyncEnabled = not desyncEnabled
+    
+    if desyncEnabled then
+        desyncButton.Text = "DESYNC: ON"
+        desyncButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        originalCFrame = hrp.CFrame
+        
+        if desyncConnection then
+            desyncConnection:Disconnect()
+        end
+        
+        desyncConnection = RunService.Heartbeat:Connect(function()
+            if desyncEnabled and hrp then
+                -- Create desync by offsetting position
+                hrp.CFrame = originalCFrame * CFrame.new(0, 0, -5)  -- Float backward to evade hits
+            end
+        end)
+        
+        statusLabel.Text = "Status: Desync Enabled"
+        
+    else
+        desyncButton.Text = "DESYNC: OFF"
+        desyncButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        
+        if desyncConnection then
+            desyncConnection:Disconnect()
+            desyncConnection = nil
+        end
+        
+        -- Reset to original position
+        if hrp then
+            hrp.CFrame = originalCFrame
+        end
+        
+        statusLabel.Text = "Status: Idle"
+    end
+end
+
 -- Speed Changer Function
 local function setSpeed(value)
     local character = player.Character or player.CharacterAdded:Wait()
@@ -156,6 +212,7 @@ end
 -- Float Feature
 local floatEnabled = false
 local floatBodyVelocity
+local floatConnection
 
 local function toggleFloat()
     floatEnabled = not floatEnabled
@@ -170,10 +227,16 @@ local function toggleFloat()
         floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
         
         -- Float connection
-        local floatConnection
+        if floatConnection then
+            floatConnection:Disconnect()
+        end
+        
         floatConnection = RunService.Heartbeat:Connect(function()
             if not floatEnabled or not character or not hrp then
-                floatConnection:Disconnect()
+                if floatConnection then
+                    floatConnection:Disconnect()
+                    floatConnection = nil
+                end
                 return
             end
             
@@ -192,7 +255,7 @@ local function toggleFloat()
             end
             
             -- Make sure BodyVelocity is parented to HRP
-            if floatBodyVelocity.Parent ~= hrp then
+            if floatBodyVelocity and floatBodyVelocity.Parent ~= hrp then
                 floatBodyVelocity.Parent = hrp
             end
         end)
@@ -201,7 +264,11 @@ local function toggleFloat()
         floatButton.Text = "FLOAT: OFF"
         floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         
-        -- Remove BodyVelocity
+        -- Remove BodyVelocity and connection
+        if floatConnection then
+            floatConnection:Disconnect()
+            floatConnection = nil
+        end
         if floatBodyVelocity then
             floatBodyVelocity:Destroy()
             floatBodyVelocity = nil
@@ -338,13 +405,17 @@ local function toggleAutoFloor()
         end
         
         -- Start following the player
-        floorConnAF = RunService.RenderStepped:Connect(function()
+        if floorConnAF then
+            floorConnAF:Disconnect()
+        end
+        
+        floorConnAF = RunService.Heartbeat:Connect(function(delta)
             if hrp and floorPartAF then
                 local currentPos = floorPartAF.Position
                 local targetY = hrp.Position.Y - hrp.Size.Y/2 - floorPartAF.Size.Y/2
                 
                 if targetY > currentPos.Y then
-                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
+                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * delta
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
                 else
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
@@ -563,11 +634,10 @@ local function walkToBase()
                     return 
                 end
                 
-                if i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2 then
-                    continue
+                -- FIXED: Replaced 'continue' with proper condition
+                if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
+                    tweenWalkTo(waypoint.Position)
                 end
-                
-                tweenWalkTo(waypoint.Position)
             end
         else
             tweenWalkTo(target)
@@ -625,6 +695,10 @@ tweenButton.MouseButton1Click:Connect(function()
 	else
 		startTweenToBase()
 	end
+end)
+
+desyncButton.MouseButton1Click:Connect(function()
+    toggleDesync()
 end)
 
 floatButton.MouseButton1Click:Connect(function()
@@ -691,6 +765,9 @@ gui.Destroying:Connect(function()
     end
     if floatEnabled then
         toggleFloat()
+    end
+    if desyncEnabled then
+        toggleDesync()
     end
 end)
 
