@@ -24,8 +24,8 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 180, 0, 280) -- Increased height for desync button
-frame.Position = UDim2.new(0.5, -90, 0.5, -140)
+frame.Size = UDim2.new(0, 180, 0, 250)
+frame.Position = UDim2.new(0.5, -90, 0.5, -125)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -71,7 +71,7 @@ speedInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedInput.Font = Enum.Font.Gotham
 speedInput.TextSize = 12
-speedInput.Text = "24"
+speedInput.Text = "35"
 speedInput.PlaceholderText = "Speed"
 Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 4)
 
@@ -97,23 +97,11 @@ jumpInput.Text = "50"
 jumpInput.PlaceholderText = "Jump"
 Instance.new("UICorner", jumpInput).CornerRadius = UDim.new(0, 4)
 
--- Desync button
-local desyncButton = Instance.new("TextButton", frame)
-desyncButton.Text = "DESYNC: OFF"
-desyncButton.Size = UDim2.new(0.8, 0, 0, 25)
-desyncButton.Position = UDim2.new(0.1, 0, 0.38, 0)
-desyncButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-desyncButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-desyncButton.Font = Enum.Font.GothamBold
-desyncButton.TextSize = 14
-desyncButton.ZIndex = 2
-Instance.new("UICorner", desyncButton).CornerRadius = UDim.new(0, 6)
-
 -- Float button
 local floatButton = Instance.new("TextButton", frame)
 floatButton.Text = "FLOAT: OFF"
 floatButton.Size = UDim2.new(0.8, 0, 0, 25)
-floatButton.Position = UDim2.new(0.1, 0, 0.50, 0)
+floatButton.Position = UDim2.new(0.1, 0, 0.38, 0)
 floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 floatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 floatButton.Font = Enum.Font.GothamBold
@@ -125,7 +113,7 @@ Instance.new("UICorner", floatButton).CornerRadius = UDim.new(0, 6)
 local autoFloorButton = Instance.new("TextButton", frame)
 autoFloorButton.Text = "AUTO FLOOR: OFF"
 autoFloorButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoFloorButton.Position = UDim2.new(0.1, 0, 0.62, 0)
+autoFloorButton.Position = UDim2.new(0.1, 0, 0.50, 0)
 autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoFloorButton.Font = Enum.Font.GothamBold
@@ -137,7 +125,7 @@ Instance.new("UICorner", autoFloorButton).CornerRadius = UDim.new(0, 6)
 local autoLazerButton = Instance.new("TextButton", frame)
 autoLazerButton.Text = "AUTO LAZER: OFF"
 autoLazerButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoLazerButton.Position = UDim2.new(0.1, 0, 0.74, 0)
+autoLazerButton.Position = UDim2.new(0.1, 0, 0.62, 0)
 autoLazerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoLazerButton.Font = Enum.Font.GothamBold
@@ -154,50 +142,6 @@ statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 10
 statusLabel.ZIndex = 2
-
--- Desync Feature
-local desyncEnabled = false
-local desyncConnection
-local originalCFrame = hrp.CFrame
-
-local function toggleDesync()
-    desyncEnabled = not desyncEnabled
-    
-    if desyncEnabled then
-        desyncButton.Text = "DESYNC: ON"
-        desyncButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        originalCFrame = hrp.CFrame
-        
-        if desyncConnection then
-            desyncConnection:Disconnect()
-        end
-        
-        desyncConnection = RunService.Heartbeat:Connect(function()
-            if desyncEnabled and hrp then
-                -- Create desync by offsetting position
-                hrp.CFrame = originalCFrame * CFrame.new(0, 0, -5)  -- Float backward to evade hits
-            end
-        end)
-        
-        statusLabel.Text = "Status: Desync Enabled"
-        
-    else
-        desyncButton.Text = "DESYNC: OFF"
-        desyncButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        
-        if desyncConnection then
-            desyncConnection:Disconnect()
-            desyncConnection = nil
-        end
-        
-        -- Reset to original position
-        if hrp then
-            hrp.CFrame = originalCFrame
-        end
-        
-        statusLabel.Text = "Status: Idle"
-    end
-end
 
 -- Speed Changer Function
 local function setSpeed(value)
@@ -434,49 +378,6 @@ local function toggleAutoFloor()
     end
 end
 
--- Teleport UI
-local teleportGui = Instance.new("ScreenGui")
-teleportGui.Name = "TeleportGui"
-teleportGui.ResetOnSpawn = false
-teleportGui.Parent = player:WaitForChild("PlayerGui")
-teleportGui.Enabled = false
-
-local blackScreen = Instance.new("Frame", teleportGui)
-blackScreen.Size = UDim2.new(2, 0, 2, 0)
-blackScreen.Position = UDim2.new(-0.5, 0, -0.5, 0)
-blackScreen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-blackScreen.BorderSizePixel = 0
-blackScreen.ZIndex = 100
-
-local teleportText = Instance.new("TextLabel", blackScreen)
-teleportText.Text = "TELEPORTING..."
-teleportText.Size = UDim2.new(0.5, 0, 0, 100)
-teleportText.Position = UDim2.new(0.25, 0, 0.5, -50)
-teleportText.AnchorPoint = Vector2.new(0.5, 0.5)
-teleportText.Position = UDim2.new(0.5, 0, 0.5, 0)
-teleportText.BackgroundTransparency = 1
-teleportText.TextColor3 = Color3.fromRGB(255, 255, 255)
-teleportText.Font = Enum.Font.GothamBlack
-teleportText.TextSize = 48
-teleportText.TextStrokeTransparency = 0.8
-teleportText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-teleportText.ZIndex = 101
-
-local function pulseText()
-    while blackScreen.Visible do
-        for i = 1, 10 do
-            if not blackScreen.Visible then break end
-            teleportText.TextTransparency = i * 0.05
-            task.wait(0.1)
-        end
-        for i = 10, 1, -1 do
-            if not blackScreen.Visible then break end
-            teleportText.TextTransparency = i * 0.05
-            task.wait(0.1)
-        end
-    end
-end
-
 -- Drag GUI
 local dragging, dragInput, dragStart, startPos
 frame.InputBegan:Connect(function(input)
@@ -523,45 +424,63 @@ local function applyAntiDeath(state)
 	end
 end
 
--- Find base position
+-- Improved Base Finding
 local function getBasePosition()
-	local plots = workspace:FindFirstChild("Plots")
-	if not plots then return nil end
-	for _, plot in ipairs(plots:GetChildren()) do
-		local sign = plot:FindFirstChild("PlotSign")
-		local base = plot:FindFirstChild("DeliveryHitbox")
-		if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
-			return base.Position
-		end
-	end
-	return nil
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then 
+        -- Try alternative base locations
+        local delivery = workspace:FindFirstChild("DeliveryHitbox")
+        if delivery then return delivery.Position end
+        
+        local spawn = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("Spawn")
+        if spawn then return spawn.Position end
+        
+        return nil
+    end
+    
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        local base = plot:FindFirstChild("DeliveryHitbox") or plot:FindFirstChild("Base") or plot:FindFirstChild("Spawn")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+            return base.Position
+        end
+    end
+    return nil
 end
 
-local Y_OFFSET = 3
-local STOP_DISTANCE = 10
-local tweenSpeed = 24
+local STOP_DISTANCE = 8
+local tweenSpeed = 35
 
 local currentTween
-local function tweenWalkTo(position)
-	if currentTween then 
-		currentTween:Cancel() 
-		currentTween = nil
-	end
+local function tweenWalkTo(position, maintainHeight)
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
 
-	local startPos = hrp.Position
-	local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
-	local distance = (targetPos - startPos).Magnitude
-	local speed = math.max(tweenSpeed, 16)
-	local duration = distance / speed
-	local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    local startPos = hrp.Position
+    local targetPos
+    
+    if maintainHeight then
+        -- Maintain current height
+        targetPos = Vector3.new(position.X, startPos.Y, position.Z)
+    else
+        -- Use base height with small offset
+        targetPos = Vector3.new(position.X, position.Y + 3, position.Z)
+    end
+    
+    local distance = (targetPos - startPos).Magnitude
+    local speed = math.max(tweenSpeed, 16)
+    local duration = distance / speed
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
 
-	currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
-	currentTween:Play()
+    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    currentTween:Play()
 
-	humanoid:ChangeState(Enum.HumanoidStateType.Running)
+    humanoid:ChangeState(Enum.HumanoidStateType.Running)
 
-	currentTween.Completed:Wait()
-	currentTween = nil
+    currentTween.Completed:Wait()
+    currentTween = nil
 end
 
 local active = false
@@ -569,37 +488,19 @@ local walkThread
 
 local function isAtBase(basePos)
 	if not basePos or not hrp then return false end
-	local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
+	local dist = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(basePos.X, 0, basePos.Z)).Magnitude
 	return dist <= STOP_DISTANCE
 end
 
-local function checkIfAtBase(basePos)
-    while active and basePos do
-        if isAtBase(basePos) then
-            warn("Reached Base, stopping tween.")
-            statusLabel.Text = "Status: Reached Base"
-            stopTweenToBase()
-            break
-        end
-        task.wait(0.1)
-    end
-end
-
 local function walkToBase()
-    teleportGui.Enabled = true
-    blackScreen.Visible = true
-    task.spawn(pulseText)
-    
     local target = getBasePosition()
     if not target then
         warn("Base Not Found")
         statusLabel.Text = "Status: Base Not Found"
-        teleportGui.Enabled = false
-        blackScreen.Visible = false
         return
     end
 
-    task.spawn(checkIfAtBase, target)
+    statusLabel.Text = "Status: Finding path to base..."
     
     while active do
         if not target then
@@ -623,24 +524,30 @@ local function walkToBase()
         
         if not success then
             warn("Pathfinding error: " .. tostring(err))
-            tweenWalkTo(target)
+            statusLabel.Text = "Status: Direct path to base"
+            -- Try direct path maintaining height
+            tweenWalkTo(target, true)
             break
         end
 
         if path.Status == Enum.PathStatus.Success then
             local waypoints = path:GetWaypoints()
+            statusLabel.Text = "Status: Following path (" .. #waypoints .. " points)"
+            
             for i, waypoint in ipairs(waypoints) do
                 if not active or isAtBase(target) then 
                     return 
                 end
                 
-                -- FIXED: Replaced 'continue' with proper condition
+                -- Skip first waypoint if it's too close
                 if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
-                    tweenWalkTo(waypoint.Position)
+                    tweenWalkTo(waypoint.Position, true) -- Maintain height for each waypoint
                 end
             end
         else
-            tweenWalkTo(target)
+            statusLabel.Text = "Status: Direct path (no obstacles)"
+            -- Fallback: direct path maintaining current height
+            tweenWalkTo(target, true)
         end
 
         task.wait(0.1)
@@ -661,7 +568,7 @@ function startTweenToBase()
 			walkToBase()
 			if not active then break end
 			task.wait(0.5)
-		end
+	 end
 	end)
 end
 
@@ -680,9 +587,6 @@ function stopTweenToBase()
 	statusLabel.Text = "Status: Stopped"
 	tweenButton.Text = "▶ START"
 	
-	teleportGui.Enabled = false
-	blackScreen.Visible = false
-	
 	if humanoid then
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 	end
@@ -695,10 +599,6 @@ tweenButton.MouseButton1Click:Connect(function()
 	else
 		startTweenToBase()
 	end
-end)
-
-desyncButton.MouseButton1Click:Connect(function()
-    toggleDesync()
 end)
 
 floatButton.MouseButton1Click:Connect(function()
@@ -728,9 +628,9 @@ speedInput.FocusLost:Connect(function()
 			tweenSpeed = newSpeed -- Update tween speed as well
 		end
 	else
-		speedInput.Text = "24"
-		setSpeed(24)
-		tweenSpeed = 24
+		speedInput.Text = "35"
+		setSpeed(35)
+		tweenSpeed = 35
 	end
 end)
 
@@ -766,11 +666,8 @@ gui.Destroying:Connect(function()
     if floatEnabled then
         toggleFloat()
     end
-    if desyncEnabled then
-        toggleDesync()
-    end
 end)
 
 -- Set initial values
 setJumpPower(50)
-setSpeed(24)
+setSpeed(35)
