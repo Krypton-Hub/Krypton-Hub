@@ -26,7 +26,7 @@ player.CharacterAdded:Connect(function(c)
     -- Re-enable features that were active
     if noclipEnabled then
         noclipEnabled = false
-        toggleNoclip()
+        toggleNoClip()
     end
     if floatEnabled then
         floatEnabled = false
@@ -172,27 +172,37 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 10
 statusLabel.ZIndex = 2
 
--- Noclip Feature
+-- Improved Noclip Feature for Steal a Brainrot
 local noclipConnection
 
-local function toggleNoclip()
+local function toggleNoClip()
     noclipEnabled = not noclipEnabled
     
     if noclipEnabled then
         noclipButton.Text = "NOCLIP: ON"
         noclipButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
         
-        -- Disable collisions for all parts in character
         if noclipConnection then
             noclipConnection:Disconnect()
         end
         
-        noclipConnection = RunService.Stepped:Connect(function()
-            if character and noclipEnabled then
+        -- Use a more subtle approach that mimics normal movement
+        noclipConnection = RunService.Heartbeat:Connect(function()
+            if character and noclipEnabled and hrp then
+                -- Only disable collision for limbs, keep torso collidable
                 for _, part in pairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") and part.CanCollide then
-                        part.CanCollide = false
+                    if part:IsA("BasePart") then
+                        if part.Name:find("Leg") or part.Name:find("Arm") or part.Name:find("Hand") or part.Name:find("Foot") then
+                            part.CanCollide = false
+                        else
+                            part.CanCollide = true
+                        end
                     end
+                end
+                
+                -- Make sure humanoid is in a valid state
+                if humanoid then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
                 end
             end
         end)
@@ -203,12 +213,12 @@ local function toggleNoclip()
         noclipButton.Text = "NOCLIP: OFF"
         noclipButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         
-        -- Re-enable collisions
         if noclipConnection then
             noclipConnection:Disconnect()
             noclipConnection = nil
         end
         
+        -- Re-enable all collisions
         if character then
             for _, part in pairs(character:GetDescendants()) do
                 if part:IsA("BasePart") then
@@ -280,9 +290,11 @@ local function toggleFloat()
                 floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
             end
             
-            -- Make sure BodyVelocity is parented to HRP
-            if floatBodyVelocity and floatBodyVelocity.Parent ~= hrp then
-                floatBodyVelocity.Parent = hrp
+            -- Make sure BodyVelocity is parented to HRP safely
+            if floatBodyVelocity and hrp and hrp.Parent then
+                if floatBodyVelocity.Parent ~= hrp then
+                    floatBodyVelocity.Parent = hrp
+                end
             end
         end)
         
@@ -722,7 +734,7 @@ tweenButton.MouseButton1Click:Connect(function()
 end)
 
 noclipButton.MouseButton1Click:Connect(function()
-    toggleNoclip()
+    toggleNoClip()
 end)
 
 floatButton.MouseButton1Click:Connect(function()
@@ -791,7 +803,7 @@ gui.Destroying:Connect(function()
         toggleFloat()
     end
     if noclipEnabled then
-        toggleNoclip()
+        toggleNoClip()
     end
 end)
 
