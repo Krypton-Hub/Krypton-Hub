@@ -121,7 +121,7 @@ speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedInput.Font = Enum.Font.Gotham
 speedInput.TextSize = 11
-speedInput.Text = "35"
+speedInput.Text = "25"
 Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 4)
 
 -- Jump Power
@@ -189,17 +189,6 @@ espButton.Font = Enum.Font.GothamBold
 espButton.TextSize = 12
 Instance.new("UICorner", espButton).CornerRadius = UDim.new(0, 6)
 
--- Semi Invisible
-local semiInvisibleButton = Instance.new("TextButton", visualsContent)
-semiInvisibleButton.Text = "SEMI INVISIBLE: OFF"
-semiInvisibleButton.Size = UDim2.new(0.9, 0, 0, 30)
-semiInvisibleButton.Position = UDim2.new(0.05, 0, 0.20, 0)
-semiInvisibleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-semiInvisibleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-semiInvisibleButton.Font = Enum.Font.GothamBold
-semiInvisibleButton.TextSize = 12
-Instance.new("UICorner", semiInvisibleButton).CornerRadius = UDim.new(0, 6)
-
 -- Combat Tab Content
 local combatContent = Instance.new("Frame", contentFrame)
 combatContent.Size = UDim2.new(1, 0, 1, 0)
@@ -242,6 +231,230 @@ for tabName, button in pairs(tabButtons) do
     end)
 end
 switchTab("Main")
+
+-- Fixed Float Feature
+local floatEnabled = false
+local floatBodyVelocity
+local floatConnection
+
+local function toggleFloat()
+    floatEnabled = not floatEnabled
+    
+    if floatEnabled then
+        floatButton.Text = "FLOAT: ON"
+        floatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusLabel.Text = "Float enabled"
+        
+        -- Create BodyVelocity for floating
+        floatBodyVelocity = Instance.new("BodyVelocity")
+        floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+        
+        if floatConnection then
+            floatConnection:Disconnect()
+        end
+        
+        floatConnection = RunService.Heartbeat:Connect(function()
+            if not floatEnabled or not character or not hrp then
+                return
+            end
+            
+            -- Simple ground check
+            local rayOrigin = hrp.Position
+            local rayDirection = Vector3.new(0, -10, 0)
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {character}
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+            
+            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+            
+            if not raycastResult then
+                -- In air, apply upward force
+                floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+            else
+                -- On ground, no force
+                floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+            end
+            
+            -- Make sure BodyVelocity is parented to HRP
+            if floatBodyVelocity and floatBodyVelocity.Parent ~= hrp then
+                floatBodyVelocity.Parent = hrp
+            end
+        end)
+        
+    else
+        floatButton.Text = "FLOAT: OFF"
+        floatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        statusLabel.Text = "Float disabled"
+        
+        -- Remove BodyVelocity and connection
+        if floatConnection then
+            floatConnection:Disconnect()
+            floatConnection = nil
+        end
+        if floatBodyVelocity then
+            floatBodyVelocity:Destroy()
+            floatBodyVelocity = nil
+        end
+    end
+end
+
+-- Fixed Auto Floor Feature
+local floorOn = false
+local floorPart
+local floorConnection
+
+local function toggleAutoFloor()
+    floorOn = not floorOn
+    
+    if floorOn then
+        autoFloorButton.Text = "AUTO FLOOR: ON"
+        autoFloorButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusLabel.Text = "Auto floor enabled"
+        
+        -- Create floor part
+        floorPart = Instance.new("Part")
+        floorPart.Size = Vector3.new(10, 1, 10)
+        floorPart.Anchored = true
+        floorPart.CanCollide = true
+        floorPart.Material = Enum.Material.Neon
+        floorPart.Color = Color3.fromRGB(80, 170, 255)
+        floorPart.Transparency = 0.3
+        floorPart.Parent = workspace
+        
+        if floorConnection then
+            floorConnection:Disconnect()
+        end
+        
+        floorConnection = RunService.Heartbeat:Connect(function()
+            if hrp and floorPart then
+                local targetY = hrp.Position.Y - 5 -- Keep floor below player
+                floorPart.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
+            end
+        end)
+        
+    else
+        autoFloorButton.Text = "AUTO FLOOR: OFF"
+        autoFloorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        statusLabel.Text = "Auto floor disabled"
+        
+        if floorConnection then
+            floorConnection:Disconnect()
+            floorConnection = nil
+        end
+        if floorPart then
+            floorPart:Destroy()
+            floorPart = nil
+        end
+    end
+end
+
+-- Safe Tween to Base (No Death)
+local active = false
+local currentTween
+local walkThread
+local tweenSpeed = 25
+
+local function getBasePosition()
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then 
+        -- Try alternative base locations
+        local delivery = workspace:FindFirstChild("DeliveryHitbox")
+        if delivery then return delivery.Position end
+        
+        local spawn = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("Spawn")
+        if spawn then return spawn.Position end
+        
+        return nil
+    end
+    
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        local base = plot:FindFirstChild("DeliveryHitbox") or plot:FindFirstChild("Base") or plot:FindFirstChild("Spawn")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+            return base.Position
+        end
+    end
+    return nil
+end
+
+local function safeTweenToPosition(position)
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+
+    local startPos = hrp.Position
+    -- Use base height + small offset to avoid dying
+    local targetPos = Vector3.new(position.X, position.Y + 5, position.Z)
+    
+    local distance = (targetPos - startPos).Magnitude
+    local speed = math.max(tweenSpeed, 16)
+    local duration = distance / speed
+    
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    currentTween:Play()
+
+    return currentTween
+end
+
+local function isAtBase(basePos)
+    if not basePos or not hrp then return false end
+    local dist = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(basePos.X, 0, basePos.Z)).Magnitude
+    return dist <= 15
+end
+
+function startTweenToBase()
+    if active then return end
+    
+    local target = getBasePosition()
+    if not target then
+        statusLabel.Text = "Base not found"
+        return
+    end
+    
+    active = true
+    tweenButton.Text = "■ STOP TWEEN"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    statusLabel.Text = "Safe tweening to base..."
+    
+    walkThread = task.spawn(function()
+        while active do
+            if isAtBase(target) then
+                statusLabel.Text = "Reached base safely"
+                stopTweenToBase()
+                break
+            end
+            
+            local tween = safeTweenToPosition(target)
+            local success = pcall(function()
+                tween.Completed:Wait()
+            end)
+            
+            if not active then break end
+            task.wait(0.1)
+        end
+    end)
+end
+
+function stopTweenToBase()
+    if not active then return end
+    active = false
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+    if walkThread then 
+        task.cancel(walkThread) 
+        walkThread = nil
+    end
+    tweenButton.Text = "▶ TWEEN TO BASE"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    statusLabel.Text = "Ready"
+end
 
 -- Player ESP Feature
 local espEnabled = false
@@ -328,6 +541,7 @@ local function toggleESP()
     espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
     
     if espEnabled then
+        statusLabel.Text = "ESP enabled"
         -- Create ESP for all players
         for _, plr in ipairs(Players:GetPlayers()) do
             createESP(plr)
@@ -335,6 +549,7 @@ local function toggleESP()
         -- Create ESP for new players
         Players.PlayerAdded:Connect(createESP)
     else
+        statusLabel.Text = "ESP disabled"
         -- Remove all ESP
         for plr, folder in pairs(espFolders) do
             folder:Destroy()
@@ -343,106 +558,99 @@ local function toggleESP()
     end
 end
 
--- Improved Tween to Base
-local active = false
-local currentTween
-local walkThread
-local tweenSpeed = 35
+-- Auto Lazer Feature
+local autoLazerEnabled = false
+local autoLazerThread = nil
 
-local function getBasePosition()
-    local plots = workspace:FindFirstChild("Plots")
-    if not plots then 
-        -- Try alternative base locations
-        local delivery = workspace:FindFirstChild("DeliveryHitbox")
-        if delivery then return delivery.Position end
-        
-        local spawn = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("Spawn")
-        if spawn then return spawn.Position end
-        
-        return nil
-    end
-    
-    for _, plot in ipairs(plots:GetChildren()) do
-        local sign = plot:FindFirstChild("PlotSign")
-        local base = plot:FindFirstChild("DeliveryHitbox") or plot:FindFirstChild("Base") or plot:FindFirstChild("Spawn")
-        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
-            return base.Position
+local function getLazerRemote()
+    local remote = nil
+    pcall(function()
+        if ReplicatedStorage:FindFirstChild("Packages") and ReplicatedStorage.Packages:FindFirstChild("Net") then
+            remote = ReplicatedStorage.Packages.Net:FindFirstChild("RE/UseItem") or ReplicatedStorage.Packages.Net:FindFirstChild("RE"):FindFirstChild("UseItem")
         end
-    end
-    return nil
-end
-
-local function tweenToPosition(position)
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
-    end
-
-    local startPos = hrp.Position
-    local targetPos = Vector3.new(position.X, startPos.Y, position.Z) -- Maintain current height
-    
-    local distance = (targetPos - startPos).Magnitude
-    local speed = math.max(tweenSpeed, 16)
-    local duration = distance / speed
-    
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
-    currentTween:Play()
-
-    return currentTween
-end
-
-local function isAtBase(basePos)
-    if not basePos or not hrp then return false end
-    local dist = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(basePos.X, 0, basePos.Z)).Magnitude
-    return dist <= 8
-end
-
-function startTweenToBase()
-    if active then return end
-    
-    local target = getBasePosition()
-    if not target then
-        statusLabel.Text = "Base not found"
-        return
-    end
-    
-    active = true
-    tweenButton.Text = "■ STOP TWEEN"
-    tweenButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    statusLabel.Text = "Tweening to base..."
-    
-    walkThread = task.spawn(function()
-        while active do
-            if isAtBase(target) then
-                statusLabel.Text = "Reached base"
-                stopTweenToBase()
-                break
-            end
-            
-            local tween = tweenToPosition(target)
-            tween.Completed:Wait()
-            
-            if not active then break end
-            task.wait(0.1)
+        if not remote then
+            remote = ReplicatedStorage:FindFirstChild("RE/UseItem") or ReplicatedStorage:FindFirstChild("UseItem")
         end
     end)
+    return remote
 end
 
-function stopTweenToBase()
-    if not active then return end
-    active = false
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
+local function isValidTarget(player)
+    if not player or not player.Character or player == Players.LocalPlayer then return false end
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then return false end
+    if humanoid.Health <= 0 then return false end
+    return true
+end
+
+local function findNearestAllowed()
+    if not Players.LocalPlayer.Character or not Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return nil end
+    local myPos = Players.LocalPlayer.Character.HumanoidRootPart.Position
+    local nearest = nil
+    local nearestDist = math.huge
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if isValidTarget(pl) then
+            local targetHRP = pl.Character:FindFirstChild("HumanoidRootPart")
+            if targetHRP then
+                local d = (Vector3.new(targetHRP.Position.X, 0, targetHRP.Position.Z) - Vector3.new(myPos.X, 0, myPos.Z)).Magnitude
+                if d < nearestDist then
+                    nearestDist = d
+                    nearest = pl
+                end
+            end
+        end
     end
-    if walkThread then 
-        task.cancel(walkThread) 
-        walkThread = nil
+    return nearest
+end
+
+local function safeFire(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    local remote = getLazerRemote()
+    local args = {
+        [1] = targetHRP.Position,
+        [2] = targetHRP
+    }
+    if remote and remote.FireServer then
+        pcall(function()
+            remote:FireServer(unpack(args))
+        end)
     end
-    tweenButton.Text = "▶ TWEEN TO BASE"
-    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    statusLabel.Text = "Ready"
+end
+
+local function autoLazerWorker()
+    while autoLazerEnabled do
+        local target = findNearestAllowed()
+        if target then
+            safeFire(target)
+        end
+        local t0 = tick()
+        while tick() - t0 < 0.6 do
+            if not autoLazerEnabled then break end
+            RunService.Heartbeat:Wait()
+        end
+    end
+end
+
+local function toggleAutoLazer()
+    autoLazerEnabled = not autoLazerEnabled
+    autoLazerButton.Text = autoLazerEnabled and "AUTO LAZER: ON" or "AUTO LAZER: OFF"
+    autoLazerButton.BackgroundColor3 = autoLazerEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    statusLabel.Text = autoLazerEnabled and "Auto lazer enabled" or "Auto lazer disabled"
+    
+    if autoLazerEnabled then
+        if autoLazerThread then
+            task.cancel(autoLazerThread)
+        end
+        autoLazerThread = task.spawn(autoLazerWorker)
+    else
+        if autoLazerThread then
+            task.cancel(autoLazerThread)
+            autoLazerThread = nil
+        end
+    end
 end
 
 -- Button connections
@@ -454,10 +662,10 @@ tweenButton.MouseButton1Click:Connect(function()
     end
 end)
 
+floatButton.MouseButton1Click:Connect(toggleFloat)
+autoFloorButton.MouseButton1Click:Connect(toggleAutoFloor)
 espButton.MouseButton1Click:Connect(toggleESP)
-
--- [Include your other feature functions here - Float, Auto Floor, Auto Lazer, Semi Invisible]
--- Make sure to connect their buttons and add status updates
+autoLazerButton.MouseButton1Click:Connect(toggleAutoLazer)
 
 -- Drag GUI
 local dragging, dragInput, dragStart, startPos
@@ -500,7 +708,7 @@ local function setJumpPower(value)
 end
 
 speedInput.FocusLost:Connect(function()
-    local newSpeed = tonumber(speedInput.Text) or 35
+    local newSpeed = tonumber(speedInput.Text) or 25
     newSpeed = math.clamp(newSpeed, 0, 200)
     speedInput.Text = tostring(newSpeed)
     setSpeed(newSpeed)
@@ -515,4 +723,4 @@ jumpInput.FocusLost:Connect(function()
 end)
 
 setJumpPower(50)
-setSpeed(35)
+setSpeed(25)
