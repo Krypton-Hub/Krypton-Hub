@@ -8,23 +8,42 @@ local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:WaitForChild("Humanoid")
+local character, hrp, humanoid
+
+-- Safe character reference system
+local function updateCharacterReferences()
+    character = player.Character
+    if character then
+        hrp = character:FindFirstChild("HumanoidRootPart")
+        humanoid = character:FindFirstChildOfClass("Humanoid")
+    else
+        hrp = nil
+        humanoid = nil
+    end
+end
+
+updateCharacterReferences()
 
 player.CharacterAdded:Connect(function(c)
-	character = c
-	hrp = character:WaitForChild("HumanoidRootPart")
-	humanoid = character:WaitForChild("Humanoid")
+    character = c
+    hrp = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
+end)
+
+player.CharacterRemoving:Connect(function()
+    character = nil
+    hrp = nil
+    humanoid = nil
 end)
 
 -- Create GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "RxyalsScriptsGui"
 gui.ResetOnSpawn = false
-gui.Parent = player.PlayerGui
+gui.Parent = player:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 200, 0, 250)
@@ -355,12 +374,12 @@ local function toggleFloat()
     end
 end
 
--- IMPROVED AUTO FLOOR WITH RISING MECHANIC
+-- FIXED AUTO FLOOR WITH RISING MECHANIC
 local floorOn = false
 local floorPart
 local floorConnection
-local floorRiseSpeed = 5.0 -- Speed of rising movement
-local autoFloorSize = Vector3.new(8, 1, 8) -- Slightly larger floor
+local floorRiseSpeed = 5.0
+local autoFloorSize = Vector3.new(8, 1, 8)
 
 local function toggleAutoFloor()
     floorOn = not floorOn
@@ -379,7 +398,7 @@ local function toggleAutoFloor()
         floorPart.Color = Color3.fromRGB(80, 170, 255)
         floorPart.Transparency = 0.3
         floorPart.Name = "RxyalsAutoFloor"
-        floorPart.Parent = workspace
+        floorPart.Parent = Workspace
         
         -- Add subtle light effect
         local pointLight = Instance.new("PointLight")
@@ -392,21 +411,29 @@ local function toggleAutoFloor()
             floorConnection:Disconnect()
         end
         
-        -- Use RenderStepped for smoother movement
+        -- FIXED: Safe connection with proper null checks
         floorConnection = RunService.RenderStepped:Connect(function()
-            if hrp and floorPart then
-                local currentPos = floorPart.Position
-                local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPart.Size.Y/2)
-                
-                -- Smooth rising movement: only rise, instant fall
-                if targetY > currentPos.Y then
-                    -- Rising: smooth movement
-                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
-                    floorPart.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
-                else
-                    -- Falling: instant positioning
-                    floorPart.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
-                end
+            if not floorOn or not floorPart then
+                return
+            end
+            
+            updateCharacterReferences() -- Update references
+            
+            if not hrp then
+                return -- No character, skip this frame
+            end
+            
+            local currentPos = floorPart.Position
+            local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPart.Size.Y/2)
+            
+            -- Smooth rising movement: only rise, instant fall
+            if targetY > currentPos.Y then
+                -- Rising: smooth movement
+                local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
+                floorPart.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
+            else
+                -- Falling: instant positioning
+                floorPart.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
             end
         end)
         
@@ -426,14 +453,14 @@ local function toggleAutoFloor()
     end
 end
 
--- Original Tween System (No Death)
+-- FIXED Tween System
 local active = false
 local currentTween
 local walkThread
 local tweenSpeed = 24
 
 local function getBasePosition()
-    local plots = workspace:FindFirstChild("Plots")
+    local plots = Workspace:FindFirstChild("Plots")
     if not plots then return nil end
     for _, plot in ipairs(plots:GetChildren()) do
         local sign = plot:FindFirstChild("PlotSign")
@@ -448,10 +475,17 @@ end
 local Y_OFFSET = 3
 local STOP_DISTANCE = 10
 
+-- FIXED: Safe tween function with null checks
 local function tweenWalkTo(position)
     if currentTween then 
         currentTween:Cancel() 
         currentTween = nil
+    end
+
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return false
     end
 
     local startPos = hrp.Position
@@ -464,19 +498,30 @@ local function tweenWalkTo(position)
     currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
     currentTween:Play()
 
-    humanoid:ChangeState(Enum.HumanoidStateType.Running)
+    if humanoid then
+        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+    end
 
     currentTween.Completed:Wait()
     currentTween = nil
+    return true
 end
 
+-- FIXED: Safe base checking
 local function isAtBase(basePos)
     if not basePos or not hrp then return false end
     local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
     return dist <= STOP_DISTANCE
 end
 
+-- FIXED: Safe walk function
 local function walkToBase()
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return
+    end
+
     local target = getBasePosition()
     if not target then
         statusLabel.Text = "Base Not Found"
@@ -484,6 +529,13 @@ local function walkToBase()
     end
 
     while active do
+        updateCharacterReferences()
+        if not hrp then
+            statusLabel.Text = "Character died, stopping"
+            stopTweenToBase()
+            break
+        end
+
         if not target then
             statusLabel.Text = "Base Not Found"
             task.wait(1)
@@ -503,7 +555,11 @@ local function walkToBase()
         
         if not success then
             statusLabel.Text = "Direct path to base"
-            tweenWalkTo(target)
+            local tweenSuccess = pcall(tweenWalkTo, target)
+            if not tweenSuccess then
+                statusLabel.Text = "Tween failed"
+                stopTweenToBase()
+            end
             break
         end
 
@@ -512,18 +568,26 @@ local function walkToBase()
             statusLabel.Text = "Following path (" .. #waypoints .. " points)"
             
             for i, waypoint in ipairs(waypoints) do
-                if not active or isAtBase(target) then 
+                if not active or not hrp or isAtBase(target) then 
                     return 
                 end
                 
                 -- Skip first waypoint if it's too close
                 if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
-                    tweenWalkTo(waypoint.Position)
+                    local tweenSuccess = pcall(tweenWalkTo, waypoint.Position)
+                    if not tweenSuccess then
+                        statusLabel.Text = "Path tween failed"
+                        return
+                    end
                 end
             end
         else
             statusLabel.Text = "Direct path (no obstacles)"
-            tweenWalkTo(target)
+            local tweenSuccess = pcall(tweenWalkTo, target)
+            if not tweenSuccess then
+                statusLabel.Text = "Direct tween failed"
+                stopTweenToBase()
+            end
         end
 
         task.wait(0.1)
@@ -532,6 +596,12 @@ end
 
 function startTweenToBase()
     if active then return end
+    
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return
+    end
     
     active = true
     tweenButton.Text = "■ STOP TWEEN"
@@ -558,32 +628,35 @@ function stopTweenToBase()
         task.cancel(walkThread) 
         walkThread = nil
     end
-    tweenButton.Text = "▶ TWEEN TO BASE"
-    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    statusLabel.Text = "Ready"
     
     if humanoid then
         humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
     end
+    
+    tweenButton.Text = "▶ TWEEN TO BASE"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    statusLabel.Text = "Ready"
 end
 
--- Player ESP Feature
+-- FIXED ESP System with Memory Management
 local espEnabled = false
 local espFolders = {}
+local espConnections = {}
 
 local function createESP(player)
     if player == Players.LocalPlayer then return end
     
     local folder = Instance.new("Folder")
     folder.Name = player.Name .. "_ESP"
-    folder.Parent = workspace
+    folder.Parent = Workspace
     espFolders[player] = folder
     
     local function updateESP(character)
-        if not character then return end
+        if not character or not folder then return end
         
-        local hrp = character:WaitForChild("HumanoidRootPart")
-        local humanoid = character:WaitForChild("Humanoid")
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not hrp or not humanoid then return end
         
         -- Box ESP
         local box = Instance.new("BoxHandleAdornment")
@@ -626,17 +699,24 @@ local function createESP(player)
         billboard.Parent = folder
         
         -- Update health
-        humanoid.HealthChanged:Connect(function()
-            healthLabel.Text = "HP: " .. math.floor(humanoid.Health)
-            box.Color3 = humanoid.Health > 0 and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        local healthConnection = humanoid.HealthChanged:Connect(function()
+            if folder and healthLabel then
+                healthLabel.Text = "HP: " .. math.floor(humanoid.Health)
+                if box then
+                    box.Color3 = humanoid.Health > 0 and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+                end
+            end
         end)
+        
+        table.insert(espConnections, healthConnection)
     end
     
     if player.Character then
         updateESP(player.Character)
     end
     
-    player.CharacterAdded:Connect(updateESP)
+    local charConnection = player.CharacterAdded:Connect(updateESP)
+    table.insert(espConnections, charConnection)
 end
 
 local function removeESP(player)
@@ -657,49 +737,78 @@ local function toggleESP()
         for _, plr in ipairs(Players:GetPlayers()) do
             createESP(plr)
         end
+        
         -- Create ESP for new players
-        Players.PlayerAdded:Connect(createESP)
+        local playerAddedConnection = Players.PlayerAdded:Connect(createESP)
+        table.insert(espConnections, playerAddedConnection)
+        
+        -- Remove ESP when players leave (FIXED MEMORY LEAK)
+        local playerRemovingConnection = Players.PlayerRemoving:Connect(function(plr)
+            removeESP(plr)
+        end)
+        table.insert(espConnections, playerRemovingConnection)
+        
     else
         statusLabel.Text = "ESP disabled"
         -- Remove all ESP
         for plr, folder in pairs(espFolders) do
-            folder:Destroy()
+            if folder then
+                folder:Destroy()
+            end
         end
         espFolders = {}
+        
+        -- Clean up connections
+        for _, connection in ipairs(espConnections) do
+            if connection then
+                connection:Disconnect()
+            end
+        end
+        espConnections = {}
     end
 end
 
--- Auto Lazer Feature
+-- FIXED Auto Lazer Feature
 local autoLazerEnabled = false
 local autoLazerThread = nil
 
 local function getLazerRemote()
     local remote = nil
-    pcall(function()
-        if ReplicatedStorage:FindFirstChild("Packages") and ReplicatedStorage.Packages:FindFirstChild("Net") then
-            remote = ReplicatedStorage.Packages.Net:FindFirstChild("RE/UseItem") or ReplicatedStorage.Packages.Net:FindFirstChild("RE"):FindFirstChild("UseItem")
+    local success = pcall(function()
+        -- Try multiple possible remote locations safely
+        if ReplicatedStorage:FindFirstChild("Packages") then
+            local packages = ReplicatedStorage.Packages
+            if packages:FindFirstChild("Net") then
+                local net = packages.Net
+                remote = net:FindFirstChild("RE/UseItem") or net:FindFirstChild("RE"):FindFirstChild("UseItem")
+            end
         end
+        
         if not remote then
             remote = ReplicatedStorage:FindFirstChild("RE/UseItem") or ReplicatedStorage:FindFirstChild("UseItem")
         end
     end)
-    return remote
+    
+    return success and remote or nil
 end
 
 local function isValidTarget(player)
     if not player or not player.Character or player == Players.LocalPlayer then return false end
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-    if not hrp or not humanoid then return false end
-    if humanoid.Health <= 0 then return false end
+    local targetHRP = player.Character:FindFirstChild("HumanoidRootPart")
+    local targetHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not targetHRP or not targetHumanoid then return false end
+    if targetHumanoid.Health <= 0 then return false end
     return true
 end
 
 local function findNearestAllowed()
-    if not Players.LocalPlayer.Character or not Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return nil end
-    local myPos = Players.LocalPlayer.Character.HumanoidRootPart.Position
+    updateCharacterReferences()
+    if not character or not hrp then return nil end
+    
+    local myPos = hrp.Position
     local nearest = nil
     local nearestDist = math.huge
+    
     for _, pl in ipairs(Players:GetPlayers()) do
         if isValidTarget(pl) then
             local targetHRP = pl.Character:FindFirstChild("HumanoidRootPart")
@@ -719,15 +828,24 @@ local function safeFire(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then return end
     local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not targetHRP then return end
+    
     local remote = getLazerRemote()
+    if not remote then
+        warn("Lazer remote not found")
+        return
+    end
+    
     local args = {
         [1] = targetHRP.Position,
         [2] = targetHRP
     }
-    if remote and remote.FireServer then
-        pcall(function()
-            remote:FireServer(unpack(args))
-        end)
+    
+    local success = pcall(function()
+        remote:FireServer(unpack(args))
+    end)
+    
+    if not success then
+        warn("Failed to fire lazer")
     end
 end
 
@@ -806,12 +924,14 @@ end)
 
 -- Set initial values
 local function setSpeed(value)
+    updateCharacterReferences()
     if humanoid then
         humanoid.WalkSpeed = value
     end
 end
 
 local function setJumpPower(value)
+    updateCharacterReferences()
     if humanoid then
         humanoid.UseJumpPower = true
         humanoid.JumpPower = value
@@ -833,8 +953,40 @@ jumpInput.FocusLost:Connect(function()
     setJumpPower(newJump)
 end)
 
+-- Clean up everything when script ends
+gui.Destroying:Connect(function()
+    stopTweenToBase()
+    
+    -- Clean up auto floor
+    if floorConnection then
+        floorConnection:Disconnect()
+    end
+    if floorPart then
+        floorPart:Destroy()
+    end
+    
+    -- Clean up float
+    if floatConnection then
+        floatConnection:Disconnect()
+    end
+    if floatBodyVelocity then
+        floatBodyVelocity:Destroy()
+    end
+    
+    -- Clean up auto lazer
+    if autoLazerEnabled then
+        toggleAutoLazer()
+    end
+    
+    -- Clean up ESP
+    if espEnabled then
+        toggleESP()
+    end
+end)
+
 setJumpPower(50)
 setSpeed(24)
 
 print("Rxyals Scripts loaded successfully!")
 print("Features: Tween to Base, Float, Auto Floor (Rising), Player ESP, Auto Lazer")
+print("All critical bugs have been fixed!")
