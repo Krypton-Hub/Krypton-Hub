@@ -1,7 +1,8 @@
--- Universal Item Duper
+-- Chat Command Item Duper
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local TextChatService = game:GetService("TextChatService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local dupeEnabled = false
@@ -9,11 +10,11 @@ local dupeConnection
 
 -- GUI Setup
 local gui = Instance.new("ScreenGui")
-gui.Name = "ItemDupeGUI"
+gui.Name = "ChatDupeGUI"
 gui.Parent = player.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Size = UDim2.new(0, 200, 0, 150)
 frame.Position = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -21,7 +22,7 @@ frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
 local title = Instance.new("TextLabel")
-title.Text = "ITEM DUPER"
+title.Text = "CHAT DUPER"
 title.Size = UDim2.new(1, 0, 0, 25)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -34,7 +35,7 @@ Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
 local dupeButton = Instance.new("TextButton")
 dupeButton.Text = "START DUPING"
 dupeButton.Size = UDim2.new(0.8, 0, 0, 35)
-dupeButton.Position = UDim2.new(0.1, 0, 0.3, 0)
+dupeButton.Position = UDim2.new(0.1, 0, 0.25, 0)
 dupeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 dupeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 dupeButton.Font = Enum.Font.GothamBold
@@ -42,8 +43,18 @@ dupeButton.TextSize = 12
 dupeButton.Parent = frame
 Instance.new("UICorner", dupeButton).CornerRadius = UDim.new(0, 6)
 
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Text = "Speed: Medium"
+speedLabel.Size = UDim2.new(0.8, 0, 0, 20)
+speedLabel.Position = UDim2.new(0.1, 0, 0.55, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 10
+speedLabel.Parent = frame
+
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Text = "Status: Ready"
+statusLabel.Text = "Status: Ready - Hold items to dupe"
 statusLabel.Size = UDim2.new(1, 0, 0, 20)
 statusLabel.Position = UDim2.new(0, 0, 0.8, 0)
 statusLabel.BackgroundTransparency = 1
@@ -52,42 +63,38 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 10
 statusLabel.Parent = frame
 
--- Find drop/use remotes
-local function findDropRemote()
-    local remotes = {
-        "DropItem",
-        "Drop",
-        "RemoveItem",
-        "UseItem",
-        "EquipItem",
-        "RE/Drop",
-        "RE/DropItem",
-        "RemoteEvent"
-    }
-    
-    for _, remoteName in pairs(remotes) do
-        -- Check ReplicatedStorage
-        local remote = ReplicatedStorage:FindFirstChild(remoteName)
-        if remote and remote:IsA("RemoteEvent") then
-            return remote
-        end
-        
-        -- Check Packages/Knit
-        if ReplicatedStorage:FindFirstChild("Packages") then
-            remote = ReplicatedStorage.Packages:FindFirstChild(remoteName)
-            if remote and remote:IsA("RemoteEvent") then
-                return remote
-            end
-        end
-        
-        -- Check through folders
-        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") and (obj.Name:lower():find("drop") or obj.Name:lower():find("item")) then
-                return obj
-            end
+-- Dupe settings
+local dupeSpeed = 1 -- 1 = medium, 2 = fast, 0.5 = slow
+local commandsToTry = {"/drop", "/d", "!drop", ".drop", "/give", "/dupe"}
+
+-- Send chat message
+local function sendChatMessage(message)
+    -- Method 1: New TextChatService
+    if TextChatService then
+        local chatChannel = TextChatService:FindFirstChild("TextChannels"):FindFirstChild("RBXGeneral")
+        if chatChannel then
+            chatChannel:SendAsync(message)
+            return true
         end
     end
-    return nil
+    
+    -- Method 2: Legacy Chat (works in most games)
+    local success = pcall(function()
+        game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest"):FireServer(message, "All")
+    end)
+    
+    if success then return true end
+    
+    -- Method 3: Direct replication
+    local success2 = pcall(function()
+        local event = ReplicatedStorage:FindFirstChild("SayMessageRequest", true)
+        if event then
+            event:FireServer(message, "All")
+            return true
+        end
+    end)
+    
+    return success or success2
 end
 
 -- Get player's tools/items
@@ -98,8 +105,8 @@ local function getPlayerItems()
     local backpack = player:FindFirstChild("Backpack")
     if backpack then
         for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                table.insert(items, tool)
+            if tool:IsA("Tool") or tool:IsA("HopperBin") then
+                table.insert(items, tool.Name)
             end
         end
     end
@@ -108,53 +115,52 @@ local function getPlayerItems()
     local character = player.Character
     if character then
         for _, tool in pairs(character:GetChildren()) do
-            if tool:IsA("Tool") then
-                table.insert(items, tool)
+            if tool:IsA("Tool") or tool:IsA("HopperBin") then
+                table.insert(items, tool.Name)
             end
         end
+    end
+    
+    -- If no tools found, try to dupe anyway (some games don't use Tool objects)
+    if #items == 0 then
+        table.insert(items, "") -- Empty string for general dupe
     end
     
     return items
 end
 
--- Dupe items
-local function startDuping()
-    local dropRemote = findDropRemote()
+-- Try different dupe commands
+local function tryDupeCommands()
+    local items = getPlayerItems()
     
-    if not dropRemote then
-        statusLabel.Text = "Status: No drop remote found"
-        return
+    for _, command in pairs(commandsToTry) do
+        for _, itemName in pairs(items) do
+            if not dupeEnabled then break end
+            
+            local fullCommand = itemName ~= "" and command .. " " .. itemName or command
+            
+            -- Try the command
+            local success = sendChatMessage(fullCommand)
+            
+            if success then
+                statusLabel.Text = "Status: Sent: " .. fullCommand
+            else
+                statusLabel.Text = "Status: Failed to send command"
+            end
+            
+            wait(dupeSpeed) -- Adjustable delay
+        end
     end
-    
-    statusLabel.Text = "Status: Duping..."
+end
+
+-- Start duping process
+local function startDuping()
+    statusLabel.Text = "Status: Starting dupe..."
     
     dupeConnection = RunService.Heartbeat:Connect(function()
         if not dupeEnabled then return end
         
-        local items = getPlayerItems()
-        
-        for _, item in pairs(items) do
-            if dupeEnabled then
-                -- Try different argument formats
-                local success = pcall(function()
-                    dropRemote:FireServer(item)
-                end)
-                
-                if not success then
-                    pcall(function()
-                        dropRemote:FireServer(item.Name)
-                    end)
-                end
-                
-                if not success then
-                    pcall(function()
-                        dropRemote:FireServer()
-                    end)
-                end
-                
-                wait(0.2) -- Delay between dupes
-            end
-        end
+        tryDupeCommands()
     end)
 end
 
@@ -178,18 +184,37 @@ local function toggleDupe()
     end
 end
 
--- Auto-find and dupe (alternative method)
-local function autoDupe()
-    statusLabel.Text = "Status: Auto-searching..."
+-- Speed toggle
+local speedIndex = 2
+local speeds = {0.5, 1, 2} -- slow, medium, fast
+
+local function cycleSpeed()
+    speedIndex = (speedIndex % #speeds) + 1
+    dupeSpeed = speeds[speedIndex]
     
-    -- Look for all RemoteEvents and try them
-    for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-        if remote:IsA("RemoteEvent") and dupeEnabled then
-            pcall(function()
-                for i = 1, 10 do -- Try multiple times
-                    if dupeEnabled then
-                        remote:FireServer()
-                        wait(0.1)
+    local speedNames = {"Slow", "Medium", "Fast"}
+    speedLabel.Text = "Speed: " .. speedNames[speedIndex]
+end
+
+-- Button clicks
+dupeButton.MouseButton1Click:Connect(toggleDupe)
+speedLabel.MouseButton1Click:Connect(cycleSpeed)
+
+-- Auto-detect and add more commands
+local function autoDetectCommands()
+    -- Listen for chat messages to detect commands
+    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvents then
+        local onMessage = chatEvents:FindFirstChild("OnMessageDoneFiltering")
+        if onMessage then
+            onMessage.OnClientEvent:Connect(function(messageData)
+                local message = messageData.Message
+                if message:sub(1, 1) == "/" or message:sub(1, 1) == "!" or message:sub(1, 1) == "." then
+                    -- Extract command (first word)
+                    local command = message:match("^([^%s]+)")
+                    if command and not table.find(commandsToTry, command) then
+                        table.insert(commandsToTry, command)
+                        statusLabel.Text = "Status: Detected new command: " .. command
                     end
                 end
             end)
@@ -197,11 +222,8 @@ local function autoDupe()
     end
 end
 
--- Button click
-dupeButton.MouseButton1Click:Connect(toggleDupe)
-
--- Auto-execute if wanted (remove if you want manual control)
--- toggleDupe()
+-- Start auto-detection
+autoDetectCommands()
 
 -- Cleanup
 gui.Destroying:Connect(function()
@@ -235,3 +257,5 @@ UserInputService.InputChanged:Connect(function(input)
         frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
+
+statusLabel.Text = "Status: Ready - Click Speed to change"
