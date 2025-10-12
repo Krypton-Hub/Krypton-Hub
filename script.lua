@@ -11,28 +11,11 @@ local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
 
--- Feature states
-local noclipEnabled = false
-local floatEnabled = false
-local autoLazerEnabled = false
-local floorOn = false
-local active = false
-
 player.CharacterAdded:Connect(function(c)
-    character = c
-    hrp = character:WaitForChild("HumanoidRootPart")
-    humanoid = character:WaitForChild("Humanoid")
-    
-    -- Re-enable features that were active
-    if noclipEnabled then
-        noclipEnabled = false
-        toggleNoClip()
-    end
-    if floatEnabled then
-        floatEnabled = false
-        toggleFloat()
-    end
-end)
+	character = c
+	hrp = character:WaitForChild("HumanoidRootPart")
+	humanoid = character:WaitForChild("Humanoid")
+end
 
 -- GUI Setup
 local gui = Instance.new("ScreenGui")
@@ -41,8 +24,8 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 180, 0, 280)
-frame.Position = UDim2.new(0.5, -90, 0.5, -140)
+frame.Size = UDim2.new(0, 180, 0, 250) -- Increased height for new features
+frame.Position = UDim2.new(0.5, -90, 0.5, -125)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -114,23 +97,11 @@ jumpInput.Text = "50"
 jumpInput.PlaceholderText = "Jump"
 Instance.new("UICorner", jumpInput).CornerRadius = UDim.new(0, 4)
 
--- Noclip button
-local noclipButton = Instance.new("TextButton", frame)
-noclipButton.Text = "NOCLIP: OFF"
-noclipButton.Size = UDim2.new(0.8, 0, 0, 25)
-noclipButton.Position = UDim2.new(0.1, 0, 0.38, 0)
-noclipButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-noclipButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-noclipButton.Font = Enum.Font.GothamBold
-noclipButton.TextSize = 14
-noclipButton.ZIndex = 2
-Instance.new("UICorner", noclipButton).CornerRadius = UDim.new(0, 6)
-
 -- Float button
 local floatButton = Instance.new("TextButton", frame)
 floatButton.Text = "FLOAT: OFF"
 floatButton.Size = UDim2.new(0.8, 0, 0, 25)
-floatButton.Position = UDim2.new(0.1, 0, 0.50, 0)
+floatButton.Position = UDim2.new(0.1, 0, 0.38, 0)
 floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 floatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 floatButton.Font = Enum.Font.GothamBold
@@ -142,7 +113,7 @@ Instance.new("UICorner", floatButton).CornerRadius = UDim.new(0, 6)
 local autoFloorButton = Instance.new("TextButton", frame)
 autoFloorButton.Text = "AUTO FLOOR: OFF"
 autoFloorButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoFloorButton.Position = UDim2.new(0.1, 0, 0.62, 0)
+autoFloorButton.Position = UDim2.new(0.1, 0, 0.50, 0)
 autoFloorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoFloorButton.Font = Enum.Font.GothamBold
@@ -154,7 +125,7 @@ Instance.new("UICorner", autoFloorButton).CornerRadius = UDim.new(0, 6)
 local autoLazerButton = Instance.new("TextButton", frame)
 autoLazerButton.Text = "AUTO LAZER: OFF"
 autoLazerButton.Size = UDim2.new(0.8, 0, 0, 25)
-autoLazerButton.Position = UDim2.new(0.1, 0, 0.74, 0)
+autoLazerButton.Position = UDim2.new(0.1, 0, 0.62, 0)
 autoLazerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoLazerButton.Font = Enum.Font.GothamBold
@@ -172,65 +143,6 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 10
 statusLabel.ZIndex = 2
 
--- Improved Noclip Feature for Steal a Brainrot
-local noclipConnection
-
-local function toggleNoClip()
-    noclipEnabled = not noclipEnabled
-    
-    if noclipEnabled then
-        noclipButton.Text = "NOCLIP: ON"
-        noclipButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        
-        if noclipConnection then
-            noclipConnection:Disconnect()
-        end
-        
-        -- Use a more subtle approach that mimics normal movement
-        noclipConnection = RunService.Heartbeat:Connect(function()
-            if character and noclipEnabled and hrp then
-                -- Only disable collision for limbs, keep torso collidable
-                for _, part in pairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        if part.Name:find("Leg") or part.Name:find("Arm") or part.Name:find("Hand") or part.Name:find("Foot") then
-                            part.CanCollide = false
-                        else
-                            part.CanCollide = true
-                        end
-                    end
-                end
-                
-                -- Make sure humanoid is in a valid state
-                if humanoid then
-                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
-                end
-            end
-        end)
-        
-        statusLabel.Text = "Status: Noclip Enabled"
-        
-    else
-        noclipButton.Text = "NOCLIP: OFF"
-        noclipButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        
-        if noclipConnection then
-            noclipConnection:Disconnect()
-            noclipConnection = nil
-        end
-        
-        -- Re-enable all collisions
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-        
-        statusLabel.Text = "Status: Idle"
-    end
-end
-
 -- Speed Changer Function
 local function setSpeed(value)
     local character = player.Character or player.CharacterAdded:Wait()
@@ -242,8 +154,8 @@ local function setSpeed(value)
 end
 
 -- Float Feature
+local floatEnabled = false
 local floatBodyVelocity
-local floatConnection
 
 local function toggleFloat()
     floatEnabled = not floatEnabled
@@ -257,32 +169,21 @@ local function toggleFloat()
         floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
         
-        -- Float connection with delta time consideration
-        if floatConnection then
-            floatConnection:Disconnect()
-        end
-        
-        floatConnection = RunService.Heartbeat:Connect(function(delta)
+        -- Float connection
+        local floatConnection
+        floatConnection = RunService.Heartbeat:Connect(function()
             if not floatEnabled or not character or not hrp then
-                if floatConnection then
-                    floatConnection:Disconnect()
-                    floatConnection = nil
-                end
+                floatConnection:Disconnect()
                 return
             end
             
-            -- Check if player is in the air with proper raycasting
-            local rayOrigin = hrp.Position
-            local rayDirection = Vector3.new(0, -((hrp.Size.Y/2) + 3), 0)
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-            raycastParams.FilterDescendantsInstances = {character}
+            -- Check if player is in the air
+            local ray = Ray.new(hrp.Position, Vector3.new(0, -5, 0))
+            local part, position = workspace:FindPartOnRay(ray, character)
             
-            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-            
-            if not raycastResult then
+            if not part then
                 -- In air, apply upward force
-                floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
+                floatBodyVelocity.Velocity = Vector3.new(0, 20, 0)
                 floatBodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
             else
                 -- On ground, no force
@@ -290,11 +191,9 @@ local function toggleFloat()
                 floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
             end
             
-            -- Make sure BodyVelocity is parented to HRP safely
-            if floatBodyVelocity and hrp and hrp.Parent then
-                if floatBodyVelocity.Parent ~= hrp then
-                    floatBodyVelocity.Parent = hrp
-                end
+            -- Make sure BodyVelocity is parented to HRP
+            if floatBodyVelocity.Parent ~= hrp then
+                floatBodyVelocity.Parent = hrp
             end
         end)
         
@@ -302,11 +201,7 @@ local function toggleFloat()
         floatButton.Text = "FLOAT: OFF"
         floatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         
-        -- Remove BodyVelocity and connection
-        if floatConnection then
-            floatConnection:Disconnect()
-            floatConnection = nil
-        end
+        -- Remove BodyVelocity
         if floatBodyVelocity then
             floatBodyVelocity:Destroy()
             floatBodyVelocity = nil
@@ -326,6 +221,7 @@ local function setJumpPower(value)
 end
 
 -- Auto Lazer Feature
+local autoLazerEnabled = false
 local autoLazerThread = nil
 
 local function getLazerRemote()
@@ -418,6 +314,7 @@ local function toggleAutoLazer()
 end
 
 -- Auto Floor Feature
+local floorOn = false
 local floorPartAF, floorConnAF
 local floorRiseSpeed = 2.0
 local autoFloorSize = Vector3.new(6, 1, 6)
@@ -440,19 +337,14 @@ local function toggleAutoFloor()
             floorPartAF.Parent = Workspace
         end
         
-        -- Start following the player with delta time
-        if floorConnAF then
-            floorConnAF:Disconnect()
-        end
-        
-        floorConnAF = RunService.Heartbeat:Connect(function(delta)
+        -- Start following the player
+        floorConnAF = RunService.RenderStepped:Connect(function()
             if hrp and floorPartAF then
                 local currentPos = floorPartAF.Position
-                local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPartAF.Size.Y/2)
+                local targetY = hrp.Position.Y - hrp.Size.Y/2 - floorPartAF.Size.Y/2
                 
                 if targetY > currentPos.Y then
-                    -- Use delta time for smooth movement
-                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * delta
+                    local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
                 else
                     floorPartAF.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
@@ -517,61 +409,61 @@ end
 -- Drag GUI
 local dragging, dragInput, dragStart, startPos
 frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
 end)
 frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and input == dragInput then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
+	if dragging and input == dragInput then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
 end)
 
 -- Anti Death
 local function applyAntiDeath(state)
-    if humanoid then
-        for _, s in pairs({
-            Enum.HumanoidStateType.FallingDown,
-            Enum.HumanoidStateType.Ragdoll,
-            Enum.HumanoidStateType.PlatformStanding,
-            Enum.HumanoidStateType.Seated
-        }) do
-            humanoid:SetStateEnabled(s, not state)
-        end
-        if state then
-            humanoid.Health = humanoid.MaxHealth
-            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                if humanoid.Health <= 0 then
-                    humanoid.Health = humanoid.MaxHealth
-                end
-            end)
-        end
-    end
+	if humanoid then
+		for _, s in pairs({
+			Enum.HumanoidStateType.FallingDown,
+			Enum.HumanoidStateType.Ragdoll,
+			Enum.HumanoidStateType.PlatformStanding,
+			Enum.HumanoidStateType.Seated
+		}) do
+			humanoid:SetStateEnabled(s, not state)
+		end
+		if state then
+			humanoid.Health = humanoid.MaxHealth
+			humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+				if humanoid.Health <= 0 then
+					humanoid.Health = humanoid.MaxHealth
+				end
+			end)
+		end
+	end
 end
 
 -- Find base position
 local function getBasePosition()
-    local plots = workspace:FindFirstChild("Plots")
-    if not plots then return nil end
-    for _, plot in ipairs(plots:GetChildren()) do
-        local sign = plot:FindFirstChild("PlotSign")
-        local base = plot:FindFirstChild("DeliveryHitbox")
-        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
-            return base.Position
-        end
-    end
-    return nil
+	local plots = workspace:FindFirstChild("Plots")
+	if not plots then return nil end
+	for _, plot in ipairs(plots:GetChildren()) do
+		local sign = plot:FindFirstChild("PlotSign")
+		local base = plot:FindFirstChild("DeliveryHitbox")
+		if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+			return base.Position
+		end
+	end
+	return nil
 end
 
 local Y_OFFSET = 3
@@ -580,33 +472,34 @@ local tweenSpeed = 24
 
 local currentTween
 local function tweenWalkTo(position)
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
-    end
+	if currentTween then 
+		currentTween:Cancel() 
+		currentTween = nil
+	end
 
-    local startPos = hrp.Position
-    local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
-    local distance = (targetPos - startPos).Magnitude
-    local speed = math.max(tweenSpeed, 16)
-    local duration = distance / speed
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+	local startPos = hrp.Position
+	local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
+	local distance = (targetPos - startPos).Magnitude
+	local speed = math.max(tweenSpeed, 16)
+	local duration = distance / speed
+	local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
 
-    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
-    currentTween:Play()
+	currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+	currentTween:Play()
 
-    humanoid:ChangeState(Enum.HumanoidStateType.Running)
+	humanoid:ChangeState(Enum.HumanoidStateType.Running)
 
-    currentTween.Completed:Wait()
-    currentTween = nil
+	currentTween.Completed:Wait()
+	currentTween = nil
 end
 
+local active = false
 local walkThread
 
 local function isAtBase(basePos)
-    if not basePos or not hrp then return false end
-    local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
-    return dist <= STOP_DISTANCE
+	if not basePos or not hrp then return false end
+	local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
+	return dist <= STOP_DISTANCE
 end
 
 local function checkIfAtBase(basePos)
@@ -670,10 +563,11 @@ local function walkToBase()
                     return 
                 end
                 
-                -- FIXED: Replaced 'continue' with proper condition
-                if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
-                    tweenWalkTo(waypoint.Position)
+                if i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2 then
+                    continue
                 end
+                
+                tweenWalkTo(waypoint.Position)
             end
         else
             tweenWalkTo(target)
@@ -684,57 +578,53 @@ local function walkToBase()
 end
 
 function startTweenToBase()
-    if active then return end
-    
-    active = true
-    applyAntiDeath(true)
-    humanoid.WalkSpeed = tweenSpeed
-    statusLabel.Text = "Status: Walking to Base..."
-    tweenButton.Text = "■ STOP"
+	if active then return end
+	
+	active = true
+	applyAntiDeath(true)
+	humanoid.WalkSpeed = tweenSpeed
+	statusLabel.Text = "Status: Walking to Base..."
+	tweenButton.Text = "■ STOP"
 
-    walkThread = task.spawn(function()
-        while active do
-            walkToBase()
-            if not active then break end
-            task.wait(0.5)
-        end
-    end)
+	walkThread = task.spawn(function()
+		while active do
+			walkToBase()
+			if not active then break end
+			task.wait(0.5)
+		end
+	end)
 end
 
 function stopTweenToBase()
-    if not active then return end
-    active = false
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
-    end
-    if walkThread then 
-        task.cancel(walkThread) 
-        walkThread = nil
-    end
-    humanoid.WalkSpeed = 16
-    statusLabel.Text = "Status: Stopped"
-    tweenButton.Text = "▶ START"
-    
-    teleportGui.Enabled = false
-    blackScreen.Visible = false
-    
-    if humanoid then
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
+	if not active then return end
+	active = false
+	if currentTween then 
+		currentTween:Cancel() 
+		currentTween = nil
+	end
+	if walkThread then 
+		task.cancel(walkThread) 
+		walkThread = nil
+	end
+	humanoid.WalkSpeed = 16
+	statusLabel.Text = "Status: Stopped"
+	tweenButton.Text = "▶ START"
+	
+	teleportGui.Enabled = false
+	blackScreen.Visible = false
+	
+	if humanoid then
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	end
 end
 
 -- Button connections
 tweenButton.MouseButton1Click:Connect(function()
-    if active then
-        stopTweenToBase()
-    else
-        startTweenToBase()
-    end
-end)
-
-noclipButton.MouseButton1Click:Connect(function()
-    toggleNoClip()
+	if active then
+		stopTweenToBase()
+	else
+		startTweenToBase()
+	end
 end)
 
 floatButton.MouseButton1Click:Connect(function()
@@ -751,47 +641,47 @@ end)
 
 -- Speed input
 speedInput.FocusLost:Connect(function()
-    local newSpeed = tonumber(speedInput.Text)
-    if newSpeed then
-        if newSpeed < 0 then
-            speedInput.Text = "0"
-            setSpeed(0)
-        elseif newSpeed > 200 then
-            speedInput.Text = "200"
-            setSpeed(200)
-        else
-            setSpeed(newSpeed)
-            tweenSpeed = newSpeed -- Update tween speed as well
-        end
-    else
-        speedInput.Text = "24"
-        setSpeed(24)
-        tweenSpeed = 24
-    end
+	local newSpeed = tonumber(speedInput.Text)
+	if newSpeed then
+		if newSpeed < 0 then
+			speedInput.Text = "0"
+			setSpeed(0)
+		elseif newSpeed > 200 then
+			speedInput.Text = "200"
+			setSpeed(200)
+		else
+			setSpeed(newSpeed)
+			tweenSpeed = newSpeed -- Update tween speed as well
+		end
+	else
+		speedInput.Text = "24"
+		setSpeed(24)
+		tweenSpeed = 24
+	end
 end)
 
 -- Jump power input
 jumpInput.FocusLost:Connect(function()
-    local newJump = tonumber(jumpInput.Text)
-    if newJump then
-        if newJump < 0 then
-            jumpInput.Text = "0"
-            setJumpPower(0)
-        elseif newJump > 1000 then
-            jumpInput.Text = "1000"
-            setJumpPower(1000)
-        else
-            setJumpPower(newJump)
-        end
-    else
-        jumpInput.Text = "50"
-        setJumpPower(50)
-    end
+	local newJump = tonumber(jumpInput.Text)
+	if newJump then
+		if newJump < 0 then
+			jumpInput.Text = "0"
+			setJumpPower(0)
+		elseif newJump > 1000 then
+			jumpInput.Text = "1000"
+			setJumpPower(1000)
+		else
+			setJumpPower(newJump)
+		end
+	else
+		jumpInput.Text = "50"
+		setJumpPower(50)
+	end
 end)
 
 -- Clean up on script termination
 gui.Destroying:Connect(function()
-    stopTweenToBase()
+	stopTweenToBase()
     if floorConnAF then
         floorConnAF:Disconnect()
         floorConnAF = nil
@@ -801,9 +691,6 @@ gui.Destroying:Connect(function()
     end
     if floatEnabled then
         toggleFloat()
-    end
-    if noclipEnabled then
-        toggleNoClip()
     end
 end)
 
