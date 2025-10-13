@@ -335,11 +335,12 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- ========== FIXED STEALTH FLY FEATURE - PRECISE CONTROLS ==========
+-- ========== FIXED STEALTH FLY FEATURE - PROPER HEIGHT CONTROL ==========
 local flyEnabled = false
 local flyBodyVelocity
 local flyConnection
 local flyAntiGravity
+local currentFlyHeight = 0
 
 local function toggleFly()
     flyEnabled = not flyEnabled
@@ -349,14 +350,20 @@ local function toggleFly()
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
         statusLabel.Text = "Stealth Fly enabled - Walk to move, look up/down for height"
         
+        -- Store current height when enabling fly
+        updateCharacterReferences()
+        if hrp then
+            currentFlyHeight = hrp.Position.Y
+        end
+        
         -- Create BodyVelocity for flying
         flyBodyVelocity = Instance.new("BodyVelocity")
         flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
         
-        -- Create anti-gravity
+        -- Create anti-gravity to prevent falling
         flyAntiGravity = Instance.new("BodyForce")
-        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * 2, 0)
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass(), 0)
         
         if flyConnection then
             flyConnection:Disconnect()
@@ -399,18 +406,28 @@ local function toggleFly()
             local cameraPitch = cameraCFrame:ToEulerAnglesXYZ()
             local verticalSpeed = 0
             
-            -- Gentle vertical control based on camera angle
-            if cameraPitch < -0.1 then -- Looking up slightly
-                verticalSpeed = math.clamp(math.abs(cameraPitch) * 8, 0, 12) -- Slow upward movement
-            elseif cameraPitch > 0.1 then -- Looking down slightly
-                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 8, 0, 12) -- Slow downward movement
+            -- Very gentle vertical control based on camera angle
+            if cameraPitch < -0.2 then -- Looking up
+                verticalSpeed = math.clamp(math.abs(cameraPitch) * 3, 0, 5) -- Very slow upward movement
+            elseif cameraPitch > 0.2 then -- Looking down
+                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 3, 0, 5) -- Very slow downward movement
             end
             
+            -- Update target height gradually
+            currentFlyHeight = currentFlyHeight + (verticalSpeed * 0.1)
+            
+            -- Calculate height difference
+            local currentHeight = hrp.Position.Y
+            local heightDifference = currentFlyHeight - currentHeight
+            
+            -- Apply gentle height correction (prevents sudden launches)
+            local heightCorrection = math.clamp(heightDifference * 2, -8, 8)
+            
             -- Add vertical movement
-            moveDirection = moveDirection + Vector3.new(0, verticalSpeed, 0)
+            moveDirection = moveDirection + Vector3.new(0, heightCorrection, 0)
             
             -- Apply movement with slower, more controlled speed
-            local flySpeed = 25 -- Reduced from 40 for better control
+            local flySpeed = 20 -- Reduced for better control
             if moveDirection.Magnitude > 0 then
                 flyBodyVelocity.Velocity = moveDirection * flySpeed
             else
@@ -444,6 +461,8 @@ local function toggleFly()
             flyAntiGravity:Destroy()
             flyAntiGravity = nil
         end
+        
+        currentFlyHeight = 0
     end
 end
 
