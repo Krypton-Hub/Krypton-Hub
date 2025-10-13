@@ -1,5 +1,5 @@
 -- Krypton Hub - Complete GUI with Fly, ESP, Tween, Float, Auto Floor, Semi-Invisible
--- Mobile Compatible Version
+-- Mobile Compatible Version with Precise Fly Controls
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -335,7 +335,7 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- ========== FIXED STEALTH FLY FEATURE - WALK TO FLY ==========
+-- ========== FIXED STEALTH FLY FEATURE - PRECISE CONTROLS ==========
 local flyEnabled = false
 local flyBodyVelocity
 local flyConnection
@@ -347,7 +347,7 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Stealth Fly enabled - Walk to move, look up/down to change height"
+        statusLabel.Text = "Stealth Fly enabled - Walk to move, look up/down for height"
         
         -- Create BodyVelocity for flying
         flyBodyVelocity = Instance.new("BodyVelocity")
@@ -399,20 +399,18 @@ local function toggleFly()
             local cameraPitch = cameraCFrame:ToEulerAnglesXYZ()
             local verticalSpeed = 0
             
-            -- Look up to fly up, look down to fly down
-            if cameraPitch < -0.3 then -- Looking up
-                verticalSpeed = math.abs(cameraPitch) * 30
-            elseif cameraPitch > 0.3 then -- Looking down
-                verticalSpeed = -math.abs(cameraPitch) * 30
+            -- Gentle vertical control based on camera angle
+            if cameraPitch < -0.1 then -- Looking up slightly
+                verticalSpeed = math.clamp(math.abs(cameraPitch) * 8, 0, 12) -- Slow upward movement
+            elseif cameraPitch > 0.1 then -- Looking down slightly
+                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 8, 0, 12) -- Slow downward movement
             end
             
             -- Add vertical movement
-            if math.abs(verticalSpeed) > 0.1 then
-                moveDirection = moveDirection + Vector3.new(0, verticalSpeed, 0)
-            end
+            moveDirection = moveDirection + Vector3.new(0, verticalSpeed, 0)
             
-            -- Apply movement with speed
-            local flySpeed = 40
+            -- Apply movement with slower, more controlled speed
+            local flySpeed = 25 -- Reduced from 40 for better control
             if moveDirection.Magnitude > 0 then
                 flyBodyVelocity.Velocity = moveDirection * flySpeed
             else
