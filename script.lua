@@ -331,7 +331,7 @@ end
 for tabName, button in pairs(tabButtons) do
     button.MouseButton1Click:Connect(function()
         switchTab(tabName)
-    end
+    end)
 end
 switchTab("Main")
 
@@ -425,7 +425,7 @@ local function toggleFly()
     end
 end
 
--- ========== SEMI INVISIBLE FEATURE ==========
+-- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
     SemiInvisible = {}
 }
@@ -462,46 +462,55 @@ local function semiInvisibleFunction()
     end  
 
     local function doClone()  
-        if character and humanoid and humanoid.Health > 0 then  
-            hip = humanoid.HipHeight  
-            oldRoot = character:FindFirstChild("HumanoidRootPart")  
-            if not oldRoot or not oldRoot.Parent then  
-                return false  
-            end  
+        updateCharacterReferences()
+        if not character or not humanoid or humanoid.Health <= 0 then  
+            statusLabel.Text = "Cannot enable: No character or dead"
+            return false  
+        end
+        
+        hip = humanoid.HipHeight  
+        oldRoot = character:FindFirstChild("HumanoidRootPart")  
+        if not oldRoot or not oldRoot.Parent then  
+            statusLabel.Text = "Error: No HumanoidRootPart"
+            return false  
+        end  
 
-            local tempParent = Instance.new("Model")  
-            tempParent.Parent = game  
-            character.Parent = tempParent  
+        local tempParent = Instance.new("Model")  
+        tempParent.Parent = game  
+        character.Parent = tempParent  
 
-            clone = oldRoot:Clone()  
-            clone.Parent = character  
-            oldRoot.Parent = Workspace.CurrentCamera  
-            clone.CFrame = oldRoot.CFrame  
+        clone = oldRoot:Clone()  
+        clone.Parent = character  
+        oldRoot.Parent = Workspace.CurrentCamera  
+        clone.CFrame = oldRoot.CFrame  
 
-            character.PrimaryPart = clone  
-            character.Parent = Workspace  
+        character.PrimaryPart = clone  
+        character.Parent = Workspace  
 
-            for _, v in pairs(character:GetDescendants()) do  
-                if v:IsA("Weld") or v:IsA("Motor6D") then  
-                    if v.Part0 == oldRoot then  
-                        v.Part0 = clone  
-                    end  
-                    if v.Part1 == oldRoot then  
-                        v.Part1 = clone  
-                    end  
+        for _, v in pairs(character:GetDescendants()) do  
+            if v:IsA("Weld") or v:IsA("Motor6D") then  
+                if v.Part0 == oldRoot then  
+                    v.Part0 = clone  
+                end  
+                if v.Part1 == oldRoot then  
+                    v.Part1 = clone  
                 end  
             end  
-
-            tempParent:Destroy()  
-            return true  
         end  
-        return false  
+
+        tempParent:Destroy()  
+        return true  
     end  
 
     local function revertClone()  
-        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
+        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character then  
             return false  
-        end  
+        end
+        
+        updateCharacterReferences()
+        if humanoid and humanoid.Health <= 0 then
+            return false
+        end
 
         local tempParent = Instance.new("Model")  
         tempParent.Parent = game  
@@ -537,34 +546,38 @@ local function semiInvisibleFunction()
     end  
 
     local function animationTrickery()  
-        if character and humanoid and humanoid.Health > 0 then  
-            local anim = Instance.new("Animation")  
-            anim.AnimationId = "rbxassetid://18537363391"  -- Fixed asset ID format
-            local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
-            animTrack = animator:LoadAnimation(anim)  
-            animTrack.Priority = Enum.AnimationPriority.Action4  
-            animTrack:Play(0, 1, 0)  
-            anim:Destroy()  
+        updateCharacterReferences()
+        if not character or not humanoid or humanoid.Health <= 0 then 
+            return 
+        end
+            
+        local anim = Instance.new("Animation")  
+        anim.AnimationId = "rbxassetid://18537363391"
+        local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
+        animTrack = animator:LoadAnimation(anim)  
+        animTrack.Priority = Enum.AnimationPriority.Action4  
+        animTrack:Play(0, 1, 0)  
+        anim:Destroy()  
 
-            local animStoppedConn = animTrack.Stopped:Connect(function()  
-                if isInvisible then  
-                    animationTrickery()  
-                end  
-            end)  
-            table.insert(connections.SemiInvisible, animStoppedConn)  
+        local animStoppedConn = animTrack.Stopped:Connect(function()  
+            if isInvisible then  
+                animationTrickery()  
+            end  
+        end)  
+        table.insert(connections.SemiInvisible, animStoppedConn)  
 
-            task.delay(0, function()  
-                animTrack.TimePosition = 0.7  
-                task.delay(1, function()  
-                    animTrack:AdjustSpeed(math.huge)  
-                end)  
+        task.delay(0, function()  
+            animTrack.TimePosition = 0.7  
+            task.delay(1, function()  
+                animTrack:AdjustSpeed(math.huge)  
             end)  
-        end  
+        end)  
     end  
 
     local function enableInvisibility()  
         updateCharacterReferences()
-        if not character or humanoid.Health <= 0 then  
+        if not character or not humanoid or humanoid.Health <= 0 then  
+            statusLabel.Text = "Cannot enable: No character or dead"
             return false
         end  
 
@@ -633,6 +646,8 @@ local function semiInvisibleFunction()
             semiInvisButton.Text = "SEMI INVISIBLE: ON"
             semiInvisButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
             statusLabel.Text = "Semi Invisible enabled"
+        else
+            statusLabel.Text = "Failed to enable Semi Invisible"
         end
     else
         disableInvisibility()
@@ -892,9 +907,9 @@ local function toggleFloat()
             local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
             
             if not raycastResult then
-                -- In air, apply upward force
+                -- In air, apply upward force (safer force value)
                 floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
-                floatBodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0) -- Safer than math.huge
             else
                 -- On ground, no force
                 floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
@@ -1138,22 +1153,46 @@ local autoLazerThread = nil
 
 local function getLazerRemote()
     local remote = nil
-    local success = pcall(function()
-        -- Try multiple possible remote locations safely
-        if ReplicatedStorage:FindFirstChild("Packages") then
-            local packages = ReplicatedStorage.Packages
-            if packages:FindFirstChild("Net") then
-                local net = packages.Net
-                remote = net:FindFirstChild("RE/UseItem") or net:FindFirstChild("RE"):FindFirstChild("UseItem")
-            end
-        end
-        
-        if not remote then
-            remote = ReplicatedStorage:FindFirstChild("RE/UseItem") or ReplicatedStorage:FindFirstChild("UseItem")
-        end
-    end)
+    local possiblePaths = {
+        "Packages.Net.RE/UseItem",
+        "Packages.Net.RE.UseItem", 
+        "RE/UseItem",
+        "UseItem",
+        "Packages.Knit.Services.WeaponService.RE.UseItem",
+        "WeaponService.RE.UseItem"
+    }
     
-    return success and remote or nil
+    for _, path in ipairs(possiblePaths) do
+        local success, result = pcall(function()
+            local current = ReplicatedStorage
+            for part in path:gmatch("[^%.]+") do
+                if part:find("/") then
+                    local parts = {}
+                    for p in part:gmatch("[^%/]+") do
+                        table.insert(parts, p)
+                    end
+                    current = current:FindFirstChild(parts[1])
+                    if current and #parts > 1 then
+                        for i = 2, #parts do
+                            current = current:FindFirstChild(parts[i])
+                            if not current then break end
+                        end
+                    end
+                else
+                    current = current:FindFirstChild(part)
+                end
+                if not current then return nil end
+            end
+            return current
+        end)
+        
+        if success and result then
+            remote = result
+            break
+        end
+    end
+    
+    return remote
 end
 
 local function isValidTarget(player)
@@ -1204,12 +1243,16 @@ local function safeFire(targetPlayer)
         [2] = targetHRP
     }
     
-    local success = pcall(function()
-        remote:FireServer(unpack(args))
+    local success, err = pcall(function()
+        if remote:IsA("RemoteEvent") then
+            remote:FireServer(unpack(args))
+        elseif remote:IsA("RemoteFunction") then
+            remote:InvokeServer(unpack(args))
+        end
     end)
     
     if not success then
-        statusLabel.Text = "Failed to fire lazer"
+        statusLabel.Text = "Failed to fire lazer: " .. tostring(err)
     end
 end
 
@@ -1218,6 +1261,8 @@ local function autoLazerWorker()
         local target = findNearestAllowed()
         if target then
             safeFire(target)
+        else
+            statusLabel.Text = "No valid targets found"
         end
         local t0 = tick()
         while tick() - t0 < 0.6 do
