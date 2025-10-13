@@ -334,12 +334,11 @@ for tabName, button in pairs(tabButtons) do
     end)
 end
 switchTab("Main")
--- ========== WORKING FLY SYSTEM ==========
+-- ========== SMOOTH LOW GRAVITY FLIGHT ==========
 local flyEnabled = false
-local flySpeed = 50
-local flyBodyVelocity = nil
-local flyBodyAngularVelocity = nil
-local flyConnection = nil
+local flyBodyVelocity
+local flyConnection
+local flyAntiGravity
 
 local function toggleFly()
     flyEnabled = not flyEnabled
@@ -347,62 +346,93 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Fly enabled - Use movement controls"
+        statusLabel.Text = "Low Gravity Flight - Walk to move, look up/down slowly"
         
-        updateCharacterReferences()
-        if not character or not hrp then
-            statusLabel.Text = "Error: No character"
-            return
-        end
-        
-        -- Create BodyVelocity and BodyAngularVelocity
+        -- Create BodyVelocity for flying
         flyBodyVelocity = Instance.new("BodyVelocity")
-        flyBodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
         flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        flyBodyVelocity.Parent = hrp
+        flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
         
-        flyBodyAngularVelocity = Instance.new("BodyAngularVelocity")
-        flyBodyAngularVelocity.MaxTorque = Vector3.new(4000, 4000, 4000)
-        flyBodyAngularVelocity.AngularVelocity = Vector3.new(0, 0, 0)
-        flyBodyAngularVelocity.Parent = hrp
+        -- Create anti-gravity (very light)
+        flyAntiGravity = Instance.new("BodyForce")
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 0.2, 0) -- 20% gravity
+        
+        if flyConnection then
+            flyConnection:Disconnect()
+        end
         
         flyConnection = RunService.Heartbeat:Connect(function()
             updateCharacterReferences()
             if not flyEnabled or not character or not hrp then
-                if flyConnection then
-                    flyConnection:Disconnect()
-                    flyConnection = nil
-                end
                 return
             end
             
+            -- Get camera direction for proper movement
             local camera = Workspace.CurrentCamera
-            local moveVector = humanoid.MoveDirection
+            local cameraCFrame = camera.CFrame
+            local lookVector = cameraCFrame.LookVector
+            local rightVector = cameraCFrame.RightVector
             
-            if moveVector.Magnitude > 0 then
-                flyBodyVelocity.Velocity = (camera.CFrame.LookVector * moveVector.Z + camera.CFrame.RightVector * moveVector.X) * flySpeed
+            -- Remove Y component for horizontal movement
+            local forwardVector = Vector3.new(lookVector.X, 0, lookVector.Z).Unit
+            local rightVector = Vector3.new(rightVector.X, 0, rightVector.Z).Unit
+            
+            -- Movement direction
+            local moveDirection = Vector3.new(0, 0, 0)
+            
+            -- Use humanoid move direction but convert to camera space (FIXED)
+            if humanoid then
+                local humanoidMoveDirection = humanoid.MoveDirection
+                if humanoidMoveDirection.Magnitude > 0 then
+                    -- Convert local movement to camera-relative world space (FIXED DIRECTION)
+                    local forwardAmount = -humanoidMoveDirection.Z  -- Inverted for proper direction
+                    local rightAmount = humanoidMoveDirection.X
+                    
+                    moveDirection = (forwardVector * forwardAmount) + (rightVector * rightAmount)
+                end
+            end
+            
+            -- Vertical movement based on camera pitch
+            local cameraPitch = cameraCFrame:ToEulerAnglesXYZ()
+            local verticalSpeed = 0
+            
+            -- Very gentle vertical control
+            if cameraPitch < -0.2 then -- Looking up
+                verticalSpeed = math.clamp(math.abs(cameraPitch) * 4, 0, 3) -- Very slow upward
+            elseif cameraPitch > 0.2 then -- Looking down
+                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 4, 0, 3) -- Very slow downward
             else
-                flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                -- When camera is straight, slowly descend
+                verticalSpeed = -2 -- Gentle automatic descent
             end
             
-            -- Mobile-friendly vertical controls
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or (humanoid and humanoid.Jump) then
-                flyBodyVelocity.Velocity = flyBodyVelocity.Velocity + Vector3.new(0, flySpeed, 0)
+            -- Add vertical movement
+            moveDirection = moveDirection + Vector3.new(0, verticalSpeed, 0)
+            
+            -- Apply movement with slow speed
+            local flySpeed = 18 -- Slow speed for better control
+            if moveDirection.Magnitude > 0 then
+                flyBodyVelocity.Velocity = moveDirection * flySpeed
+            else
+                -- When not moving horizontally, just apply vertical movement
+                flyBodyVelocity.Velocity = Vector3.new(0, verticalSpeed, 0)
             end
             
-            -- For mobile down movement, we can use a different approach
-            -- Since there's no dedicated down button, we'll make it so you slowly descend when not moving up
-            if moveVector.Y < -0.5 then
-                flyBodyVelocity.Velocity = flyBodyVelocity.Velocity - Vector3.new(0, flySpeed * 0.5, 0)
+            -- Make sure BodyVelocity and anti-gravity are parented to HRP
+            if flyBodyVelocity and flyBodyVelocity.Parent ~= hrp then
+                flyBodyVelocity.Parent = hrp
+            end
+            if flyAntiGravity and flyAntiGravity.Parent ~= hrp then
+                flyAntiGravity.Parent = hrp
             end
         end)
         
     else
         flyButton.Text = "FLY: OFF"
         flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Fly disabled"
+        statusLabel.Text = "Low Gravity Flight disabled"
         
-        -- Clean up
+        -- Remove BodyVelocity and connection
         if flyConnection then
             flyConnection:Disconnect()
             flyConnection = nil
@@ -411,9 +441,9 @@ local function toggleFly()
             flyBodyVelocity:Destroy()
             flyBodyVelocity = nil
         end
-        if flyBodyAngularVelocity then
-            flyBodyAngularVelocity:Destroy()
-            flyBodyAngularVelocity = nil
+        if flyAntiGravity then
+            flyAntiGravity:Destroy()
+            flyAntiGravity = nil
         end
     end
 end
