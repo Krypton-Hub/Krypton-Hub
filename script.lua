@@ -1,5 +1,5 @@
 -- Krypton Hub - Complete GUI with Fly, ESP, Tween, Float, Auto Floor, Semi-Invisible
--- Fixed Version
+-- Mobile Compatible Version
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -335,10 +335,11 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- ========== STEALTH FLY FEATURE ==========
+-- ========== FIXED STEALTH FLY FEATURE - WALK TO FLY ==========
 local flyEnabled = false
 local flyBodyVelocity
 local flyConnection
+local flyAntiGravity
 
 local function toggleFly()
     flyEnabled = not flyEnabled
@@ -346,12 +347,16 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Stealth Fly enabled"
+        statusLabel.Text = "Stealth Fly enabled - Walk to move, look up/down to change height"
         
         -- Create BodyVelocity for flying
         flyBodyVelocity = Instance.new("BodyVelocity")
         flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
+        
+        -- Create anti-gravity
+        flyAntiGravity = Instance.new("BodyForce")
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * 2, 0)
         
         if flyConnection then
             flyConnection:Disconnect()
@@ -363,48 +368,63 @@ local function toggleFly()
                 return
             end
             
-            -- Get camera direction for movement
+            -- Get camera direction
             local camera = Workspace.CurrentCamera
-            local lookVector = camera.CFrame.LookVector
-            local rightVector = camera.CFrame.RightVector
+            local cameraCFrame = camera.CFrame
             
-            -- Movement directions
+            -- Calculate movement direction based on camera look vector
+            local lookVector = cameraCFrame.LookVector
+            local rightVector = cameraCFrame.RightVector
+            
+            -- Remove Y component for horizontal movement
+            local horizontalLook = Vector3.new(lookVector.X, 0, lookVector.Z).Unit
+            local horizontalRight = Vector3.new(rightVector.X, 0, rightVector.Z).Unit
+            
+            -- Movement direction
             local moveDirection = Vector3.new(0, 0, 0)
             
-            -- W/S keys (forward/backward)
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                moveDirection = moveDirection + lookVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                moveDirection = moveDirection - lookVector
-            end
-            
-            -- A/D keys (left/right)
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                moveDirection = moveDirection - rightVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                moveDirection = moveDirection + rightVector
+            -- Use humanoid move direction for input (works on both PC and mobile)
+            if humanoid then
+                local humanoidMoveDirection = humanoid.MoveDirection
+                if humanoidMoveDirection.Magnitude > 0 then
+                    -- Convert local movement to world space relative to camera
+                    local forwardAmount = humanoidMoveDirection.Z
+                    local rightAmount = humanoidMoveDirection.X
+                    
+                    moveDirection = (horizontalLook * forwardAmount) + (horizontalRight * rightAmount)
+                end
             end
             
-            -- Space/Shift keys (up/down)
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                moveDirection = moveDirection + Vector3.new(0, 1, 0)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-                moveDirection = moveDirection + Vector3.new(0, -1, 0)
+            -- Vertical movement based on camera pitch (looking up/down)
+            local cameraPitch = cameraCFrame:ToEulerAnglesXYZ()
+            local verticalSpeed = 0
+            
+            -- Look up to fly up, look down to fly down
+            if cameraPitch < -0.3 then -- Looking up
+                verticalSpeed = math.abs(cameraPitch) * 30
+            elseif cameraPitch > 0.3 then -- Looking down
+                verticalSpeed = -math.abs(cameraPitch) * 30
             end
             
-            -- Apply movement with stealth speed
+            -- Add vertical movement
+            if math.abs(verticalSpeed) > 0.1 then
+                moveDirection = moveDirection + Vector3.new(0, verticalSpeed, 0)
+            end
+            
+            -- Apply movement with speed
+            local flySpeed = 40
             if moveDirection.Magnitude > 0 then
-                flyBodyVelocity.Velocity = moveDirection.Unit * 25
+                flyBodyVelocity.Velocity = moveDirection * flySpeed
             else
                 flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
             end
             
-            -- Make sure BodyVelocity is parented to HRP
+            -- Make sure BodyVelocity and anti-gravity are parented to HRP
             if flyBodyVelocity and flyBodyVelocity.Parent ~= hrp then
                 flyBodyVelocity.Parent = hrp
+            end
+            if flyAntiGravity and flyAntiGravity.Parent ~= hrp then
+                flyAntiGravity.Parent = hrp
             end
         end)
         
@@ -421,6 +441,10 @@ local function toggleFly()
         if flyBodyVelocity then
             flyBodyVelocity:Destroy()
             flyBodyVelocity = nil
+        end
+        if flyAntiGravity then
+            flyAntiGravity:Destroy()
+            flyAntiGravity = nil
         end
     end
 end
@@ -1310,7 +1334,7 @@ autoLazerButton.MouseButton1Click:Connect(toggleAutoLazer)
 -- Drag GUI
 local dragging, dragInput, dragStart, startPos
 mainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = mainFrame.Position
@@ -1321,7 +1345,7 @@ mainFrame.InputBegan:Connect(function(input)
 end)
 
 mainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
         dragInput = input
     end
 end)
@@ -1375,6 +1399,9 @@ gui.Destroying:Connect(function()
     if flyBodyVelocity then
         flyBodyVelocity:Destroy()
     end
+    if flyAntiGravity then
+        flyAntiGravity:Destroy()
+    end
     
     -- Clean up auto floor
     if floorConnection then
@@ -1414,4 +1441,4 @@ setSpeed(24)
 
 print("Krypton Hub loaded successfully!")
 print("Features: Stealth Fly, Tween to Base (Safe), Float, Auto Floor (Rising), Semi Invisible, Player ESP, Auto Lazer")
-print("Fly Controls: W/A/S/D + Space/Shift")
+print("Fly Controls: Walk to move, look up/down to change height (Works on Mobile!)")
