@@ -335,12 +335,11 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- ========== FIXED STEALTH FLY FEATURE - PROPER HEIGHT CONTROL ==========
+-- ========== SIMPLE HOVER FLY - LOW GRAVITY STYLE ==========
 local flyEnabled = false
 local flyBodyVelocity
 local flyConnection
 local flyAntiGravity
-local currentFlyHeight = 0
 
 local function toggleFly()
     flyEnabled = not flyEnabled
@@ -348,22 +347,16 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Stealth Fly enabled - Walk to move, look up/down for height"
-        
-        -- Store current height when enabling fly
-        updateCharacterReferences()
-        if hrp then
-            currentFlyHeight = hrp.Position.Y
-        end
+        statusLabel.Text = "Hover Fly enabled - Walk normally, space to go up, shift to go down"
         
         -- Create BodyVelocity for flying
         flyBodyVelocity = Instance.new("BodyVelocity")
         flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
         
-        -- Create anti-gravity to prevent falling
+        -- Create anti-gravity (low gravity effect)
         flyAntiGravity = Instance.new("BodyForce")
-        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass(), 0)
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 0.3, 0) -- 30% gravity
         
         if flyConnection then
             flyConnection:Disconnect()
@@ -375,59 +368,26 @@ local function toggleFly()
                 return
             end
             
-            -- Get camera direction
-            local camera = Workspace.CurrentCamera
-            local cameraCFrame = camera.CFrame
-            
-            -- Calculate movement direction based on camera look vector
-            local lookVector = cameraCFrame.LookVector
-            local rightVector = cameraCFrame.RightVector
-            
-            -- Remove Y component for horizontal movement
-            local horizontalLook = Vector3.new(lookVector.X, 0, lookVector.Z).Unit
-            local horizontalRight = Vector3.new(rightVector.X, 0, rightVector.Z).Unit
-            
-            -- Movement direction
+            -- Simple movement - just use the humanoid's move direction directly
             local moveDirection = Vector3.new(0, 0, 0)
             
-            -- Use humanoid move direction for input (works on both PC and mobile)
             if humanoid then
-                local humanoidMoveDirection = humanoid.MoveDirection
-                if humanoidMoveDirection.Magnitude > 0 then
-                    -- Convert local movement to world space relative to camera
-                    local forwardAmount = humanoidMoveDirection.Z
-                    local rightAmount = humanoidMoveDirection.X
-                    
-                    moveDirection = (horizontalLook * forwardAmount) + (horizontalRight * rightAmount)
-                end
+                moveDirection = humanoid.MoveDirection
             end
             
-            -- Vertical movement based on camera pitch (looking up/down)
-            local cameraPitch = cameraCFrame:ToEulerAnglesXYZ()
+            -- Vertical controls (optional - can remove if you want pure hover)
             local verticalSpeed = 0
-            
-            -- Very gentle vertical control based on camera angle
-            if cameraPitch < -0.2 then -- Looking up
-                verticalSpeed = math.clamp(math.abs(cameraPitch) * 3, 0, 5) -- Very slow upward movement
-            elseif cameraPitch > 0.2 then -- Looking down
-                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 3, 0, 5) -- Very slow downward movement
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                verticalSpeed = 25 -- Up
+            elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                verticalSpeed = -25 -- Down
             end
-            
-            -- Update target height gradually
-            currentFlyHeight = currentFlyHeight + (verticalSpeed * 0.1)
-            
-            -- Calculate height difference
-            local currentHeight = hrp.Position.Y
-            local heightDifference = currentFlyHeight - currentHeight
-            
-            -- Apply gentle height correction (prevents sudden launches)
-            local heightCorrection = math.clamp(heightDifference * 2, -8, 8)
             
             -- Add vertical movement
-            moveDirection = moveDirection + Vector3.new(0, heightCorrection, 0)
+            moveDirection = moveDirection + Vector3.new(0, verticalSpeed, 0)
             
-            -- Apply movement with slower, more controlled speed
-            local flySpeed = 20 -- Reduced for better control
+            -- Apply movement
+            local flySpeed = 30
             if moveDirection.Magnitude > 0 then
                 flyBodyVelocity.Velocity = moveDirection * flySpeed
             else
@@ -446,7 +406,7 @@ local function toggleFly()
     else
         flyButton.Text = "FLY: OFF"
         flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Stealth Fly disabled"
+        statusLabel.Text = "Hover Fly disabled"
         
         -- Remove BodyVelocity and connection
         if flyConnection then
@@ -461,8 +421,6 @@ local function toggleFly()
             flyAntiGravity:Destroy()
             flyAntiGravity = nil
         end
-        
-        currentFlyHeight = 0
     end
 end
 
