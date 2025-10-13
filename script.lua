@@ -444,7 +444,6 @@ local function toggleFly()
         end
     end
 end
-end
 
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
