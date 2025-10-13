@@ -1,5 +1,5 @@
 -- Krypton Hub - Complete GUI with Fly, ESP, Tween, Float, Auto Floor, Semi-Invisible
--- Save this as: KryptonHub.lua
+-- Fixed Version
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -46,7 +46,7 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 220, 0, 330) -- Increased height for fly button
+mainFrame.Size = UDim2.new(0, 220, 0, 330)
 mainFrame.Position = UDim2.new(0, 10, 0, 10)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BorderSizePixel = 0
@@ -331,7 +331,7 @@ end
 for tabName, button in pairs(tabButtons) do
     button.MouseButton1Click:Connect(function()
         switchTab(tabName)
-    end)
+    end
 end
 switchTab("Main")
 
@@ -351,7 +351,7 @@ local function toggleFly()
         -- Create BodyVelocity for flying
         flyBodyVelocity = Instance.new("BodyVelocity")
         flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000) -- Lower force for stealth
+        flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
         
         if flyConnection then
             flyConnection:Disconnect()
@@ -395,9 +395,9 @@ local function toggleFly()
                 moveDirection = moveDirection + Vector3.new(0, -1, 0)
             end
             
-            -- Apply movement with stealth speed (slower to avoid detection)
+            -- Apply movement with stealth speed
             if moveDirection.Magnitude > 0 then
-                flyBodyVelocity.Velocity = moveDirection.Unit * 25 -- Slow speed for stealth
+                flyBodyVelocity.Velocity = moveDirection.Unit * 25
             else
                 flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
             end
@@ -539,7 +539,7 @@ local function semiInvisibleFunction()
     local function animationTrickery()  
         if character and humanoid and humanoid.Health > 0 then  
             local anim = Instance.new("Animation")  
-            anim.AnimationId = "http://www.roblox.com/asset/?id=18537363391"  
+            anim.AnimationId = "rbxassetid://18537363391"  -- Fixed asset ID format
             local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
             animTrack = animator:LoadAnimation(anim)  
             animTrack.Priority = Enum.AnimationPriority.Action4  
@@ -626,66 +626,8 @@ local function semiInvisibleFunction()
         removeFolders()  
     end
 
-    local function setupGodmode()  
-        updateCharacterReferences()
-        local hum = humanoid
-        if not hum then return end
-        
-        local mt = getrawmetatable(game)  
-        local oldNC = mt.__namecall  
-        local oldNI = mt.__newindex  
-
-        setreadonly(mt, false)  
-
-        mt.__namecall = newcclosure(function(self, ...)  
-            local m = getnamecallmethod()  
-            if self == hum then  
-                if m == "ChangeState" and select(1, ...) == Enum.HumanoidStateType.Dead then  
-                    return
-                end
-                if m == "SetStateEnabled" then
-                    local st, en = ...
-                    if st == Enum.HumanoidStateType.Dead and en == true then
-                        return
-                    end
-                end
-                if m == "Destroy" then
-                    return
-                end
-            end
-
-            if self == character and m == "BreakJoints" then  
-                return  
-            end  
-
-            return oldNC(self, ...)  
-        end)  
-
-        mt.__newindex = newcclosure(function(self, k, v)  
-            if self == hum then  
-                if k == "Health" and type(v) == "number" and v <= 0 then  
-                    return  
-                end  
-                if k == "MaxHealth" and type(v) == "number" and v < hum.MaxHealth then  
-                    return  
-                end  
-                if k == "BreakJointsOnDeath" and v == true then  
-                    return  
-                end  
-                if k == "Parent" and v == nil then  
-                    return  
-                end  
-            end  
-
-            return oldNI(self, k, v)  
-        end)  
-
-        setreadonly(mt, true)  
-    end  
-
     if not isInvisible then
         removeFolders()  
-        setupGodmode()  
         if enableInvisibility() then
             isInvisible = true
             semiInvisButton.Text = "SEMI INVISIBLE: ON"
@@ -912,8 +854,7 @@ function stopTweenToBase()
     statusLabel.Text = "Ready"
 end
 
--- ========== OTHER FEATURES ==========
--- Fixed Float Feature
+-- ========== FIXED FLOAT FEATURE ==========
 local floatEnabled = false
 local floatBodyVelocity
 local floatConnection
@@ -944,7 +885,7 @@ local function toggleFloat()
             -- Simple ground check
             local rayOrigin = hrp.Position
             local rayDirection = Vector3.new(0, -10, 0)
-            local raycast             local raycastParams = RaycastParams.new()
+            local raycastParams = RaycastParams.new()
             raycastParams.FilterDescendantsInstances = {character}
             raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
             
@@ -983,7 +924,7 @@ local function toggleFloat()
     end
 end
 
--- FIXED AUTO FLOOR WITH RISING MECHANIC
+-- ========== FIXED AUTO FLOOR ==========
 local floorOn = false
 local floorPart
 local floorConnection
@@ -1020,16 +961,15 @@ local function toggleAutoFloor()
             floorConnection:Disconnect()
         end
         
-        -- FIXED: Safe connection with proper null checks
         floorConnection = RunService.RenderStepped:Connect(function()
             if not floorOn or not floorPart then
                 return
             end
             
-            updateCharacterReferences() -- Update references
+            updateCharacterReferences()
             
             if not hrp then
-                return -- No character, skip this frame
+                return
             end
             
             local currentPos = floorPart.Position
@@ -1062,7 +1002,7 @@ local function toggleAutoFloor()
     end
 end
 
--- Player ESP Feature
+-- ========== FIXED PLAYER ESP ==========
 local espEnabled = false
 local espFolders = {}
 local espConnections = {}
@@ -1192,7 +1132,7 @@ local function toggleESP()
     end
 end
 
--- Auto Lazer Feature
+-- ========== FIXED AUTO LAZER ==========
 local autoLazerEnabled = false
 local autoLazerThread = nil
 
@@ -1255,7 +1195,7 @@ local function safeFire(targetPlayer)
     
     local remote = getLazerRemote()
     if not remote then
-        warn("Lazer remote not found")
+        statusLabel.Text = "Lazer remote not found"
         return
     end
     
@@ -1269,7 +1209,7 @@ local function safeFire(targetPlayer)
     end)
     
     if not success then
-        warn("Failed to fire lazer")
+        statusLabel.Text = "Failed to fire lazer"
     end
 end
 
@@ -1423,10 +1363,10 @@ gui.Destroying:Connect(function()
     end
 end)
 
+-- Initialize default values
 setJumpPower(50)
 setSpeed(24)
 
 print("Krypton Hub loaded successfully!")
 print("Features: Stealth Fly, Tween to Base (Safe), Float, Auto Floor (Rising), Semi Invisible, Player ESP, Auto Lazer")
 print("Fly Controls: W/A/S/D + Space/Shift")
-print("Press F to toggle Semi Invisible")
