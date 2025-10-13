@@ -205,7 +205,7 @@ local jumpInputCorner = Instance.new("UICorner")
 jumpInputCorner.CornerRadius = UDim.new(0, 4)
 jumpInputCorner.Parent = jumpInput
 
--- Fly Feature
+-- Fly Feature (V2)
 local flyButton = Instance.new("TextButton")
 flyButton.Text = "FLY: OFF"
 flyButton.Size = UDim2.new(0.9, 0, 0, 25)
