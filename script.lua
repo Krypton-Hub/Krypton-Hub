@@ -431,22 +431,80 @@ local function toggleFly()
         flyButton.Text = "FLY: OFF"
         flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         statusLabel.Text = "Low Gravity Flight disabled"
+-- ========== SMOOTH BODYGYRO FLIGHT ==========
+local flyEnabled = false
+local flySpeed = 50
+local flyBodyGyro = nil
+local flyBodyVelocity = nil
+local flyRenderConnection = nil
+
+local function toggleFly()
+    flyEnabled = not flyEnabled
+    
+    if flyEnabled then
+        flyButton.Text = "FLY: ON"
+        flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusLabel.Text = "Smooth Fly enabled - Use movement controls"
         
-        -- Remove BodyVelocity and connection
-        if flyConnection then
-            flyConnection:Disconnect()
-            flyConnection = nil
+        updateCharacterReferences()
+        if not character or not hrp then return end
+        
+        -- Create BodyGyro for camera-relative movement
+        flyBodyGyro = Instance.new("BodyGyro")
+        flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        flyBodyGyro.P = 9e4
+        flyBodyGyro.Parent = hrp
+        
+        -- Create BodyVelocity for movement
+        flyBodyVelocity = Instance.new("BodyVelocity")
+        flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        flyBodyVelocity.Parent = hrp
+        
+        -- Fly render loop
+        flyRenderConnection = RunService.RenderStepped:Connect(function()
+            if not flyEnabled or not character or not hrp then
+                if flyRenderConnection then
+                    flyRenderConnection:Disconnect()
+                end
+                return
+            end
+            
+            local camera = Workspace.CurrentCamera
+            
+            -- Update gyro to match camera rotation
+            flyBodyGyro.CFrame = camera.CFrame
+            
+            -- Get movement direction from humanoid
+            local moveDirection = Vector3.new(0, 0, 0)
+            if humanoid then
+                moveDirection = humanoid.MoveDirection
+            end
+            
+            -- Apply movement relative to camera
+            flyBodyVelocity.Velocity = (camera.CFrame:VectorToWorldSpace(moveDirection)) * flySpeed
+        end)
+        
+    else
+        flyButton.Text = "FLY: OFF"
+        flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        statusLabel.Text = "Smooth Fly disabled"
+        
+        -- Clean up
+        if flyRenderConnection then
+            flyRenderConnection:Disconnect()
+            flyRenderConnection = nil
+        end
+        if flyBodyGyro then
+            flyBodyGyro:Destroy()
+            flyBodyGyro = nil
         end
         if flyBodyVelocity then
             flyBodyVelocity:Destroy()
             flyBodyVelocity = nil
         end
-        if flyAntiGravity then
-            flyAntiGravity:Destroy()
-            flyAntiGravity = nil
-        end
     end
-end
+        end
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
     SemiInvisible = {}
