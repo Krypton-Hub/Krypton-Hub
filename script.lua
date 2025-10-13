@@ -205,7 +205,7 @@ local jumpInputCorner = Instance.new("UICorner")
 jumpInputCorner.CornerRadius = UDim.new(0, 4)
 jumpInputCorner.Parent = jumpInput
 
--- Fly Feature (Stealth Mode)
+-- Fly Feature
 local flyButton = Instance.new("TextButton")
 flyButton.Text = "FLY: OFF"
 flyButton.Size = UDim2.new(0.9, 0, 0, 25)
@@ -334,8 +334,7 @@ for tabName, button in pairs(tabButtons) do
     end)
 end
 switchTab("Main")
-
--- ========== CAMERA-BASED SMOOTH FLIGHT ==========
+-- ========== SIMPLE SMOOTH FLIGHT ==========
 local flyEnabled = false
 local flyBodyVelocity
 local flyConnection
@@ -347,7 +346,7 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Camera Flight - Walk to move, look up/down for height"
+        statusLabel.Text = "Fly enabled - Walk to move in air"
         
         -- Create BodyVelocity for flying
         flyBodyVelocity = Instance.new("BodyVelocity")
@@ -356,7 +355,7 @@ local function toggleFly()
         
         -- Create anti-gravity
         flyAntiGravity = Instance.new("BodyForce")
-        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 0.1, 0)
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass(), 0)
         
         if flyConnection then
             flyConnection:Disconnect()
@@ -368,46 +367,14 @@ local function toggleFly()
                 return
             end
             
-            -- Get camera direction
-            local camera = Workspace.CurrentCamera
-            local cameraCFrame = camera.CFrame
-            local lookVector = cameraCFrame.LookVector
-            local rightVector = cameraCFrame.RightVector
-            
-            -- Remove Y component for horizontal movement
-            local forwardVector = Vector3.new(lookVector.X, 0, lookVector.Z).Unit
-            local rightVector = Vector3.new(rightVector.X, 0, rightVector.Z).Unit
-            
-            -- Movement direction
+            -- Simple movement - use humanoid move direction directly
             local moveDirection = Vector3.new(0, 0, 0)
             
-            -- Use humanoid move direction but convert to camera space
             if humanoid then
-                local humanoidMoveDirection = humanoid.MoveDirection
-                if humanoidMoveDirection.Magnitude > 0 then
-                    -- Convert local movement to camera-relative world space
-                    local forwardAmount = humanoidMoveDirection.Z
-                    local rightAmount = humanoidMoveDirection.X
-                    
-                    moveDirection = (forwardVector * forwardAmount) + (rightVector * rightAmount)
-                end
+                moveDirection = humanoid.MoveDirection
             end
             
-            -- Vertical movement based on camera pitch (looking up/down)
-            local cameraPitch = cameraCFrame:ToEulerAnglesXYZ()
-            local verticalSpeed = 0
-            
-            -- Very gentle vertical control based on camera angle
-            if cameraPitch < -0.1 then -- Looking up slightly
-                verticalSpeed = math.clamp(math.abs(cameraPitch) * 8, 0, 6) -- Slow upward
-            elseif cameraPitch > 0.1 then -- Looking down slightly
-                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 8, 0, 6) -- Slow downward
-            end
-            
-            -- Add vertical movement
-            moveDirection = moveDirection + Vector3.new(0, verticalSpeed, 0)
-            
-            -- Apply movement with smooth speed
+            -- Apply movement
             local flySpeed = 25
             if moveDirection.Magnitude > 0 then
                 flyBodyVelocity.Velocity = moveDirection * flySpeed
@@ -427,7 +394,7 @@ local function toggleFly()
     else
         flyButton.Text = "FLY: OFF"
         flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Camera Flight disabled"
+        statusLabel.Text = "Fly disabled"
         
         -- Remove BodyVelocity and connection
         if flyConnection then
@@ -444,7 +411,6 @@ local function toggleFly()
         end
     end
 end
-
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
     SemiInvisible = {}
