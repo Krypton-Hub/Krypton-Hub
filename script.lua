@@ -335,7 +335,7 @@ end
 switchTab("Main")
 -- ========== FLIGHT ==========
 local flyEnabled = false
-local flySpeed = 18
+local flySpeed = 25
 local flyBodyGyro = nil
 local flyBodyVelocity = nil
 local flyRenderConnection = nil
@@ -383,16 +383,19 @@ local function toggleFly()
             -- Keep character upright but follow camera direction
             flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector * Vector3.new(1, 0, 1))
             
-            -- Get movement direction (SIMPLE FIX - no complex camera math)
+            -- Get movement direction - SIMPLIFIED VERSION
             local moveDirection = Vector3.new(0, 0, 0)
             if humanoid then
-                -- Use humanoid move direction directly (it's already correct)
+                -- Use humanoid move direction directly (it's already camera-relative)
                 local humanoidMove = humanoid.MoveDirection
+                
+                -- Just use the direction as-is (Roblox already handles camera relativity)
                 moveDirection = Vector3.new(humanoidMove.X, 0, humanoidMove.Z)
                 
-                -- Make it camera-relative by rotating it
-                local cameraAngle = camera.CFrame - camera.CFrame.Position
-                moveDirection = cameraAngle:VectorToWorldSpace(moveDirection)
+                -- Normalize and apply speed
+                if moveDirection.Magnitude > 0 then
+                    moveDirection = moveDirection.Unit * flySpeed
+                end
             end
             
             -- Vertical controls (simple up/down)
@@ -400,14 +403,14 @@ local function toggleFly()
             
             -- Jump to go up
             if humanoid and humanoid.Jump then
-                verticalSpeed = 12  -- Up
+                verticalSpeed = 15  -- Up
             else
                 -- Automatic slow descent when not jumping
-                verticalSpeed = -3  -- Gentle downward drift
+                verticalSpeed = -4  -- Gentle downward drift
             end
             
-            -- Apply movement
-            local finalVelocity = (moveDirection * flySpeed) + Vector3.new(0, verticalSpeed, 0)
+            -- Apply movement (combine horizontal and vertical)
+            local finalVelocity = moveDirection + Vector3.new(0, verticalSpeed, 0)
             flyBodyVelocity.Velocity = finalVelocity
             
             -- Make sure all parts are parented
@@ -421,8 +424,31 @@ local function toggleFly()
                 flyAntiGravity.Parent = hrp
             end
         end)
-
-
+        
+    else
+        flyButton.Text = "FLY: OFF"
+        flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        statusLabel.Text = "Float Flight disabled"
+        
+        -- Clean up
+        if flyRenderConnection then
+            flyRenderConnection:Disconnect()
+            flyRenderConnection = nil
+        end
+        if flyBodyGyro then
+            flyBodyGyro:Destroy()
+            flyBodyGyro = nil
+        end
+        if flyBodyVelocity then
+            flyBodyVelocity:Destroy()
+            flyBodyVelocity = nil
+        end
+        if flyAntiGravity then
+            flyAntiGravity:Destroy()
+            flyAntiGravity = nil
+        end
+    end
+end
   
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
