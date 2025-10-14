@@ -346,7 +346,7 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Hover Flight - Look up/down to control height"
+        statusLabel.Text = "Hover Flight - Walk to move, look up/down for height"
         
         updateCharacterReferences()
         if not character or not hrp or not humanoid then return end
@@ -378,8 +378,8 @@ local function toggleFly()
             
             local camera = Workspace.CurrentCamera
             
-            -- Smooth camera-based orientation
-            flyBodyGyro.CFrame = camera.CFrame
+            -- Smooth camera-based orientation (only rotation, not position)
+            flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
             
             -- Get camera pitch (looking up/down)
             local cameraPitch = camera.CFrame:ToEulerAnglesXYZ()
@@ -389,29 +389,35 @@ local function toggleFly()
             
             -- Look up (negative pitch) = go up
             if cameraPitch < -0.1 then -- Looking up at sky
-                verticalSpeed = math.clamp(math.abs(cameraPitch) * 12, 0, 8) -- Gentle upward
+                verticalSpeed = math.clamp(math.abs(cameraPitch) * 8, 0, 6) -- Gentle upward
             -- Look down (positive pitch) = go down  
             elseif cameraPitch > 0.1 then -- Looking down at ground
-                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 12, 0, 8) -- Gentle downward
+                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 8, 0, 6) -- Gentle downward
             else
-                -- Looking straight = very slow descent
-                verticalSpeed = -2 -- Gentle automatic descent
+                -- Looking straight = maintain height
+                verticalSpeed = 0 -- No automatic descent
             end
             
-            -- Get horizontal movement from humanoid
-            local horizontalMove = Vector3.new(
-                humanoid.MoveDirection.X,
-                0, -- No vertical input from movement
-                humanoid.MoveDirection.Z
-            )
+            -- Get horizontal movement from humanoid (FIXED DIRECTION)
+            local moveDirection = humanoid.MoveDirection
             
-            -- Apply hover speed (horizontal) and camera-based vertical speed
-            if horizontalMove.Magnitude > 0 or math.abs(verticalSpeed) > 0 then
-                local worldMove = (camera.CFrame:VectorToWorldSpace(horizontalMove)) * hoverSpeed
-                flyBodyVelocity.Velocity = Vector3.new(worldMove.X, verticalSpeed, worldMove.Z)
-            else
-                flyBodyVelocity.Velocity = Vector3.new(0, verticalSpeed, 0) -- Only vertical movement when no horizontal input
+            -- Convert to camera-relative movement
+            local cameraLook = camera.CFrame.LookVector
+            local cameraRight = camera.CFrame.RightVector
+            
+            -- Remove Y components for horizontal movement only
+            local horizontalLook = Vector3.new(cameraLook.X, 0, cameraLook.Z).Unit
+            local horizontalRight = Vector3.new(cameraRight.X, 0, cameraRight.Z).Unit
+            
+            -- Calculate world-space movement direction
+            local worldMove = Vector3.new(0, 0, 0)
+            if moveDirection.Magnitude > 0 then
+                worldMove = (horizontalLook * moveDirection.Z) + (horizontalRight * moveDirection.X)
+                worldMove = worldMove * hoverSpeed
             end
+            
+            -- Apply movement with vertical control
+            flyBodyVelocity.Velocity = Vector3.new(worldMove.X, verticalSpeed, worldMove.Z)
         end)
         
     else
