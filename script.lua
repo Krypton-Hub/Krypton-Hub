@@ -1,4 +1,4 @@
--- Krypton Hub - Made By agent_duke13
+-- Krypton Hub - Made By agent_duke13 - Complete Version
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -38,17 +38,40 @@ player.CharacterRemoving:Connect(function()
     humanoid = nil
 end)
 
--- Create GUI
+-- Create toggle button first
+local toggleGui = Instance.new("ScreenGui")
+toggleGui.Name = "KryptonToggle"
+toggleGui.ResetOnSpawn = false
+toggleGui.Parent = player:WaitForChild("PlayerGui")
+
+local toggleButton = Instance.new("ImageButton")
+toggleButton.Size = UDim2.new(0, 60, 0, 60)
+toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+toggleButton.BackgroundTransparency = 0.3
+toggleButton.Image = "rbxassetid://95131705390407" -- Your image ID
+toggleButton.Active = true
+toggleButton.Draggable = true
+toggleButton.Parent = toggleGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.Parent = toggleButton
+
+-- Create main GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
+gui.Enabled = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 220, 0, 330)
-mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.Size = UDim2.new(0, 250, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -200)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
 mainFrame.Parent = gui
 
 local UICorner = Instance.new("UICorner")
@@ -71,7 +94,7 @@ titleCorner.CornerRadius = UDim.new(0, 8)
 titleCorner.Parent = title
 
 -- Tab buttons
-local tabs = {"Main", "Visuals", "Combat"}
+local tabs = {"Main", "Steal", "Visuals", "Combat"}
 local currentTab = "Main"
 
 local tabContainer = Instance.new("Frame")
@@ -102,7 +125,7 @@ end
 
 -- Content frame
 local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, 0, 1, -55)
+contentFrame.Size = UDim2.new(1, 0, 1, -75)
 contentFrame.Position = UDim2.new(0, 0, 0, 55)
 contentFrame.BackgroundTransparency = 1
 contentFrame.Parent = mainFrame
@@ -125,7 +148,7 @@ mainContent.BackgroundTransparency = 1
 mainContent.Visible = true
 mainContent.Parent = contentFrame
 
--- Tween to Base
+-- ========== TWEEN TO BASE SYSTEM ==========
 local tweenButton = Instance.new("TextButton")
 tweenButton.Text = "▶ TWEEN TO BASE"
 tweenButton.Size = UDim2.new(0.9, 0, 0, 25)
@@ -139,6 +162,209 @@ tweenButton.Parent = mainContent
 local tweenCorner = Instance.new("UICorner")
 tweenCorner.CornerRadius = UDim.new(0, 6)
 tweenCorner.Parent = tweenButton
+
+local active = false
+local currentTween
+local walkThread
+local tweenSpeed = 24
+
+local function applyAntiDeath(state)
+    updateCharacterReferences()
+    if humanoid then
+        for _, s in pairs({
+            Enum.HumanoidStateType.FallingDown,
+            Enum.HumanoidStateType.Ragdoll,
+            Enum.HumanoidStateType.PlatformStanding,
+            Enum.HumanoidStateType.Seated
+        }) do
+            humanoid:SetStateEnabled(s, not state)
+        end
+        if state then
+            humanoid.Health = humanoid.MaxHealth
+            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                if humanoid.Health <= 0 then
+                    humanoid.Health = humanoid.MaxHealth
+                end
+            end)
+        end
+    end
+end
+
+local function getBasePosition()
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        local base = plot:FindFirstChild("DeliveryHitbox")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+            return base.Position
+        end
+    end
+    return nil
+end
+
+local Y_OFFSET = 3
+local STOP_DISTANCE = 10
+
+local function tweenWalkTo(position)
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return false
+    end
+
+    local startPos = hrp.Position
+    local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
+    local distance = (targetPos - startPos).Magnitude
+    local speed = math.max(tweenSpeed, 16)
+    local duration = distance / speed
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+
+    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    currentTween:Play()
+
+    if humanoid then
+        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+    end
+
+    currentTween.Completed:Wait()
+    currentTween = nil
+    return true
+end
+
+local function isAtBase(basePos)
+    if not basePos or not hrp then return false end
+    local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
+    return dist <= STOP_DISTANCE
+end
+
+local function walkToBase()
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return
+    end
+
+    local target = getBasePosition()
+    if not target then
+        statusLabel.Text = "Base Not Found"
+        return
+    end
+
+    while active do
+        updateCharacterReferences()
+        if not hrp then
+            statusLabel.Text = "Character died, stopping"
+            stopTweenToBase()
+            break
+        end
+
+        if not target then
+            statusLabel.Text = "Base Not Found"
+            task.wait(1)
+            break
+        end
+
+        if isAtBase(target) then
+            statusLabel.Text = "Reached Base"
+            stopTweenToBase()
+            break
+        end
+
+        local path = PathfindingService:CreatePath()
+        local success, err = pcall(function()
+            path:ComputeAsync(hrp.Position, target)
+        end)
+        
+        if not success then
+            statusLabel.Text = "Direct path to base"
+            local tweenSuccess = pcall(tweenWalkTo, target)
+            if not tweenSuccess then
+                statusLabel.Text = "Tween failed"
+                stopTweenToBase()
+            end
+            break
+        end
+
+        if path.Status == Enum.PathStatus.Success then
+            local waypoints = path:GetWaypoints()
+            statusLabel.Text = "Following path (" .. #waypoints .. " points)"
+            
+            for i, waypoint in ipairs(waypoints) do
+                if not active or not hrp or isAtBase(target) then 
+                    return 
+                end
+                
+                if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
+                    local tweenSuccess = pcall(tweenWalkTo, waypoint.Position)
+                    if not tweenSuccess then
+                        statusLabel.Text = "Path tween failed"
+                        return
+                    end
+                end
+            end
+        else
+            statusLabel.Text = "Direct path (no obstacles)"
+            local tweenSuccess = pcall(tweenWalkTo, target)
+            if not tweenSuccess then
+                statusLabel.Text = "Direct tween failed"
+                stopTweenToBase()
+            end
+        end
+
+        task.wait(0.1)
+    end
+end
+
+function startTweenToBase()
+    if active then return end
+    
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return
+    end
+    
+    active = true
+    applyAntiDeath(true)
+    tweenButton.Text = "■ STOP TWEEN"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    statusLabel.Text = "Walking to Base..."
+
+    walkThread = task.spawn(function()
+        while active do
+            walkToBase()
+            if not active then break end
+            task.wait(0.5)
+        end
+    end)
+end
+
+function stopTweenToBase()
+    if not active then return end
+    active = false
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+    if walkThread then 
+        task.cancel(walkThread) 
+        walkThread = nil
+    end
+    
+    if humanoid then
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+    
+    tweenButton.Text = "▶ TWEEN TO BASE"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    statusLabel.Text = "Ready"
+end
 
 -- Speed
 local speedContainer = Instance.new("Frame")
@@ -204,9 +430,9 @@ local jumpInputCorner = Instance.new("UICorner")
 jumpInputCorner.CornerRadius = UDim.new(0, 4)
 jumpInputCorner.Parent = jumpInput
 
--- Fly Feature
+-- ========== NEW FLIGHT SYSTEM ==========
 local flyButton = Instance.new("TextButton")
-flyButton.Text = "FLY: OFF"
+flyButton.Text = "SLOW FLIGHT: OFF"
 flyButton.Size = UDim2.new(0.9, 0, 0, 25)
 flyButton.Position = UDim2.new(0.05, 0, 0.35, 0)
 flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -219,7 +445,37 @@ local flyCorner = Instance.new("UICorner")
 flyCorner.CornerRadius = UDim.new(0, 6)
 flyCorner.Parent = flyButton
 
--- Float
+local guidedOn = false
+local guidedConn
+
+local function toggleFlight()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    guidedOn = not guidedOn
+    flyButton.Text = guidedOn and "SLOW FLIGHT: ON" or "SLOW FLIGHT: OFF"
+    flyButton.BackgroundColor3 = guidedOn and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    
+    if guidedOn then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            guidedConn = RunService.RenderStepped:Connect(function()
+                if guidedOn and hrp then
+                    hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * 25
+                end
+            end)
+        end
+    else
+        if guidedConn then 
+            guidedConn:Disconnect() 
+            guidedConn = nil 
+        end
+        if hum then 
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
+        end
+    end
+end
+
+-- ========== FLOAT SYSTEM ==========
 local floatButton = Instance.new("TextButton")
 floatButton.Text = "FLOAT: OFF"
 floatButton.Size = UDim2.new(0.9, 0, 0, 25)
@@ -234,7 +490,70 @@ local floatCorner = Instance.new("UICorner")
 floatCorner.CornerRadius = UDim.new(0, 6)
 floatCorner.Parent = floatButton
 
--- Auto Floor
+local floatEnabled = false
+local floatBodyVelocity
+local floatConnection
+
+local function toggleFloat()
+    floatEnabled = not floatEnabled
+    
+    if floatEnabled then
+        floatButton.Text = "FLOAT: ON"
+        floatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusLabel.Text = "Float enabled"
+        
+        floatBodyVelocity = Instance.new("BodyVelocity")
+        floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+        
+        if floatConnection then
+            floatConnection:Disconnect()
+        end
+        
+        floatConnection = RunService.Heartbeat:Connect(function()
+            updateCharacterReferences()
+            if not floatEnabled or not character or not hrp then
+                return
+            end
+            
+            local rayOrigin = hrp.Position
+            local rayDirection = Vector3.new(0, -10, 0)
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {character}
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+            
+            local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+            
+            if not raycastResult then
+                floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
+            else
+                floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+            end
+            
+            if floatBodyVelocity and floatBodyVelocity.Parent ~= hrp then
+                floatBodyVelocity.Parent = hrp
+            end
+        end)
+        
+    else
+        floatButton.Text = "FLOAT: OFF"
+        floatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        statusLabel.Text = "Float disabled"
+        
+        if floatConnection then
+            floatConnection:Disconnect()
+            floatConnection = nil
+        end
+        if floatBodyVelocity then
+            floatBodyVelocity:Destroy()
+            floatBodyVelocity = nil
+        end
+    end
+end
+
+-- ========== AUTO FLOOR SYSTEM ==========
 local autoFloorButton = Instance.new("TextButton")
 autoFloorButton.Text = "AUTO FLOOR: OFF"
 autoFloorButton.Size = UDim2.new(0.9, 0, 0, 25)
@@ -249,7 +568,79 @@ local autoFloorCorner = Instance.new("UICorner")
 autoFloorCorner.CornerRadius = UDim.new(0, 6)
 autoFloorCorner.Parent = autoFloorButton
 
--- Semi Invisible
+local floorOn = false
+local floorPart
+local floorConnection
+local floorRiseSpeed = 5.0
+local autoFloorSize = Vector3.new(8, 1, 8)
+
+local function toggleAutoFloor()
+    floorOn = not floorOn
+    
+    if floorOn then
+        autoFloorButton.Text = "AUTO FLOOR: ON"
+        autoFloorButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusLabel.Text = "Auto floor enabled (Rising)"
+        
+        floorPart = Instance.new("Part")
+        floorPart.Size = autoFloorSize
+        floorPart.Anchored = true
+        floorPart.CanCollide = true
+        floorPart.Material = Enum.Material.Neon
+        floorPart.Color = Color3.fromRGB(80, 170, 255)
+        floorPart.Transparency = 0.3
+        floorPart.Name = "KryptonAutoFloor"
+        floorPart.Parent = Workspace
+        
+        local pointLight = Instance.new("PointLight")
+        pointLight.Brightness = 0.5
+        pointLight.Range = 12
+        pointLight.Color = Color3.fromRGB(80, 170, 255)
+        pointLight.Parent = floorPart
+        
+        if floorConnection then
+            floorConnection:Disconnect()
+        end
+        
+        floorConnection = RunService.RenderStepped:Connect(function()
+            if not floorOn or not floorPart then
+                return
+            end
+            
+            updateCharacterReferences()
+            
+            if not hrp then
+                return
+            end
+            
+            local currentPos = floorPart.Position
+            local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPart.Size.Y/2)
+            
+            if targetY > currentPos.Y then
+                local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
+                floorPart.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
+            else
+                floorPart.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
+            end
+        end)
+        
+    else
+        autoFloorButton.Text = "AUTO FLOOR: OFF"
+        autoFloorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        statusLabel.Text = "Auto floor disabled"
+        
+        if floorConnection then
+            floorConnection:Disconnect()
+            floorConnection = nil
+        end
+        if floorPart then
+            floorPart:Destroy()
+            floorPart = nil
+        end
+    end
+end
+
+-- ========== SEMI INVISIBLE SYSTEM ==========
 local semiInvisButton = Instance.new("TextButton")
 semiInvisButton.Text = "SEMI INVISIBLE: OFF"
 semiInvisButton.Size = UDim2.new(0.9, 0, 0, 25)
@@ -264,193 +655,6 @@ local semiInvisCorner = Instance.new("UICorner")
 semiInvisCorner.CornerRadius = UDim.new(0, 6)
 semiInvisCorner.Parent = semiInvisButton
 
--- Visuals Tab Content
-local visualsContent = Instance.new("Frame")
-visualsContent.Size = UDim2.new(1, 0, 1, 0)
-visualsContent.BackgroundTransparency = 1
-visualsContent.Visible = false
-visualsContent.Parent = contentFrame
-
--- Player ESP
-local espButton = Instance.new("TextButton")
-espButton.Text = "PLAYER ESP: OFF"
-espButton.Size = UDim2.new(0.9, 0, 0, 30)
-espButton.Position = UDim2.new(0.05, 0, 0.05, 0)
-espButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-espButton.Font = Enum.Font.GothamBold
-espButton.TextSize = 12
-espButton.Parent = visualsContent
-
-local espCorner = Instance.new("UICorner")
-espCorner.CornerRadius = UDim.new(0, 6)
-espCorner.Parent = espButton
-
--- Combat Tab Content
-local combatContent = Instance.new("Frame")
-combatContent.Size = UDim2.new(1, 0, 1, 0)
-combatContent.BackgroundTransparency = 1
-combatContent.Visible = false
-combatContent.Parent = contentFrame
-
--- Auto Lazer
-local autoLazerButton = Instance.new("TextButton")
-autoLazerButton.Text = "AUTO LAZER: OFF"
-autoLazerButton.Size = UDim2.new(0.9, 0, 0, 30)
-autoLazerButton.Position = UDim2.new(0.05, 0, 0.05, 0)
-autoLazerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoLazerButton.Font = Enum.Font.GothamBold
-autoLazerButton.TextSize = 12
-autoLazerButton.Parent = combatContent
-
-local autoLazerCorner = Instance.new("UICorner")
-autoLazerCorner.CornerRadius = UDim.new(0, 6)
-autoLazerCorner.Parent = autoLazerButton
-
--- Tab switching function
-local function switchTab(tabName)
-    currentTab = tabName
-    mainContent.Visible = (tabName == "Main")
-    visualsContent.Visible = (tabName == "Visuals")
-    combatContent.Visible = (tabName == "Combat")
-    
-    for name, button in pairs(tabButtons) do
-        if name == tabName then
-            button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-            button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-            button.TextColor3 = Color3.fromRGB(200, 200, 200)
-        end
-    end
-end
-
--- Initialize tabs
-for tabName, button in pairs(tabButtons) do
-    button.MouseButton1Click:Connect(function()
-        switchTab(tabName)
-    end)
-end
-switchTab("Main")
--- ========== FLIGHT ==========
-local flyEnabled = false
-local flySpeed = 25
-local flyBodyGyro = nil
-local flyBodyVelocity = nil
-local flyRenderConnection = nil
-local flyAntiGravity = nil
-
-local function toggleFly()
-    flyEnabled = not flyEnabled
-    
-    if flyEnabled then
-        flyButton.Text = "FLY: ON"
-        flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Float Flight - Jump=Up, Auto descend"
-        
-        updateCharacterReferences()
-        if not character or not hrp then return end
-        
-        -- Create BodyGyro for stability
-        flyBodyGyro = Instance.new("BodyGyro")
-        flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        flyBodyGyro.P = 5e4
-        flyBodyGyro.Parent = hrp
-        
-        -- Create BodyVelocity for movement
-        flyBodyVelocity = Instance.new("BodyVelocity")
-        flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
-        flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        flyBodyVelocity.Parent = hrp
-        
-        -- Create anti-gravity
-        flyAntiGravity = Instance.new("BodyForce")
-        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 0.2, 0)
-        flyAntiGravity.Parent = hrp
-        
-        -- Float render loop
-        flyRenderConnection = RunService.RenderStepped:Connect(function()
-            if not flyEnabled or not character or not hrp then
-                if flyRenderConnection then
-                    flyRenderConnection:Disconnect()
-                end
-                return
-            end
-            
-            local camera = Workspace.CurrentCamera
-            
-            -- Keep character upright but follow camera direction
-            flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector * Vector3.new(1, 0, 1))
-            
-            -- Get movement direction - SIMPLIFIED VERSION
-            local moveDirection = Vector3.new(0, 0, 0)
-            if humanoid then
-                -- Use humanoid move direction directly (it's already camera-relative)
-                local humanoidMove = humanoid.MoveDirection
-                
-                -- Just use the direction as-is (Roblox already handles camera relativity)
-                moveDirection = Vector3.new(humanoidMove.X, 0, humanoidMove.Z)
-                
-                -- Normalize and apply speed
-                if moveDirection.Magnitude > 0 then
-                    moveDirection = moveDirection.Unit * flySpeed
-                end
-            end
-            
-            -- Vertical controls (simple up/down)
-            local verticalSpeed = 0
-            
-            -- Jump to go up
-            if humanoid and humanoid.Jump then
-                verticalSpeed = 15  -- Up
-            else
-                -- Automatic slow descent when not jumping
-                verticalSpeed = -4  -- Gentle downward drift
-            end
-            
-            -- Apply movement (combine horizontal and vertical)
-            local finalVelocity = moveDirection + Vector3.new(0, verticalSpeed, 0)
-            flyBodyVelocity.Velocity = finalVelocity
-            
-            -- Make sure all parts are parented
-            if flyBodyGyro and flyBodyGyro.Parent ~= hrp then
-                flyBodyGyro.Parent = hrp
-            end
-            if flyBodyVelocity and flyBodyVelocity.Parent ~= hrp then
-                flyBodyVelocity.Parent = hrp
-            end
-            if flyAntiGravity and flyAntiGravity.Parent ~= hrp then
-                flyAntiGravity.Parent = hrp
-            end
-        end)
-        
-    else
-        flyButton.Text = "FLY: OFF"
-        flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Float Flight disabled"
-        
-        -- Clean up
-        if flyRenderConnection then
-            flyRenderConnection:Disconnect()
-            flyRenderConnection = nil
-        end
-        if flyBodyGyro then
-            flyBodyGyro:Destroy()
-            flyBodyGyro = nil
-        end
-        if flyBodyVelocity then
-            flyBodyVelocity:Destroy()
-            flyBodyVelocity = nil
-        end
-        if flyAntiGravity then
-            flyAntiGravity:Destroy()
-            flyAntiGravity = nil
-        end
-    end
-end
-  
--- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
     SemiInvisible = {}
 }
@@ -688,361 +892,311 @@ local function semiInvisibleFunction()
     end
 end
 
--- ========== SAFE TWEEN SYSTEM ==========
-local active = false
-local currentTween
-local walkThread
-local tweenSpeed = 24
+-- ========== STEAL TAB CONTENT ==========
+local stealContent = Instance.new("Frame")
+stealContent.Size = UDim2.new(1, 0, 1, 0)
+stealContent.BackgroundTransparency = 1
+stealContent.Visible = false
+stealContent.Parent = contentFrame
 
--- Anti Death & Anti Kick
-local function applyAntiDeath(state)
-    updateCharacterReferences()
-    if humanoid then
-        for _, s in pairs({
-            Enum.HumanoidStateType.FallingDown,
-            Enum.HumanoidStateType.Ragdoll,
-            Enum.HumanoidStateType.PlatformStanding,
-            Enum.HumanoidStateType.Seated
-        }) do
-            humanoid:SetStateEnabled(s, not state)
+-- 2nd Floor Steal
+local secondFloorButton = Instance.new("TextButton")
+secondFloorButton.Text = "2ND FLOOR STEAL"
+secondFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
+secondFloorButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+secondFloorButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+secondFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+secondFloorButton.Font = Enum.Font.GothamBold
+secondFloorButton.TextSize = 12
+secondFloorButton.Parent = stealContent
+
+local secondFloorCorner = Instance.new("UICorner")
+secondFloorCorner.CornerRadius = UDim.new(0, 6)
+secondFloorCorner.Parent = secondFloorButton
+
+-- 3rd Floor Steal
+local thirdFloorButton = Instance.new("TextButton")
+thirdFloorButton.Text = "3RD FLOOR STEAL"
+thirdFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
+thirdFloorButton.Position = UDim2.new(0.05, 0, 0.15, 0)
+thirdFloorButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+thirdFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+thirdFloorButton.Font = Enum.Font.GothamBold
+thirdFloorButton.TextSize = 12
+thirdFloorButton.Parent = stealContent
+
+local thirdFloorCorner = Instance.new("UICorner")
+thirdFloorCorner.CornerRadius = UDim.new(0, 6)
+thirdFloorCorner.Parent = thirdFloorButton
+
+-- Desync Anti-Hit
+local desyncButton = Instance.new("TextButton")
+desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+desyncButton.Size = UDim2.new(0.9, 0, 0, 30)
+desyncButton.Position = UDim2.new(0.05, 0, 0.25, 0)
+desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+desyncButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+desyncButton.Font = Enum.Font.GothamBold
+desyncButton.TextSize = 12
+desyncButton.Parent = stealContent
+
+local desyncCorner = Instance.new("UICorner")
+desyncCorner.CornerRadius = UDim.new(0, 6)
+desyncCorner.Parent = desyncButton
+
+-- ========== DESYNC SYSTEM ==========
+local desyncActive = false
+
+local function enableMobileDesync()
+    local success, error = pcall(function()
+        local backpack = player:WaitForChild("Backpack")
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        local packages = ReplicatedStorage:WaitForChild("Packages", 5)
+        if not packages then warn("Packages not found") return false end
+        
+        local netFolder = packages:WaitForChild("Net", 5)
+        if not netFolder then warn("Net folder not found") return false end
+        
+        local useItemRemote = netFolder:WaitForChild("RE/UseItem", 5)
+        local teleportRemote = netFolder:WaitForChild("RE/QuantumCloner/OnTeleport", 5)
+        if not useItemRemote or not teleportRemote then warn("Remotes not found") return false end
+        
+        local toolNames = {"Quantum Cloner", "whatever", "whatever"}
+        local tool
+        for _, toolName in ipairs(toolNames) do
+            tool = backpack:FindFirstChild(toolName) or character:FindFirstChild(toolName)
+            if tool then break end
         end
-        if state then
-            humanoid.Health = humanoid.MaxHealth
-            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                if humanoid.Health <= 0 then
-                    humanoid.Health = humanoid.MaxHealth
+        if not tool then
+            for _, item in ipairs(backpack:GetChildren()) do
+                if item:IsA("Tool") then tool=item break end
+            end
+        end
+        
+        if tool and tool.Parent==backpack then
+            humanoid:EquipTool(tool)
+            task.wait(0.5)
+        end
+        
+        if setfflag then setfflag("WorldStepMax", "-9999999999") end
+        task.wait(0.2)
+        useItemRemote:FireServer()
+        task.wait(1)
+        teleportRemote:FireServer()
+        task.wait(2)
+        if setfflag then setfflag("WorldStepMax", "-1") end
+        print("Desync activated")
+        return true
+    end)
+    if not success then
+        warn("Desync error: " .. tostring(error))
+        return false
+    end
+    return success
+end
+
+local function disableMobileDesync()
+    pcall(function()
+        if setfflag then setfflag("WorldStepMax", "-1") end
+        print("Desync deactivated")
+    end)
+end
+
+desyncButton.MouseButton1Click:Connect(function()
+    desyncActive = not desyncActive
+    if desyncActive then
+        local success = enableMobileDesync()
+        if success then
+            desyncButton.BackgroundColor3 = Color3.fromRGB(200, 200, 0)
+            desyncButton.Text = "DESYNC (ANTI HIT): ON"
+        else
+            desyncActive=false
+            desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+            desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+        end
+    else
+        disableMobileDesync()
+        desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+        desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+    end
+end)
+
+player.CharacterAdded:Connect(function()
+    desyncActive=false
+    desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+    desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+end)
+
+-- ========== 3RD FLOOR STEAL SYSTEM ==========
+local floorOn = false
+local floorPart
+local floorConnection
+
+local function setTransparencySpecific(part, transparency)
+    if part and part:IsA("BasePart") then
+        if not part:GetAttribute("OriginalTransparency") then
+            part:SetAttribute("OriginalTransparency", part.Transparency)
+        end
+        if not part:GetAttribute("OriginalCanCollide") then
+            part:SetAttribute("OriginalCanCollide", part.CanCollide)
+        end
+        part.Transparency = transparency
+        part.CanCollide = false
+    end
+end
+
+local function processAnimalPodium(podium, podiumNumber, plotName)
+    local claim = podium:FindFirstChild("Claim")
+    if claim then
+        local hitbox = claim:FindFirstChild("Hitbox")
+        if hitbox then
+            pcall(function()
+                if not hitbox:GetAttribute("OriginalTransparency") then
+                    hitbox:SetAttribute("OriginalTransparency", hitbox.Transparency)
+                    hitbox:SetAttribute("OriginalCanCollide", hitbox.CanCollide)
+                end
+                hitbox.Transparency = 0.5
+                hitbox.CanCollide = false
+                if hitbox:FindFirstChild("SelectionBox") then hitbox.SelectionBox:Destroy() end
+                if hitbox:FindFirstChild("SurfaceGui") then hitbox.SurfaceGui.Enabled=false end
+                if hitbox:FindFirstChild("BillboardGui") then hitbox.BillboardGui.Enabled=false end
+                for _, script in pairs(hitbox:GetChildren()) do
+                    if script:IsA("LocalScript") or script:IsA("Script") then
+                        script.Disabled=true
+                    end
                 end
             end)
         end
     end
-end
-
-local function getBasePosition()
-    local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return nil end
-    for _, plot in ipairs(plots:GetChildren()) do
-        local sign = plot:FindFirstChild("PlotSign")
-        local base = plot:FindFirstChild("DeliveryHitbox")
-        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
-            return base.Position
-        end
-    end
-    return nil
-end
-
-local Y_OFFSET = 3
-local STOP_DISTANCE = 10
-
-local function tweenWalkTo(position)
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
-    end
-
-    updateCharacterReferences()
-    if not hrp then
-        statusLabel.Text = "Error: No character"
-        return false
-    end
-
-    local startPos = hrp.Position
-    local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
-    local distance = (targetPos - startPos).Magnitude
-    local speed = math.max(tweenSpeed, 16)
-    local duration = distance / speed
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-
-    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
-    currentTween:Play()
-
-    if humanoid then
-        humanoid:ChangeState(Enum.HumanoidStateType.Running)
-    end
-
-    currentTween.Completed:Wait()
-    currentTween = nil
-    return true
-end
-
-local function isAtBase(basePos)
-    if not basePos or not hrp then return false end
-    local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
-    return dist <= STOP_DISTANCE
-end
-
-local function walkToBase()
-    updateCharacterReferences()
-    if not hrp then
-        statusLabel.Text = "Error: No character"
-        return
-    end
-
-    local target = getBasePosition()
-    if not target then
-        statusLabel.Text = "Base Not Found"
-        return
-    end
-
-    while active do
-        updateCharacterReferences()
-        if not hrp then
-            statusLabel.Text = "Character died, stopping"
-            stopTweenToBase()
-            break
-        end
-
-        if not target then
-            statusLabel.Text = "Base Not Found"
-            task.wait(1)
-            break
-        end
-
-        if isAtBase(target) then
-            statusLabel.Text = "Reached Base"
-            stopTweenToBase()
-            break
-        end
-
-        local path = PathfindingService:CreatePath()
-        local success, err = pcall(function()
-            path:ComputeAsync(hrp.Position, target)
-        end)
-        
-        if not success then
-            statusLabel.Text = "Direct path to base"
-            local tweenSuccess = pcall(tweenWalkTo, target)
-            if not tweenSuccess then
-                statusLabel.Text = "Tween failed"
-                stopTweenToBase()
-            end
-            break
-        end
-
-        if path.Status == Enum.PathStatus.Success then
-            local waypoints = path:GetWaypoints()
-            statusLabel.Text = "Following path (" .. #waypoints .. " points)"
-            
-            for i, waypoint in ipairs(waypoints) do
-                if not active or not hrp or isAtBase(target) then 
-                    return 
+    local base = podium:FindFirstChild("Base")
+    if base then
+        local spawn = base:FindFirstChild("Spawn")
+        setTransparencySpecific(spawn,0.5)
+        local decorations = base:FindFirstChild("Decorations")
+        if decorations then
+            local decoration = decorations:FindFirstChild("Decoration")
+            setTransparencySpecific(decoration,0.5)
+            local part = decorations:FindFirstChild("Part")
+            setTransparencySpecific(part,0.5)
+            for _, child in pairs(decorations:GetChildren()) do
+                if child:IsA("BasePart") and child.Name~="Decoration" and child.Name~="Part" then
+                    setTransparencySpecific(child,0.5)
                 end
-                
-                -- Skip first waypoint if it's too close
-                if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
-                    local tweenSuccess = pcall(tweenWalkTo, waypoint.Position)
-                    if not tweenSuccess then
-                        statusLabel.Text = "Path tween failed"
-                        return
+            end
+        end
+    end
+end
+
+local function destroyPlatform()
+    if floorPart then floorPart:Destroy() floorPart=nil end
+    floorOn=false
+    if floorConnection then floorConnection:Disconnect() floorConnection=nil end
+    thirdFloorButton.BackgroundColor3 = Color3.fromRGB(220,20,60)
+    thirdFloorButton.Text = "3RD FLOOR STEAL"
+end
+
+local function canRise()
+    if not floorPart then return false end
+    local origin = floorPart.Position + Vector3.new(0, floorPart.Size.Y/2,0)
+    local direction = Vector3.new(0,2,0)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {floorPart, player.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    return not Workspace:Raycast(origin,direction,rayParams)
+end
+
+local function setup3rdFloor()
+    updateCharacterReferences()
+    if not character then return end
+    
+    local root = character:WaitForChild("HumanoidRootPart")
+    
+    thirdFloorButton.MouseButton1Click:Connect(function()
+        floorOn = not floorOn
+        if floorOn then
+            floorPart = Instance.new("Part")
+            floorPart.Size = Vector3.new(6,0.5,6)
+            floorPart.Anchored=true
+            floorPart.CanCollide=true
+            floorPart.Transparency=0
+            floorPart.Material=Enum.Material.Plastic
+            floorPart.Color=Color3.fromRGB(255,200,0)
+            floorPart.Position=root.Position-Vector3.new(0, root.Size.Y/2 + floorPart.Size.Y/2, 0)
+            floorPart.Parent = Workspace
+
+            local plots = Workspace:FindFirstChild("Plots")
+            if plots then
+                for _, plot in pairs(plots:GetChildren()) do
+                    for _, part in pairs(plot:GetDescendants()) do
+                        if part:IsA("BasePart") and (part.Name:lower():find("base plot") or part.Name:lower():find("base") or part.Name:lower():find("plot")) then
+                            part.Transparency = 0.5
+                        end
+                    end
+                    local animalPodiums = plot:FindFirstChild("AnimalPodiums")
+                    if animalPodiums then
+                        for _, podium in pairs(animalPodiums:GetChildren()) do
+                            if podium:IsA("Model") or podium:IsA("Folder") then
+                                processAnimalPodium(podium, podium.Name, plot.Name)
+                            end
+                        end
                     end
                 end
             end
+
+            floorConnection = RunService.Heartbeat:Connect(function(dt)
+                if floorPart and floorOn then
+                    local cur = floorPart.Position
+                    local newXZ = Vector3.new(root.Position.X, cur.Y, root.Position.Z)
+                    if canRise() then
+                        floorPart.Position = newXZ + Vector3.new(0, dt*15,0)
+                    else
+                        floorPart.Position=newXZ
+                    end
+                end
+            end)
+            thirdFloorButton.BackgroundColor3=Color3.fromRGB(0,170,0)
+            thirdFloorButton.Text = "3RD FLOOR STEAL: ON"
         else
-            statusLabel.Text = "Direct path (no obstacles)"
-            local tweenSuccess = pcall(tweenWalkTo, target)
-            if not tweenSuccess then
-                statusLabel.Text = "Direct tween failed"
-                stopTweenToBase()
-            end
-        end
-
-        task.wait(0.1)
-    end
-end
-
-function startTweenToBase()
-    if active then return end
-    
-    updateCharacterReferences()
-    if not hrp then
-        statusLabel.Text = "Error: No character"
-        return
-    end
-    
-    active = true
-    applyAntiDeath(true)
-    tweenButton.Text = "■ STOP TWEEN"
-    tweenButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    statusLabel.Text = "Walking to Base..."
-
-    walkThread = task.spawn(function()
-        while active do
-            walkToBase()
-            if not active then break end
-            task.wait(0.5)
+            destroyPlatform()
         end
     end)
+
+    character:WaitForChild("Humanoid").Died:Connect(destroyPlatform)
 end
 
-function stopTweenToBase()
-    if not active then return end
-    active = false
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
-    end
-    if walkThread then 
-        task.cancel(walkThread) 
-        walkThread = nil
-    end
-    
-    if humanoid then
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
-    
-    tweenButton.Text = "▶ TWEEN TO BASE"
-    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    statusLabel.Text = "Ready"
-end
+if player.Character then setup3rdFloor() end
+player.CharacterAdded:Connect(setup3rdFloor)
 
--- ========== FIXED FLOAT FEATURE ==========
-local floatEnabled = false
-local floatBodyVelocity
-local floatConnection
+-- 2nd Floor Steal (placeholder - add your specific functionality)
+secondFloorButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "2nd Floor Steal activated"
+    -- Add your 2nd floor steal logic here
+end)
 
-local function toggleFloat()
-    floatEnabled = not floatEnabled
-    
-    if floatEnabled then
-        floatButton.Text = "FLOAT: ON"
-        floatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Float enabled"
-        
-        -- Create BodyVelocity for floating
-        floatBodyVelocity = Instance.new("BodyVelocity")
-        floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
-        
-        if floatConnection then
-            floatConnection:Disconnect()
-        end
-        
-        floatConnection = RunService.Heartbeat:Connect(function()
-            updateCharacterReferences()
-            if not floatEnabled or not character or not hrp then
-                return
-            end
-            
-            -- Simple ground check
-            local rayOrigin = hrp.Position
-            local rayDirection = Vector3.new(0, -10, 0)
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterDescendantsInstances = {character}
-            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-            
-            local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-            
-            if not raycastResult then
-                -- In air, apply upward force (safer force value)
-                floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
-                floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0) -- Safer than math.huge
-            else
-                -- On ground, no force
-                floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-                floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
-            end
-            
-            -- Make sure BodyVelocity is parented to HRP
-            if floatBodyVelocity and floatBodyVelocity.Parent ~= hrp then
-                floatBodyVelocity.Parent = hrp
-            end
-        end)
-        
-    else
-        floatButton.Text = "FLOAT: OFF"
-        floatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Float disabled"
-        
-        -- Remove BodyVelocity and connection
-        if floatConnection then
-            floatConnection:Disconnect()
-            floatConnection = nil
-        end
-        if floatBodyVelocity then
-            floatBodyVelocity:Destroy()
-            floatBodyVelocity = nil
-        end
-    end
-end
+-- ========== VISUALS TAB CONTENT ==========
+local visualsContent = Instance.new("Frame")
+visualsContent.Size = UDim2.new(1, 0, 1, 0)
+visualsContent.BackgroundTransparency = 1
+visualsContent.Visible = false
+visualsContent.Parent = contentFrame
 
--- ========== FIXED AUTO FLOOR ==========
-local floorOn = false
-local floorPart
-local floorConnection
-local floorRiseSpeed = 5.0
-local autoFloorSize = Vector3.new(8, 1, 8)
+-- Player ESP
+local espButton = Instance.new("TextButton")
+espButton.Text = "PLAYER ESP: OFF"
+espButton.Size = UDim2.new(0.9, 0, 0, 30)
+espButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+espButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+espButton.Font = Enum.Font.GothamBold
+espButton.TextSize = 12
+espButton.Parent = visualsContent
 
-local function toggleAutoFloor()
-    floorOn = not floorOn
-    
-    if floorOn then
-        autoFloorButton.Text = "AUTO FLOOR: ON"
-        autoFloorButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Auto floor enabled (Rising)"
-        
-        -- Create floor part
-        floorPart = Instance.new("Part")
-        floorPart.Size = autoFloorSize
-        floorPart.Anchored = true
-        floorPart.CanCollide = true
-        floorPart.Material = Enum.Material.Neon
-        floorPart.Color = Color3.fromRGB(80, 170, 255)
-        floorPart.Transparency = 0.3
-        floorPart.Name = "KryptonAutoFloor"
-        floorPart.Parent = Workspace
-        
-        -- Add subtle light effect
-        local pointLight = Instance.new("PointLight")
-        pointLight.Brightness = 0.5
-        pointLight.Range = 12
-        pointLight.Color = Color3.fromRGB(80, 170, 255)
-        pointLight.Parent = floorPart
-        
-        if floorConnection then
-            floorConnection:Disconnect()
-        end
-        
-        floorConnection = RunService.RenderStepped:Connect(function()
-            if not floorOn or not floorPart then
-                return
-            end
-            
-            updateCharacterReferences()
-            
-            if not hrp then
-                return
-            end
-            
-            local currentPos = floorPart.Position
-            local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPart.Size.Y/2)
-            
-            -- Smooth rising movement: only rise, instant fall
-            if targetY > currentPos.Y then
-                -- Rising: smooth movement
-                local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
-                floorPart.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
-            else
-                -- Falling: instant positioning
-                floorPart.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
-            end
-        end)
-        
-    else
-        autoFloorButton.Text = "AUTO FLOOR: OFF"
-        autoFloorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Auto floor disabled"
-        
-        if floorConnection then
-            floorConnection:Disconnect()
-            floorConnection = nil
-        end
-        if floorPart then
-            floorPart:Destroy()
-            floorPart = nil
-        end
-    end
-end
+local espCorner = Instance.new("UICorner")
+espCorner.CornerRadius = UDim.new(0, 6)
+espCorner.Parent = espButton
 
--- ========== FIXED PLAYER ESP ==========
 local espEnabled = false
 local espFolders = {}
 local espConnections = {}
@@ -1062,7 +1216,6 @@ local function createESP(player)
         local humanoid = character:FindFirstChildOfClass("Humanoid")
         if not hrp or not humanoid then return end
         
-        -- Box ESP
         local box = Instance.new("BoxHandleAdornment")
         box.Name = "Box"
         box.Adornee = hrp
@@ -1073,7 +1226,6 @@ local function createESP(player)
         box.Transparency = 0.3
         box.Parent = folder
         
-        -- Name tag
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "NameTag"
         billboard.Adornee = hrp
@@ -1102,7 +1254,6 @@ local function createESP(player)
         
         billboard.Parent = folder
         
-        -- Update health
         local healthConnection = humanoid.HealthChanged:Connect(function()
             if folder and healthLabel then
                 healthLabel.Text = "HP: " .. math.floor(humanoid.Health)
@@ -1137,16 +1288,13 @@ local function toggleESP()
     
     if espEnabled then
         statusLabel.Text = "ESP enabled"
-        -- Create ESP for all players
         for _, plr in ipairs(Players:GetPlayers()) do
             createESP(plr)
         end
         
-        -- Create ESP for new players
         local playerAddedConnection = Players.PlayerAdded:Connect(createESP)
         table.insert(espConnections, playerAddedConnection)
         
-        -- Remove ESP when players leave
         local playerRemovingConnection = Players.PlayerRemoving:Connect(function(plr)
             removeESP(plr)
         end)
@@ -1154,7 +1302,6 @@ local function toggleESP()
         
     else
         statusLabel.Text = "ESP disabled"
-        -- Remove all ESP
         for plr, folder in pairs(espFolders) do
             if folder then
                 folder:Destroy()
@@ -1162,7 +1309,6 @@ local function toggleESP()
         end
         espFolders = {}
         
-        -- Clean up connections
         for _, connection in ipairs(espConnections) do
             if connection then
                 connection:Disconnect()
@@ -1172,7 +1318,28 @@ local function toggleESP()
     end
 end
 
--- ========== FIXED AUTO LAZER ==========
+-- ========== COMBAT TAB CONTENT ==========
+local combatContent = Instance.new("Frame")
+combatContent.Size = UDim2.new(1, 0, 1, 0)
+combatContent.BackgroundTransparency = 1
+combatContent.Visible = false
+combatContent.Parent = contentFrame
+
+-- Auto Lazer
+local autoLazerButton = Instance.new("TextButton")
+autoLazerButton.Text = "AUTO LAZER: OFF"
+autoLazerButton.Size = UDim2.new(0.9, 0, 0, 30)
+autoLazerButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+autoLazerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoLazerButton.Font = Enum.Font.GothamBold
+autoLazerButton.TextSize = 12
+autoLazerButton.Parent = combatContent
+
+local autoLazerCorner = Instance.new("UICorner")
+autoLazerCorner.CornerRadius = UDim.new(0, 6)
+autoLazerCorner.Parent = autoLazerButton
+
 local autoLazerEnabled = false
 local autoLazerThread = nil
 
@@ -1316,6 +1483,66 @@ local function toggleAutoLazer()
     end
 end
 
+-- ========== DISCORD BUTTON ==========
+local discordBtn = Instance.new("TextButton")
+discordBtn.Size = UDim2.new(0.9, 0, 0, 25)
+discordBtn.Position = UDim2.new(0.05, 0, 0.85, 0)
+discordBtn.Text = "Discord"
+discordBtn.Font = Enum.Font.GothamBold
+discordBtn.TextSize = 12
+discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+discordBtn.AutoButtonColor = false
+discordBtn.Parent = contentFrame
+
+local discordCorner = Instance.new("UICorner")
+discordCorner.CornerRadius = UDim.new(0, 6)
+discordCorner.Parent = discordBtn
+
+discordBtn.MouseButton1Click:Connect(function()
+    if setclipboard then 
+        setclipboard("https://discord.gg/YSwFZsGk9j")
+    elseif toclipboard then 
+        toclipboard("https://discord.gg/YSwFZsGk9j") 
+    end
+    local originalText = discordBtn.Text
+    discordBtn.Text = "Link Copied!"
+    task.wait(2)
+    discordBtn.Text = originalText
+end)
+
+-- ========== TAB SYSTEM ==========
+local function switchTab(tabName)
+    currentTab = tabName
+    mainContent.Visible = (tabName == "Main")
+    stealContent.Visible = (tabName == "Steal")
+    visualsContent.Visible = (tabName == "Visuals")
+    combatContent.Visible = (tabName == "Combat")
+    
+    for name, button in pairs(tabButtons) do
+        if name == tabName then
+            button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            button.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+    end
+end
+
+-- Initialize tabs
+for tabName, button in pairs(tabButtons) do
+    button.MouseButton1Click:Connect(function()
+        switchTab(tabName)
+    end)
+end
+switchTab("Main")
+
+-- Toggle GUI visibility
+toggleButton.MouseButton1Click:Connect(function()
+    gui.Enabled = not gui.Enabled
+end)
+
 -- ========== BUTTON CONNECTIONS ==========
 tweenButton.MouseButton1Click:Connect(function()
     if active then
@@ -1325,7 +1552,7 @@ tweenButton.MouseButton1Click:Connect(function()
     end
 end)
 
-flyButton.MouseButton1Click:Connect(toggleFly)
+flyButton.MouseButton1Click:Connect(toggleFlight)
 floatButton.MouseButton1Click:Connect(toggleFloat)
 autoFloorButton.MouseButton1Click:Connect(toggleAutoFloor)
 semiInvisButton.MouseButton1Click:Connect(semiInvisibleFunction)
@@ -1389,30 +1616,18 @@ jumpInput.FocusLost:Connect(function()
     setJumpPower(newJump)
 end)
 
+-- Initialize default values
+setJumpPower(50)
+setSpeed(24)
+
 -- Clean up everything when script ends
 gui.Destroying:Connect(function()
     stopTweenToBase()
     
-    -- Clean up fly
-    if flyConnection then
-        flyConnection:Disconnect()
-    end
-    if flyBodyVelocity then
-        flyBodyVelocity:Destroy()
-    end
-    if flyAntiGravity then
-        flyAntiGravity:Destroy()
+    if guidedConn then
+        guidedConn:Disconnect()
     end
     
-    -- Clean up auto floor
-    if floorConnection then
-        floorConnection:Disconnect()
-    end
-    if floorPart then
-        floorPart:Destroy()
-    end
-    
-    -- Clean up float
     if floatConnection then
         floatConnection:Disconnect()
     end
@@ -1420,26 +1635,25 @@ gui.Destroying:Connect(function()
         floatBodyVelocity:Destroy()
     end
     
-    -- Clean up semi invisible
-    if isInvisible then
-        semiInvisibleFunction() -- This will disable it
+    if floorConnection then
+        floorConnection:Disconnect()
+    end
+    if floorPart then
+        floorPart:Destroy()
     end
     
-    -- Clean up auto lazer
+    if isInvisible then
+        semiInvisibleFunction()
+    end
+    
     if autoLazerEnabled then
         toggleAutoLazer()
     end
     
-    -- Clean up ESP
     if espEnabled then
         toggleESP()
     end
 end)
 
--- Initialize default values
-setJumpPower(50)
-setSpeed(24)
-
 print("Krypton Hub loaded successfully!")
-print("Features: Stealth Fly, Tween to Base (Safe), Float, Auto Floor (Rising), Semi Invisible, Player ESP, Auto Lazer")
-print("Fly Controls: Walk to move, look up/down to change height (Works on Mobile!)")
+print("Discord: https://discord.gg/YSwFZsGk9j")
