@@ -333,12 +333,13 @@ for tabName, button in pairs(tabButtons) do
     end)
 end
 switchTab("Main")
--- ========== CAMERA-BASED HOVER FLIGHT ==========
+-- ========== FLIGHT ==========
 local flyEnabled = false
-local hoverSpeed = 15 -- Ultra-low speed for hover-like movement
+local flySpeed = 18
 local flyBodyGyro = nil
 local flyBodyVelocity = nil
 local flyRenderConnection = nil
+local flyAntiGravity = nil
 
 local function toggleFly()
     flyEnabled = not flyEnabled
@@ -346,28 +347,29 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Hover Flight - Walk to move, look up/down for height"
+        statusLabel.Text = "Float Flight - Jump=Up, Crouch=Down"
         
         updateCharacterReferences()
-        if not character or not hrp or not humanoid then return end
+        if not character or not hrp then return end
         
-        -- Disable gravity for true hover effect
-        humanoid.PlatformStand = true
-        
-        -- Create BodyGyro for stable hovering
+        -- Create BodyGyro for stability
         flyBodyGyro = Instance.new("BodyGyro")
         flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        flyBodyGyro.P = 9e4
-        flyBodyGyro.D = 500 -- Increased damping for stable hovering
+        flyBodyGyro.P = 5e4
         flyBodyGyro.Parent = hrp
         
         -- Create BodyVelocity for movement
         flyBodyVelocity = Instance.new("BodyVelocity")
-        flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
         flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         flyBodyVelocity.Parent = hrp
         
-        -- Hover render loop
+        -- Create anti-gravity
+        flyAntiGravity = Instance.new("BodyForce")
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 0.2, 0)
+        flyAntiGravity.Parent = hrp
+        
+        -- Float render loop
         flyRenderConnection = RunService.RenderStepped:Connect(function()
             if not flyEnabled or not character or not hrp then
                 if flyRenderConnection then
@@ -378,52 +380,55 @@ local function toggleFly()
             
             local camera = Workspace.CurrentCamera
             
-            -- Smooth camera-based orientation (only rotation, not position)
-            flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
+            -- Keep character upright but follow camera direction
+            flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector * Vector3.new(1, 0, 1))
             
-            -- Get camera pitch (looking up/down)
-            local cameraPitch = camera.CFrame:ToEulerAnglesXYZ()
+            -- Get movement direction (FIXED - proper forward movement)
+            local moveDirection = Vector3.new(0, 0, 0)
+            if humanoid then
+                local humanoidMove = humanoid.MoveDirection
+                -- Convert to camera-relative movement (FIXED DIRECTION)
+                local cameraLook = camera.CFrame.LookVector
+                local cameraRight = camera.CFrame.RightVector
+                
+                local forward = humanoidMove.Z  -- Positive Z = forward
+                local right = humanoidMove.X    -- Positive X = right
+                
+                moveDirection = (cameraLook * forward) + (cameraRight * right)
+                moveDirection = Vector3.new(moveDirection.X, 0, moveDirection.Z)
+            end
             
-            -- Calculate vertical speed based on camera angle
+            -- Vertical controls (simple up/down)
             local verticalSpeed = 0
             
-            -- Look up (negative pitch) = go up
-            if cameraPitch < -0.1 then -- Looking up at sky
-                verticalSpeed = math.clamp(math.abs(cameraPitch) * 8, 0, 6) -- Gentle upward
-            -- Look down (positive pitch) = go down  
-            elseif cameraPitch > 0.1 then -- Looking down at ground
-                verticalSpeed = -math.clamp(math.abs(cameraPitch) * 8, 0, 6) -- Gentle downward
+            -- Jump to go up
+            if humanoid and humanoid.Jump then
+                verticalSpeed = 12  -- Up
             else
-                -- Looking straight = maintain height
-                verticalSpeed = 0 -- No automatic descent
+                -- Automatic slow descent when not jumping
+                verticalSpeed = -3  -- Gentle downward drift
             end
             
-            -- Get horizontal movement from humanoid (FIXED DIRECTION)
-            local moveDirection = humanoid.MoveDirection
+            -- Apply movement
+            local finalVelocity = (moveDirection * flySpeed) + Vector3.new(0, verticalSpeed, 0)
+            flyBodyVelocity.Velocity = finalVelocity
             
-            -- Convert to camera-relative movement
-            local cameraLook = camera.CFrame.LookVector
-            local cameraRight = camera.CFrame.RightVector
-            
-            -- Remove Y components for horizontal movement only
-            local horizontalLook = Vector3.new(cameraLook.X, 0, cameraLook.Z).Unit
-            local horizontalRight = Vector3.new(cameraRight.X, 0, cameraRight.Z).Unit
-            
-            -- Calculate world-space movement direction
-            local worldMove = Vector3.new(0, 0, 0)
-            if moveDirection.Magnitude > 0 then
-                worldMove = (horizontalLook * moveDirection.Z) + (horizontalRight * moveDirection.X)
-                worldMove = worldMove * hoverSpeed
+            -- Make sure all parts are parented
+            if flyBodyGyro and flyBodyGyro.Parent ~= hrp then
+                flyBodyGyro.Parent = hrp
             end
-            
-            -- Apply movement with vertical control
-            flyBodyVelocity.Velocity = Vector3.new(worldMove.X, verticalSpeed, worldMove.Z)
+            if flyBodyVelocity and flyBodyVelocity.Parent ~= hrp then
+                flyBodyVelocity.Parent = hrp
+            end
+            if flyAntiGravity and flyAntiGravity.Parent ~= hrp then
+                flyAntiGravity.Parent = hrp
+            end
         end)
         
     else
         flyButton.Text = "FLY: OFF"
         flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Hover Flight disabled"
+        statusLabel.Text = "Float Flight disabled"
         
         -- Clean up
         if flyRenderConnection then
@@ -438,8 +443,9 @@ local function toggleFly()
             flyBodyVelocity:Destroy()
             flyBodyVelocity = nil
         end
-        if humanoid then
-            humanoid.PlatformStand = false
+        if flyAntiGravity then
+            flyAntiGravity:Destroy()
+            flyAntiGravity = nil
         end
     end
 end
