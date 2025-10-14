@@ -435,7 +435,7 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Float Flight - Jump=Up, Auto descend"
+        statusLabel.Text = "Flight - Jump=Up, Auto descend"
         
         updateCharacterReferences()
         if not character or not hrp then return end
@@ -517,26 +517,7 @@ local function toggleFly()
         flyButton.Text = "FLY: OFF"
         flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         statusLabel.Text = "Float Flight disabled"
-        
-        -- Clean up
-        if flyRenderConnection then
-            flyRenderConnection:Disconnect()
-            flyRenderConnection = nil
-        end
-        if flyBodyGyro then
-            flyBodyGyro:Destroy()
-            flyBodyGyro = nil
-        end
-        if flyBodyVelocity then
-            flyBodyVelocity:Destroy()
-            flyBodyVelocity = nil
-        end
-        if flyAntiGravity then
-            flyAntiGravity:Destroy()
-            flyAntiGravity = nil
-        end
-    end
-        end
+
   
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
