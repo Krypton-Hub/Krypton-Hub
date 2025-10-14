@@ -333,7 +333,7 @@ for tabName, button in pairs(tabButtons) do
     end)
 end
 switchTab("Main")
--- ========== SIMPLE FLOAT FLIGHT ==========
+-- ========== FLIGHT ==========
 local flyEnabled = false
 local flySpeed = 18
 local flyBodyGyro = nil
@@ -421,6 +421,97 @@ local function toggleFly()
                 flyAntiGravity.Parent = hrp
             end
         end)
+-- ========== SIMPLE FLOAT FLIGHT ==========
+local flyEnabled = false
+local flySpeed = 25
+local flyBodyGyro = nil
+local flyBodyVelocity = nil
+local flyRenderConnection = nil
+local flyAntiGravity = nil
+
+local function toggleFly()
+    flyEnabled = not flyEnabled
+    
+    if flyEnabled then
+        flyButton.Text = "FLY: ON"
+        flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusLabel.Text = "Float Flight - Jump=Up, Auto descend"
+        
+        updateCharacterReferences()
+        if not character or not hrp then return end
+        
+        -- Create BodyGyro for stability
+        flyBodyGyro = Instance.new("BodyGyro")
+        flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        flyBodyGyro.P = 5e4
+        flyBodyGyro.Parent = hrp
+        
+        -- Create BodyVelocity for movement
+        flyBodyVelocity = Instance.new("BodyVelocity")
+        flyBodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
+        flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        flyBodyVelocity.Parent = hrp
+        
+        -- Create anti-gravity
+        flyAntiGravity = Instance.new("BodyForce")
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 0.2, 0)
+        flyAntiGravity.Parent = hrp
+        
+        -- Float render loop
+        flyRenderConnection = RunService.RenderStepped:Connect(function()
+            if not flyEnabled or not character or not hrp then
+                if flyRenderConnection then
+                    flyRenderConnection:Disconnect()
+                end
+                return
+            end
+            
+            local camera = Workspace.CurrentCamera
+            
+            -- Keep character upright but follow camera direction
+            flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector * Vector3.new(1, 0, 1))
+            
+            -- Get movement direction - SIMPLIFIED VERSION
+            local moveDirection = Vector3.new(0, 0, 0)
+            if humanoid then
+                -- Use humanoid move direction directly (it's already camera-relative)
+                local humanoidMove = humanoid.MoveDirection
+                
+                -- Just use the direction as-is (Roblox already handles camera relativity)
+                moveDirection = Vector3.new(humanoidMove.X, 0, humanoidMove.Z)
+                
+                -- Normalize and apply speed
+                if moveDirection.Magnitude > 0 then
+                    moveDirection = moveDirection.Unit * flySpeed
+                end
+            end
+            
+            -- Vertical controls (simple up/down)
+            local verticalSpeed = 0
+            
+            -- Jump to go up
+            if humanoid and humanoid.Jump then
+                verticalSpeed = 15  -- Up
+            else
+                -- Automatic slow descent when not jumping
+                verticalSpeed = -4  -- Gentle downward drift
+            end
+            
+            -- Apply movement (combine horizontal and vertical)
+            local finalVelocity = moveDirection + Vector3.new(0, verticalSpeed, 0)
+            flyBodyVelocity.Velocity = finalVelocity
+            
+            -- Make sure all parts are parented
+            if flyBodyGyro and flyBodyGyro.Parent ~= hrp then
+                flyBodyGyro.Parent = hrp
+            end
+            if flyBodyVelocity and flyBodyVelocity.Parent ~= hrp then
+                flyBodyVelocity.Parent = hrp
+            end
+            if flyAntiGravity and flyAntiGravity.Parent ~= hrp then
+                flyAntiGravity.Parent = hrp
+            end
+        end)
         
     else
         flyButton.Text = "FLY: OFF"
@@ -445,7 +536,7 @@ local function toggleFly()
             flyAntiGravity = nil
         end
     end
-end
+        end
   
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
