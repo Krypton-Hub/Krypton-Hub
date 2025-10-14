@@ -333,7 +333,7 @@ for tabName, button in pairs(tabButtons) do
     end)
 end
 switchTab("Main")
--- ========== FLIGHT ==========
+-- ========== SIMPLE FLOAT FLIGHT ==========
 local flyEnabled = false
 local flySpeed = 18
 local flyBodyGyro = nil
@@ -347,7 +347,7 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Float Flight - Jump=Up, Crouch=Down"
+        statusLabel.Text = "Float Flight - Jump=Up, Auto descend"
         
         updateCharacterReferences()
         if not character or not hrp then return end
@@ -383,19 +383,16 @@ local function toggleFly()
             -- Keep character upright but follow camera direction
             flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector * Vector3.new(1, 0, 1))
             
-            -- Get movement direction (FIXED - proper forward movement)
+            -- Get movement direction (SIMPLE FIX - no complex camera math)
             local moveDirection = Vector3.new(0, 0, 0)
             if humanoid then
+                -- Use humanoid move direction directly (it's already correct)
                 local humanoidMove = humanoid.MoveDirection
-                -- Convert to camera-relative movement (FIXED DIRECTION)
-                local cameraLook = camera.CFrame.LookVector
-                local cameraRight = camera.CFrame.RightVector
+                moveDirection = Vector3.new(humanoidMove.X, 0, humanoidMove.Z)
                 
-                local forward = humanoidMove.Z  -- Positive Z = forward
-                local right = humanoidMove.X    -- Positive X = right
-                
-                moveDirection = (cameraLook * forward) + (cameraRight * right)
-                moveDirection = Vector3.new(moveDirection.X, 0, moveDirection.Z)
+                -- Make it camera-relative by rotating it
+                local cameraAngle = camera.CFrame - camera.CFrame.Position
+                moveDirection = cameraAngle:VectorToWorldSpace(moveDirection)
             end
             
             -- Vertical controls (simple up/down)
@@ -449,6 +446,7 @@ local function toggleFly()
         end
     end
 end
+  
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
     SemiInvisible = {}
