@@ -1,5 +1,4 @@
--- Krypton Hub - Complete GUI with Fly, ESP, Tween, Float, Auto Floor, Semi-Invisible
--- Mobile Compatible Version with Precise Fly Controls
+-- Krypton Hub - Made By agent_duke13
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -335,11 +334,13 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 -- ========== SMOOTH BODYGYRO FLIGHT ==========
+-- ========== SMOOTH FLOAT-LIKE FLIGHT ==========
 local flyEnabled = false
-local flySpeed = 50
+local flySpeed = 15  -- Much slower for better control
 local flyBodyGyro = nil
 local flyBodyVelocity = nil
 local flyRenderConnection = nil
+local flyAntiGravity = nil
 
 local function toggleFly()
     flyEnabled = not flyEnabled
@@ -347,24 +348,29 @@ local function toggleFly()
     if flyEnabled then
         flyButton.Text = "FLY: ON"
         flyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Smooth Fly enabled - Use movement controls"
+        statusLabel.Text = "Float Flight enabled - Gentle movement"
         
         updateCharacterReferences()
         if not character or not hrp then return end
         
-        -- Create BodyGyro for camera-relative movement
+        -- Create BodyGyro for smooth orientation
         flyBodyGyro = Instance.new("BodyGyro")
         flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        flyBodyGyro.P = 9e4
+        flyBodyGyro.P = 5e4  -- Lower P for smoother rotation
         flyBodyGyro.Parent = hrp
         
         -- Create BodyVelocity for movement
         flyBodyVelocity = Instance.new("BodyVelocity")
-        flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        flyBodyVelocity.MaxForce = Vector3.new(5000, 5000, 5000)  -- Lower force for gentler movement
         flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         flyBodyVelocity.Parent = hrp
         
-        -- Fly render loop
+        -- Create anti-gravity for float effect
+        flyAntiGravity = Instance.new("BodyForce")
+        flyAntiGravity.Force = Vector3.new(0, workspace.Gravity * hrp:GetMass() * 0.3, 0)  -- 30% gravity for float
+        flyAntiGravity.Parent = hrp
+        
+        -- Float render loop
         flyRenderConnection = RunService.RenderStepped:Connect(function()
             if not flyEnabled or not character or not hrp then
                 if flyRenderConnection then
@@ -375,8 +381,8 @@ local function toggleFly()
             
             local camera = Workspace.CurrentCamera
             
-            -- Update gyro to match camera rotation
-            flyBodyGyro.CFrame = camera.CFrame
+            -- Gentle gyro to match camera (not too strong)
+            flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
             
             -- Get movement direction from humanoid
             local moveDirection = Vector3.new(0, 0, 0)
@@ -384,14 +390,20 @@ local function toggleFly()
                 moveDirection = humanoid.MoveDirection
             end
             
-            -- Apply movement relative to camera
-            flyBodyVelocity.Velocity = (camera.CFrame:VectorToWorldSpace(moveDirection)) * flySpeed
+            -- Very gentle movement with smoothing
+            local targetVelocity = (camera.CFrame:VectorToWorldSpace(moveDirection)) * flySpeed
+            
+            -- Smooth velocity changes for floaty feel
+            flyBodyVelocity.Velocity = flyBodyVelocity.Velocity:Lerp(targetVelocity, 0.1)
+            
+            -- Add very slight automatic upward float
+            flyBodyVelocity.Velocity = flyBodyVelocity.Velocity + Vector3.new(0, 2, 0)
         end)
         
     else
         flyButton.Text = "FLY: OFF"
         flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Smooth Fly disabled"
+        statusLabel.Text = "Float Flight disabled"
         
         -- Clean up
         if flyRenderConnection then
@@ -406,8 +418,12 @@ local function toggleFly()
             flyBodyVelocity:Destroy()
             flyBodyVelocity = nil
         end
-    end
+        if flyAntiGravity then
+            flyAntiGravity:Destroy()
+            flyAntiGravity = nil
         end
+    end
+end
 -- ========== FIXED SEMI INVISIBLE FEATURE ==========
 local connections = {
     SemiInvisible = {}
