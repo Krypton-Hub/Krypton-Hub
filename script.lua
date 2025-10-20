@@ -1,4 +1,4 @@
--- Krypton Hub - Made By agent_duke13 - Enhanced Version
+-- Krypton Hub - Made By agent_duke13 - Enhanced Complete Version
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -180,12 +180,12 @@ statusCorner.CornerRadius = UDim.new(0, 6)
 statusCorner.Parent = statusLabel
 
 -- Enhanced button styling function
-local function createStyledButton(parent, text, position)
+local function createStyledButton(parent, text, position, customColor)
     local button = Instance.new("TextButton")
     button.Text = text
     button.Size = UDim2.new(0.9, 0, 0, 32)
     button.Position = position
-    button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    button.BackgroundColor3 = customColor or Color3.fromRGB(35, 35, 35)
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
     button.Font = Enum.Font.GothamBold
     button.TextSize = 12
@@ -226,48 +226,7 @@ local function createStyledButton(parent, text, position)
     return button
 end
 
--- Main Tab Content
-local mainContent = Instance.new("Frame")
-mainContent.Size = UDim2.new(1, 0, 1, 0)
-mainContent.BackgroundTransparency = 1
-mainContent.Visible = true
-mainContent.Parent = contentFrame
-
--- Enhanced TWEEN TO BASE SYSTEM
-local tweenButton = createStyledButton(mainContent, "▶ TWEEN TO BASE", UDim2.new(0.05, 0, 0.02, 0))
-
--- Keep existing tween system variables and functions...
-local active = false
-local currentTween
-local walkThread
-local tweenSpeed = 24
-
-local function applyAntiDeath(state)
-    updateCharacterReferences()
-    if humanoid then
-        for _, s in pairs({
-            Enum.HumanoidStateType.FallingDown,
-            Enum.HumanoidStateType.Ragdoll,
-            Enum.HumanoidStateType.PlatformStanding,
-            Enum.HumanoidStateType.Seated
-        }) do
-            humanoid:SetStateEnabled(s, not state)
-        end
-        if state then
-            humanoid.Health = humanoid.MaxHealth
-            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                if humanoid.Health <= 0 then
-                    humanoid.Health = humanoid.MaxHealth
-                end
-            end)
-        end
-    end
-end
-
--- [Keep all your existing tween system functions exactly as they are...]
--- getBasePosition, tweenWalkTo, isAtBase, walkToBase, startTweenToBase, stopTweenToBase
-
--- Enhanced Speed and Jump inputs
+-- Enhanced input field function
 local function createInputField(parent, label, position, defaultValue)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(0.9, 0, 0, 30)
@@ -309,17 +268,389 @@ local function createInputField(parent, label, position, defaultValue)
     return input
 end
 
+-- Main Tab Content
+local mainContent = Instance.new("Frame")
+mainContent.Size = UDim2.new(1, 0, 1, 0)
+mainContent.BackgroundTransparency = 1
+mainContent.Visible = true
+mainContent.Parent = contentFrame
+
+-- ========== ENHANCED TWEEN TO BASE SYSTEM ==========
+local tweenButton = createStyledButton(mainContent, "▶ TWEEN TO BASE", UDim2.new(0.05, 0, 0.02, 0))
+
+local active = false
+local currentTween
+local walkThread
+local tweenSpeed = 24
+
+local function applyAntiDeath(state)
+    updateCharacterReferences()
+    if humanoid then
+        for _, s in pairs({
+            Enum.HumanoidStateType.FallingDown,
+            Enum.HumanoidStateType.Ragdoll,
+            Enum.HumanoidStateType.PlatformStanding,
+            Enum.HumanoidStateType.Seated
+        }) do
+            humanoid:SetStateEnabled(s, not state)
+        end
+        if state then
+            humanoid.Health = humanoid.MaxHealth
+            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                if humanoid.Health <= 0 then
+                    humanoid.Health = humanoid.MaxHealth
+                end
+            end)
+        end
+    end
+end
+
+local function getBasePosition()
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        local base = plot:FindFirstChild("DeliveryHitbox")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+            return base.Position
+        end
+    end
+    return nil
+end
+
+local Y_OFFSET = 3
+local STOP_DISTANCE = 10
+
+local function tweenWalkTo(position)
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return false
+    end
+
+    local startPos = hrp.Position
+    local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
+    local distance = (targetPos - startPos).Magnitude
+    local speed = math.max(tweenSpeed, 16)
+    local duration = distance / speed
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+
+    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    currentTween:Play()
+
+    if humanoid then
+        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+    end
+
+    currentTween.Completed:Wait()
+    currentTween = nil
+    return true
+end
+
+local function isAtBase(basePos)
+    if not basePos or not hrp then return false end
+    local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
+    return dist <= STOP_DISTANCE
+end
+
+local function walkToBase()
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return
+    end
+
+    local target = getBasePosition()
+    if not target then
+        statusLabel.Text = "Base Not Found"
+        return
+    end
+
+    while active do
+        updateCharacterReferences()
+        if not hrp then
+            statusLabel.Text = "Character died, stopping"
+            stopTweenToBase()
+            break
+        end
+
+        if not target then
+            statusLabel.Text = "Base Not Found"
+            task.wait(1)
+            break
+        end
+
+        if isAtBase(target) then
+            statusLabel.Text = "Reached Base"
+            stopTweenToBase()
+            break
+        end
+
+        local path = PathfindingService:CreatePath()
+        local success, err = pcall(function()
+            path:ComputeAsync(hrp.Position, target)
+        end)
+        
+        if not success then
+            statusLabel.Text = "Direct path to base"
+            local tweenSuccess = pcall(tweenWalkTo, target)
+            if not tweenSuccess then
+                statusLabel.Text = "Tween failed"
+                stopTweenToBase()
+            end
+            break
+        end
+
+        if path.Status == Enum.PathStatus.Success then
+            local waypoints = path:GetWaypoints()
+            statusLabel.Text = "Following path (" .. #waypoints .. " points)"
+            
+            for i, waypoint in ipairs(waypoints) do
+                if not active or not hrp or isAtBase(target) then 
+                    return 
+                end
+                
+                if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
+                    local tweenSuccess = pcall(tweenWalkTo, waypoint.Position)
+                    if not tweenSuccess then
+                        statusLabel.Text = "Path tween failed"
+                        return
+                    end
+                end
+            end
+        else
+            statusLabel.Text = "Direct path (no obstacles)"
+            local tweenSuccess = pcall(tweenWalkTo, target)
+            if not tweenSuccess then
+                statusLabel.Text = "Direct tween failed"
+                stopTweenToBase()
+            end
+        end
+
+        task.wait(0.1)
+    end
+end
+
+function startTweenToBase()
+    if active then return end
+    
+    updateCharacterReferences()
+    if not hrp then
+        statusLabel.Text = "Error: No character"
+        return
+    end
+    
+    active = true
+    applyAntiDeath(true)
+    tweenButton.Text = "■ STOP TWEEN"
+    statusLabel.Text = "Walking to Base..."
+
+    walkThread = task.spawn(function()
+        while active do
+            walkToBase()
+            if not active then break end
+            task.wait(0.5)
+        end
+    end)
+end
+
+function stopTweenToBase()
+    if not active then return end
+    active = false
+    if currentTween then 
+        currentTween:Cancel() 
+        currentTween = nil
+    end
+    if walkThread then 
+        task.cancel(walkThread) 
+        walkThread = nil
+    end
+    
+    if humanoid then
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+    
+    tweenButton.Text = "▶ TWEEN TO BASE"
+    statusLabel.Text = "Ready"
+end
+
+-- Enhanced Speed and Jump inputs
 local speedInput = createInputField(mainContent, "Speed:", UDim2.new(0.05, 0, 0.12, 0), 24)
 local jumpInput = createInputField(mainContent, "Jump Power:", UDim2.new(0.05, 0, 0.20, 0), 50)
 
--- Enhanced FLIGHT SYSTEM
+-- ========== ENHANCED FLIGHT SYSTEM ==========
 local flyButton = createStyledButton(mainContent, "SLOW FLIGHT: OFF", UDim2.new(0.05, 0, 0.28, 0))
 
--- Enhanced FLOAT SYSTEM
+local guidedOn = false
+local guidedConn
+
+local function toggleFlight()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    guidedOn = not guidedOn
+    flyButton.Text = guidedOn and "SLOW FLIGHT: ON" or "SLOW FLIGHT: OFF"
+    
+    if guidedOn then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            guidedConn = RunService.RenderStepped:Connect(function()
+                if guidedOn and hrp then
+                    hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * 25
+                end
+            end)
+        end
+    else
+        if guidedConn then 
+            guidedConn:Disconnect() 
+            guidedConn = nil 
+        end
+        if hum then 
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
+        end
+    end
+end
+
+-- ========== ENHANCED FLOAT SYSTEM ==========
 local floatButton = createStyledButton(mainContent, "FLOAT: OFF", UDim2.new(0.05, 0, 0.36, 0))
 
--- Enhanced AUTO FLOOR SYSTEM
+local floatEnabled = false
+local floatBodyVelocity
+local floatConnection
+
+local function toggleFloat()
+    floatEnabled = not floatEnabled
+    
+    if floatEnabled then
+        floatButton.Text = "FLOAT: ON"
+        statusLabel.Text = "Float enabled"
+        
+        floatBodyVelocity = Instance.new("BodyVelocity")
+        floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+        
+        if floatConnection then
+            floatConnection:Disconnect()
+        end
+        
+        floatConnection = RunService.Heartbeat:Connect(function()
+            updateCharacterReferences()
+            if not floatEnabled or not character or not hrp then
+                return
+            end
+            
+            local rayOrigin = hrp.Position
+            local rayDirection = Vector3.new(0, -10, 0)
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {character}
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+            
+            local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+            
+            if not raycastResult then
+                floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
+            else
+                floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+            end
+            
+            if floatBodyVelocity and floatBodyVelocity.Parent ~= hrp then
+                floatBodyVelocity.Parent = hrp
+            end
+        end)
+        
+    else
+        floatButton.Text = "FLOAT: OFF"
+        statusLabel.Text = "Float disabled"
+        
+        if floatConnection then
+            floatConnection:Disconnect()
+            floatConnection = nil
+        end
+        if floatBodyVelocity then
+            floatBodyVelocity:Destroy()
+            floatBodyVelocity = nil
+        end
+    end
+end
+
+-- ========== ENHANCED AUTO FLOOR SYSTEM ==========
 local autoFloorButton = createStyledButton(mainContent, "AUTO FLOOR: OFF", UDim2.new(0.05, 0, 0.44, 0))
+
+local floorOn = false
+local floorPart
+local floorConnection
+local floorRiseSpeed = 5.0
+local autoFloorSize = Vector3.new(8, 1, 8)
+
+local function toggleAutoFloor()
+    floorOn = not floorOn
+    
+    if floorOn then
+        autoFloorButton.Text = "AUTO FLOOR: ON"
+        statusLabel.Text = "Auto floor enabled (Rising)"
+        
+        floorPart = Instance.new("Part")
+        floorPart.Size = autoFloorSize
+        floorPart.Anchored = true
+        floorPart.CanCollide = true
+        floorPart.Material = Enum.Material.Neon
+        floorPart.Color = Color3.fromRGB(80, 170, 255)
+        floorPart.Transparency = 0.3
+        floorPart.Name = "KryptonAutoFloor"
+        floorPart.Parent = Workspace
+        
+        local pointLight = Instance.new("PointLight")
+        pointLight.Brightness = 0.5
+        pointLight.Range = 12
+        pointLight.Color = Color3.fromRGB(80, 170, 255)
+        pointLight.Parent = floorPart
+        
+        if floorConnection then
+            floorConnection:Disconnect()
+        end
+        
+        floorConnection = RunService.RenderStepped:Connect(function()
+            if not floorOn or not floorPart then
+                return
+            end
+            
+            updateCharacterReferences()
+            
+            if not hrp then
+                return
+            end
+            
+            local currentPos = floorPart.Position
+            local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPart.Size.Y/2)
+            
+            if targetY > currentPos.Y then
+                local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
+                floorPart.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
+            else
+                floorPart.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
+            end
+        end)
+        
+    else
+        autoFloorButton.Text = "AUTO FLOOR: OFF"
+        statusLabel.Text = "Auto floor disabled"
+        
+        if floorConnection then
+            floorConnection:Disconnect()
+            floorConnection = nil
+        end
+        if floorPart then
+            floorPart:Destroy()
+            floorPart = nil
+        end
+    end
+end
 
 -- ========== ENHANCED SEMI INVISIBLE SYSTEM WITH GOD MODE ==========
 local semiInvisButton = createStyledButton(mainContent, "SEMI INVISIBLE: OFF", UDim2.new(0.05, 0, 0.52, 0))
@@ -612,15 +943,575 @@ local function semiInvisibleFunction()
     end
 end
 
--- [Keep all your existing tab systems, steal content, visuals, combat, etc...]
--- Just replace the button creation with createStyledButton for consistency
+-- ========== STEAL TAB CONTENT ==========
+local stealContent = Instance.new("Frame")
+stealContent.Size = UDim2.new(1, 0, 1, 0)
+stealContent.BackgroundTransparency = 1
+stealContent.Visible = false
+stealContent.Parent = contentFrame
+
+-- 2nd Floor Steal
+local secondFloorButton = createStyledButton(stealContent, "2ND FLOOR STEAL", UDim2.new(0.05, 0, 0.05, 0), Color3.fromRGB(220, 20, 60))
+
+-- 3rd Floor Steal
+local thirdFloorButton = createStyledButton(stealContent, "3RD FLOOR STEAL", UDim2.new(0.05, 0, 0.15, 0), Color3.fromRGB(220, 20, 60))
+
+-- Desync Anti-Hit
+local desyncButton = createStyledButton(stealContent, "DESYNC (ANTI HIT): OFF", UDim2.new(0.05, 0, 0.25, 0), Color3.fromRGB(220, 20, 60))
+
+-- ========== DESYNC SYSTEM ==========
+local desyncActive = false
+
+local function enableMobileDesync()
+    local success, error = pcall(function()
+        local backpack = player:WaitForChild("Backpack")
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        local packages = ReplicatedStorage:WaitForChild("Packages", 5)
+        if not packages then warn("Packages not found") return false end
+        
+        local netFolder = packages:WaitForChild("Net", 5)
+        if not netFolder then warn("Net folder not found") return false end
+        
+        local useItemRemote = netFolder:WaitForChild("RE/UseItem", 5)
+        local teleportRemote = netFolder:WaitForChild("RE/QuantumCloner/OnTeleport", 5)
+        if not useItemRemote or not teleportRemote then warn("Remotes not found") return false end
+        
+        local toolNames = {"Quantum Cloner", "whatever", "whatever"}
+        local tool
+        for _, toolName in ipairs(toolNames) do
+            tool = backpack:FindFirstChild(toolName) or character:FindFirstChild(toolName)
+            if tool then break end
+        end
+        if not tool then
+            for _, item in ipairs(backpack:GetChildren()) do
+                if item:IsA("Tool") then tool=item break end
+            end
+        end
+        
+        if tool and tool.Parent==backpack then
+            humanoid:EquipTool(tool)
+            task.wait(0.5)
+        end
+        
+        if setfflag then setfflag("WorldStepMax", "-9999999999") end
+        task.wait(0.2)
+        useItemRemote:FireServer()
+        task.wait(1)
+        teleportRemote:FireServer()
+        task.wait(2)
+        if setfflag then setfflag("WorldStepMax", "-1") end
+        print("Desync activated")
+        return true
+    end)
+    if not success then
+        warn("Desync error: " .. tostring(error))
+        return false
+    end
+    return success
+end
+
+local function disableMobileDesync()
+    pcall(function()
+        if setfflag then setfflag("WorldStepMax", "-1") end
+        print("Desync deactivated")
+    end)
+end
+
+desyncButton.MouseButton1Click:Connect(function()
+    desyncActive = not desyncActive
+    if desyncActive then
+        local success = enableMobileDesync()
+        if success then
+            desyncButton.Text = "DESYNC (ANTI HIT): ON"
+        else
+            desyncActive=false
+            desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+        end
+    else
+        disableMobileDesync()
+        desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+    end
+end)
+
+player.CharacterAdded:Connect(function()
+    desyncActive=false
+    desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+end)
+
+-- ========== 3RD FLOOR STEAL SYSTEM ==========
+local floorOn = false
+local floorPart
+local floorConnection
+
+local function setTransparencySpecific(part, transparency)
+    if part and part:IsA("BasePart") then
+        if not part:GetAttribute("OriginalTransparency") then
+            part:SetAttribute("OriginalTransparency", part.Transparency)
+        end
+        if not part:GetAttribute("OriginalCanCollide") then
+            part:SetAttribute("OriginalCanCollide", part.CanCollide)
+        end
+        part.Transparency = transparency
+        part.CanCollide = false
+    end
+end
+
+local function processAnimalPodium(podium, podiumNumber, plotName)
+    local claim = podium:FindFirstChild("Claim")
+    if claim then
+        local hitbox = claim:FindFirstChild("Hitbox")
+        if hitbox then
+            pcall(function()
+                if not hitbox:GetAttribute("OriginalTransparency") then
+                    hitbox:SetAttribute("OriginalTransparency", hitbox.Transparency)
+                    hitbox:SetAttribute("OriginalCanCollide", hitbox.CanCollide)
+                end
+                hitbox.Transparency = 0.5
+                hitbox.CanCollide = false
+                if hitbox:FindFirstChild("SelectionBox") then hitbox.SelectionBox:Destroy() end
+                if hitbox:FindFirstChild("SurfaceGui") then hitbox.SurfaceGui.Enabled=false end
+                if hitbox:FindFirstChild("BillboardGui") then hitbox.BillboardGui.Enabled=false end
+                for _, script in pairs(hitbox:GetChildren()) do
+                    if script:IsA("LocalScript") or script:IsA("Script") then
+                        script.Disabled=true
+                    end
+                end
+            end)
+        end
+    end
+    local base = podium:FindFirstChild("Base")
+    if base then
+        local spawn = base:FindFirstChild("Spawn")
+        setTransparencySpecific(spawn,0.5)
+        local decorations = base:FindFirstChild("Decorations")
+        if decorations then
+            local decoration = decorations:FindFirstChild("Decoration")
+            setTransparencySpecific(decoration,0.5)
+            local part = decorations:FindFirstChild("Part")
+            setTransparencySpecific(part,0.5)
+            for _, child in pairs(decorations:GetChildren()) do
+                if child:IsA("BasePart") and child.Name~="Decoration" and child.Name~="Part" then
+                    setTransparencySpecific(child,0.5)
+                end
+            end
+        end
+    end
+end
+
+local function destroyPlatform()
+    if floorPart then floorPart:Destroy() floorPart=nil end
+    floorOn=false
+    if floorConnection then floorConnection:Disconnect() floorConnection=nil end
+    thirdFloorButton.Text = "3RD FLOOR STEAL"
+end
+
+local function canRise()
+    if not floorPart then return false end
+    local origin = floorPart.Position + Vector3.new(0, floorPart.Size.Y/2,0)
+    local direction = Vector3.new(0,2,0)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {floorPart, player.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    return not Workspace:Raycast(origin,direction,rayParams)
+end
+
+local function setup3rdFloor()
+    updateCharacterReferences()
+    if not character then return end
+    
+    local root = character:WaitForChild("HumanoidRootPart")
+    
+    thirdFloorButton.MouseButton1Click:Connect(function()
+        floorOn = not floorOn
+        if floorOn then
+            floorPart = Instance.new("Part")
+            floorPart.Size = Vector3.new(6,0.5,6)
+            floorPart.Anchored=true
+            floorPart.CanCollide=true
+            floorPart.Transparency=0
+            floorPart.Material=Enum.Material.Plastic
+            floorPart.Color=Color3.fromRGB(255,200,0)
+            floorPart.Position=root.Position-Vector3.new(0, root.Size.Y/2 + floorPart.Size.Y/2, 0)
+            floorPart.Parent = Workspace
+
+            local plots = Workspace:FindFirstChild("Plots")
+            if plots then
+                for _, plot in pairs(plots:GetChildren()) do
+                    for _, part in pairs(plot:GetDescendants()) do
+                        if part:IsA("BasePart") and (part.Name:lower():find("base plot") or part.Name:lower():find("base") or part.Name:lower():find("plot")) then
+                            part.Transparency = 0.5
+                        end
+                    end
+                    local animalPodiums = plot:FindFirstChild("AnimalPodiums")
+                    if animalPodiums then
+                        for _, podium in pairs(animalPodiums:GetChildren()) do
+                            if podium:IsA("Model") or podium:IsA("Folder") then
+                                processAnimalPodium(podium, podium.Name, plot.Name)
+                            end
+                        end
+                    end
+                end
+            end
+
+            floorConnection = RunService.Heartbeat:Connect(function(dt)
+                if floorPart and floorOn then
+                    local cur = floorPart.Position
+                    local newXZ = Vector3.new(root.Position.X, cur.Y, root.Position.Z)
+                    if canRise() then
+                        floorPart.Position = newXZ + Vector3.new(0, dt*15,0)
+                    else
+                        floorPart.Position=newXZ
+                    end
+                end
+            end)
+            thirdFloorButton.Text = "3RD FLOOR STEAL: ON"
+        else
+            destroyPlatform()
+        end
+    end)
+
+    character:WaitForChild("Humanoid").Died:Connect(destroyPlatform)
+end
+
+if player.Character then setup3rdFloor() end
+player.CharacterAdded:Connect(setup3rdFloor)
+
+-- 2nd Floor Steal (placeholder - add your specific functionality)
+secondFloorButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "2nd Floor Steal activated"
+    -- Add your 2nd floor steal logic here
+end)
+
+-- ========== VISUALS TAB CONTENT ==========
+local visualsContent = Instance.new("Frame")
+visualsContent.Size = UDim2.new(1, 0, 1, 0)
+visualsContent.BackgroundTransparency = 1
+visualsContent.Visible = false
+visualsContent.Parent = contentFrame
+
+-- Player ESP
+local espButton = createStyledButton(visualsContent, "PLAYER ESP: OFF", UDim2.new(0.05, 0, 0.05, 0))
+
+local espEnabled = false
+local espFolders = {}
+local espConnections = {}
+
+local function createESP(player)
+    if player == Players.LocalPlayer then return end
+    
+    local folder = Instance.new("Folder")
+    folder.Name = player.Name .. "_ESP"
+    folder.Parent = Workspace
+    espFolders[player] = folder
+    
+    local function updateESP(character)
+        if not character or not folder then return end
+        
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not hrp or not humanoid then return end
+        
+        local box = Instance.new("BoxHandleAdornment")
+        box.Name = "Box"
+        box.Adornee = hrp
+        box.AlwaysOnTop = true
+        box.ZIndex = 1
+        box.Size = Vector3.new(4, 6, 2)
+        box.Color3 = humanoid.Health > 0 and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        box.Transparency = 0.3
+        box.Parent = folder
+        
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "NameTag"
+        billboard.Adornee = hrp
+        billboard.Size = UDim2.new(0, 100, 0, 40)
+        billboard.StudsOffset = Vector3.new(0, 4, 0)
+        billboard.AlwaysOnTop = true
+        
+        local nameLabel = Instance.new("TextLabel", billboard)
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 14
+        
+        local healthLabel = Instance.new("TextLabel", billboard)
+        healthLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        healthLabel.Position = UDim2.new(0, 0, 0.5, 0)
+        healthLabel.BackgroundTransparency = 1
+        healthLabel.Text = "HP: " .. math.floor(humanoid.Health)
+        healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        healthLabel.TextStrokeTransparency = 0
+        healthLabel.Font = Enum.Font.Gotham
+        healthLabel.TextSize = 12
+        
+        billboard.Parent = folder
+        
+        local healthConnection = humanoid.HealthChanged:Connect(function()
+            if folder and healthLabel then
+                healthLabel.Text = "HP: " .. math.floor(humanoid.Health)
+                if box then
+                    box.Color3 = humanoid.Health > 0 and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+                end
+            end
+        end)
+        
+        table.insert(espConnections, healthConnection)
+    end
+    
+    if player.Character then
+        updateESP(player.Character)
+    end
+    
+    local charConnection = player.CharacterAdded:Connect(updateESP)
+    table.insert(espConnections, charConnection)
+end
+
+local function removeESP(player)
+    if espFolders[player] then
+        espFolders[player]:Destroy()
+        espFolders[player] = nil
+    end
+end
+
+local function toggleESP()
+    espEnabled = not espEnabled
+    espButton.Text = espEnabled and "PLAYER ESP: ON" or "PLAYER ESP: OFF"
+    
+    if espEnabled then
+        statusLabel.Text = "ESP enabled"
+        for _, plr in ipairs(Players:GetPlayers()) do
+            createESP(plr)
+        end
+        
+        local playerAddedConnection = Players.PlayerAdded:Connect(createESP)
+        table.insert(espConnections, playerAddedConnection)
+        
+        local playerRemovingConnection = Players.PlayerRemoving:Connect(function(plr)
+            removeESP(plr)
+        end)
+        table.insert(espConnections, playerRemovingConnection)
+        
+    else
+        statusLabel.Text = "ESP disabled"
+        for plr, folder in pairs(espFolders) do
+            if folder then
+                folder:Destroy()
+            end
+        end
+        espFolders = {}
+        
+        for _, connection in ipairs(espConnections) do
+            if connection then
+                connection:Disconnect()
+            end
+        end
+        espConnections = {}
+    end
+end
+
+-- ========== COMBAT TAB CONTENT ==========
+local combatContent = Instance.new("Frame")
+combatContent.Size = UDim2.new(1, 0, 1, 0)
+combatContent.BackgroundTransparency = 1
+combatContent.Visible = false
+combatContent.Parent = contentFrame
+
+-- Auto Lazer
+local autoLazerButton = createStyledButton(combatContent, "AUTO LAZER: OFF", UDim2.new(0.05, 0, 0.05, 0))
+
+local autoLazerEnabled = false
+local autoLazerThread = nil
+
+local function getLazerRemote()
+    local remote = nil
+    local possiblePaths = {
+        "Packages.Net.RE/UseItem",
+        "Packages.Net.RE.UseItem", 
+        "RE/UseItem",
+        "UseItem",
+        "Packages.Knit.Services.WeaponService.RE.UseItem",
+        "WeaponService.RE.UseItem"
+    }
+    
+    for _, path in ipairs(possiblePaths) do
+        local success, result = pcall(function()
+            local current = ReplicatedStorage
+            for part in path:gmatch("[^%.]+") do
+                if part:find("/") then
+                    local parts = {}
+                    for p in part:gmatch("[^%/]+") do
+                        table.insert(parts, p)
+                    end
+                    current = current:FindFirstChild(parts[1])
+                    if current and #parts > 1 then
+                        for i = 2, #parts do
+                            current = current:FindFirstChild(parts[i])
+                            if not current then break end
+                        end
+                    end
+                else
+                    current = current:FindFirstChild(part)
+                end
+                if not current then return nil end
+            end
+            return current
+        end)
+        
+        if success and result then
+            remote = result
+            break
+        end
+    end
+    
+    return remote
+end
+
+local function isValidTarget(player)
+    if not player or not player.Character or player == Players.LocalPlayer then return false end
+    local targetHRP = player.Character:FindFirstChild("HumanoidRootPart")
+    local targetHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not targetHRP or not targetHumanoid then return false end
+    if targetHumanoid.Health <= 0 then return false end
+    return true
+end
+
+local function findNearestAllowed()
+    updateCharacterReferences()
+    if not character or not hrp then return nil end
+    
+    local myPos = hrp.Position
+    local nearest = nil
+    local nearestDist = math.huge
+    
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if isValidTarget(pl) then
+            local targetHRP = pl.Character:FindFirstChild("HumanoidRootPart")
+            if targetHRP then
+                local d = (Vector3.new(targetHRP.Position.X, 0, targetHRP.Position.Z) - Vector3.new(myPos.X, 0, myPos.Z)).Magnitude
+                if d < nearestDist then
+                    nearestDist = d
+                    nearest = pl
+                end
+            end
+        end
+    end
+    return nearest
+end
+
+local function safeFire(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+    
+    local remote = getLazerRemote()
+    if not remote then
+        statusLabel.Text = "Lazer remote not found"
+        return
+    end
+    
+    local args = {
+        [1] = targetHRP.Position,
+        [2] = targetHRP
+    }
+    
+    local success, err = pcall(function()
+        if remote:IsA("RemoteEvent") then
+            remote:FireServer(unpack(args))
+        elseif remote:IsA("RemoteFunction") then
+            remote:InvokeServer(unpack(args))
+        end
+    end)
+    
+    if not success then
+        statusLabel.Text = "Failed to fire lazer: " .. tostring(err)
+    end
+end
+
+local function autoLazerWorker()
+    while autoLazerEnabled do
+        local target = findNearestAllowed()
+        if target then
+            safeFire(target)
+        else
+            statusLabel.Text = "No valid targets found"
+        end
+        local t0 = tick()
+        while tick() - t0 < 0.6 do
+            if not autoLazerEnabled then break end
+            RunService.Heartbeat:Wait()
+        end
+    end
+end
+
+local function toggleAutoLazer()
+    autoLazerEnabled = not autoLazerEnabled
+    autoLazerButton.Text = autoLazerEnabled and "AUTO LAZER: ON" or "AUTO LAZER: OFF"
+    statusLabel.Text = autoLazerEnabled and "Auto lazer enabled" or "Auto lazer disabled"
+    
+    if autoLazerEnabled then
+        if autoLazerThread then
+            task.cancel(autoLazerThread)
+        end
+        autoLazerThread = task.spawn(autoLazerWorker)
+    else
+        if autoLazerThread then
+            task.cancel(autoLazerThread)
+            autoLazerThread = nil
+        end
+    end
+end
 
 -- Enhanced DISCORD BUTTON
-local discordBtn = createStyledButton(contentFrame, "📱 DISCORD", UDim2.new(0.05, 0, 0.85, 0))
-discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+local discordBtn = createStyledButton(contentFrame, "📱 DISCORD", UDim2.new(0.05, 0, 0.85, 0), Color3.fromRGB(88, 101, 242))
 
--- [Keep all your existing tab switching, button connections, and other systems...]
--- Just update the visual styling as shown above
+discordBtn.MouseButton1Click:Connect(function()
+    if setclipboard then 
+        setclipboard("https://discord.gg/YSwFZsGk9j")
+    elseif toclipboard then 
+        toclipboard("https://discord.gg/YSwFZsGk9j") 
+    end
+    local originalText = discordBtn.Text
+    discordBtn.Text = "Link Copied!"
+    task.wait(2)
+    discordBtn.Text = originalText
+end)
+
+-- ========== TAB SYSTEM ==========
+local function switchTab(tabName)
+    currentTab = tabName
+    mainContent.Visible = (tabName == "Main")
+    stealContent.Visible = (tabName == "Steal")
+    visualsContent.Visible = (tabName == "Visuals")
+    combatContent.Visible = (tabName == "Combat")
+    
+    for name, button in pairs(tabButtons) do
+        if name == tabName then
+            button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            button.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+    end
+end
+
+-- Initialize tabs
+for tabName, button in pairs(tabButtons) do
+    button.MouseButton1Click:Connect(function()
+        switchTab(tabName)
+    end)
+end
+switchTab("Main")
+
+-- Toggle GUI visibility
+toggleButton.MouseButton1Click:Connect(function()
+    gui.Enabled = not gui.Enabled
+end)
 
 -- Enhanced button update function
 local function updateButtonState(button, isActive, activeColor)
@@ -670,7 +1561,111 @@ semiInvisButton.MouseButton1Click:Connect(function()
     updateButtonState(semiInvisButton, isInvisible)
 end)
 
--- [Rest of your existing code for other tabs and systems...]
+espButton.MouseButton1Click:Connect(function()
+    toggleESP()
+    updateButtonState(espButton, espEnabled)
+end)
+
+autoLazerButton.MouseButton1Click:Connect(function()
+    toggleAutoLazer()
+    updateButtonState(autoLazerButton, autoLazerEnabled)
+end)
+
+-- Drag GUI
+local dragging, dragInput, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input == dragInput then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Set initial values
+local function setSpeed(value)
+    updateCharacterReferences()
+    if humanoid then
+        humanoid.WalkSpeed = value
+    end
+end
+
+local function setJumpPower(value)
+    updateCharacterReferences()
+    if humanoid then
+        humanoid.UseJumpPower = true
+        humanoid.JumpPower = value
+    end
+end
+
+speedInput.FocusLost:Connect(function()
+    local newSpeed = tonumber(speedInput.Text) or 24
+    newSpeed = math.clamp(newSpeed, 0, 200)
+    speedInput.Text = tostring(newSpeed)
+    setSpeed(newSpeed)
+    tweenSpeed = newSpeed
+end)
+
+jumpInput.FocusLost:Connect(function()
+    local newJump = tonumber(jumpInput.Text) or 50
+    newJump = math.clamp(newJump, 0, 1000)
+    jumpInput.Text = tostring(newJump)
+    setJumpPower(newJump)
+end)
+
+-- Initialize default values
+setJumpPower(50)
+setSpeed(24)
+
+-- Clean up everything when script ends
+gui.Destroying:Connect(function()
+    stopTweenToBase()
+    
+    if guidedConn then
+        guidedConn:Disconnect()
+    end
+    
+    if floatConnection then
+        floatConnection:Disconnect()
+    end
+    if floatBodyVelocity then
+        floatBodyVelocity:Destroy()
+    end
+    
+    if floorConnection then
+        floorConnection:Disconnect()
+    end
+    if floorPart then
+        floorPart:Destroy()
+    end
+    
+    if isInvisible then
+        semiInvisibleFunction()
+    end
+    
+    if autoLazerEnabled then
+        toggleAutoLazer()
+    end
+    
+    if espEnabled then
+        toggleESP()
+    end
+end)
 
 print("Enhanced Krypton Hub loaded successfully!")
 print("Discord: https://discord.gg/YSwFZsGk9j")
