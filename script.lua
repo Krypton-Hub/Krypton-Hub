@@ -47,7 +47,7 @@ toggleButton.Size = UDim2.new(0, 60, 0, 60)
 toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
 toggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 toggleButton.BackgroundTransparency = 0.3
-toggleButton.Image = "rbxassetid://95131705390407" -- Replace if invalid
+toggleButton.Image = "" -- Removed image to avoid invalid ID issues; re-add valid ID if needed
 toggleButton.Active = true
 toggleButton.Draggable = true
 toggleButton.ZIndex = 10
@@ -56,6 +56,18 @@ toggleButton.Parent = toggleGui
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(1, 0)
 uiCorner.Parent = toggleButton
+
+-- Add "Krypton" text to toggle button
+local toggleLabel = Instance.new("TextLabel")
+toggleLabel.Size = UDim2.new(1, 0, 1, 0)
+toggleLabel.BackgroundTransparency = 1
+toggleLabel.Text = "Krypton"
+toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleLabel.TextSize = 14
+toggleLabel.Font = Enum.Font.SourceSansPro
+toggleLabel.TextTransparency = 0
+toggleLabel.ZIndex = 11
+toggleLabel.Parent = toggleButton
 
 -- Create main GUI
 local gui = Instance.new("ScreenGui")
@@ -865,7 +877,7 @@ local function semiInvisibleFunction()
         updateCharacterReferences()
         if not character or not humanoid or humanoid.Health <= 0 then  
             statusLabel.Text = "Cannot enable: No character or dead"
-            return false
+            return false  
         end  
 
         removeFolders()  
@@ -1623,15 +1635,17 @@ switchTab("Main")
 
 -- Toggle GUI visibility with animation
 toggleButton.MouseButton1Click:Connect(function()
-    print("Toggle button clicked")
+    print("Toggle button clicked") -- Debug to confirm click
     if not gui.Enabled then
         gui.Enabled = true
         mainFrame.Position = UDim2.new(0.5, -150, 1.5, 0)
         TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -150, 0.5, -225)}):Play()
+        statusLabel.Text = "GUI Opened"
     else
         TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -150, 1.5, 0)}):Play()
         task.delay(0.3, function()
             gui.Enabled = false
+            statusLabel.Text = "GUI Closed"
         end)
     end
 end)
