@@ -47,9 +47,10 @@ toggleButton.Size = UDim2.new(0, 60, 0, 60)
 toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
 toggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 toggleButton.BackgroundTransparency = 0.3
-toggleButton.Image = "rbxassetid://95131705390407" -- Your image ID
+toggleButton.Image = "rbxassetid://95131705390407" -- Replace if invalid
 toggleButton.Active = true
 toggleButton.Draggable = true
+toggleButton.ZIndex = 10
 toggleButton.Parent = toggleGui
 
 local uiCorner = Instance.new("UICorner")
@@ -64,7 +65,7 @@ gui.Parent = player:WaitForChild("PlayerGui")
 gui.Enabled = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 450) -- Larger for better spacing
+mainFrame.Size = UDim2.new(0, 300, 0, 450)
 mainFrame.Position = UDim2.new(0.5, -150, 0.5, -225)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.BorderSizePixel = 0
@@ -132,7 +133,6 @@ for i, tabName in ipairs(tabs) do
     tabCorner.CornerRadius = UDim.new(0, 6)
     tabCorner.Parent = tabButton
     
-    -- Hover effect
     tabButton.MouseEnter:Connect(function()
         if currentTab ~= tabName then
             TweenService:Create(tabButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
@@ -706,7 +706,7 @@ local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection, godModeConnection
 
 local function semiInvisibleFunction()
-    local DEPTH_OFFSET = 2.0 -- Increased to hide character better
+    local DEPTH_OFFSET = 2.0
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -759,13 +759,12 @@ local function semiInvisibleFunction()
         character.PrimaryPart = clone  
         character.Parent = Workspace  
 
-        -- Set transparency for all character parts
         for _, v in pairs(character:GetDescendants()) do  
             if v:IsA("BasePart") or v:IsA("MeshPart") or v:IsA("Decal") then  
                 if not v:GetAttribute("OriginalTransparency") then
                     v:SetAttribute("OriginalTransparency", v.Transparency)
                 end
-                v.Transparency = 0.9 -- Nearly invisible
+                v.Transparency = 0.9
             end  
         end  
 
@@ -803,7 +802,6 @@ local function semiInvisibleFunction()
         character.Parent = Workspace  
         oldRoot.CanCollide = true  
 
-        -- Restore original transparency
         for _, v in pairs(character:GetDescendants()) do  
             if (v:IsA("BasePart") or v:IsA("MeshPart") or v:IsA("Decal")) and v:GetAttribute("OriginalTransparency") then
                 v.Transparency = v:GetAttribute("OriginalTransparency")
@@ -889,7 +887,6 @@ local function semiInvisibleFunction()
             end)  
             table.insert(connections.SemiInvisible, connection)  
 
-            -- God Mode
             humanoid.Health = humanoid.MaxHealth
             godModeConnection = humanoid.HealthChanged:Connect(function()
                 if isInvisible and humanoid.Health < humanoid.MaxHealth then
@@ -1243,10 +1240,9 @@ end
 if player.Character then setup3rdFloor() end
 player.CharacterAdded:Connect(setup3rdFloor)
 
--- 2nd Floor Steal (placeholder - add your specific functionality)
+-- 2nd Floor Steal (placeholder)
 secondFloorButton.MouseButton1Click:Connect(function()
     statusLabel.Text = "2nd Floor Steal activated"
-    -- Add your 2nd floor steal logic here
 end)
 
 -- ========== VISUALS TAB CONTENT ==========
@@ -1627,14 +1623,16 @@ switchTab("Main")
 
 -- Toggle GUI visibility with animation
 toggleButton.MouseButton1Click:Connect(function()
-    gui.Enabled = not gui.Enabled
-    if gui.Enabled then
-        mainFrame.Position = UDim2.new(0.5, -150, 0.5, -225)
-        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = UDim2.new(0.5, -150, 0.5, -225)}):Play()
+    print("Toggle button clicked")
+    if not gui.Enabled then
+        gui.Enabled = true
+        mainFrame.Position = UDim2.new(0.5, -150, 1.5, 0)
+        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -150, 0.5, -225)}):Play()
     else
-        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = UDim2.new(0.5, -150, 1.5, 0)}):Play()
-        task.wait(0.3)
-        gui.Enabled = false
+        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -150, 1.5, 0)}):Play()
+        task.delay(0.3, function()
+            gui.Enabled = false
+        end)
     end
 end)
 
