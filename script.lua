@@ -1,4 +1,4 @@
--- Krypton Hub - Made By agent_duke13 - Enhanced Complete Version
+-- Krypton Hub - Made By agent_duke13 - Enhanced Complete Version (FIXED)
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -42,7 +42,6 @@ end)
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
-toggleGui.Parent = player:WaitForChild("PlayerGui")
 
 local toggleButton = Instance.new("ImageButton")
 toggleButton.Size = UDim2.new(0, 65, 0, 65)
@@ -64,11 +63,21 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(1, 0)
 uiCorner.Parent = toggleButton
 
+-- Add click effect
+toggleButton.MouseButton1Down:Connect(function()
+    toggleButton.Size = UDim2.new(0, 60, 0, 60)
+    toggleButton.Position = UDim2.new(0, 22.5, 0.5, -30)
+end)
+
+toggleButton.MouseButton1Up:Connect(function()
+    toggleButton.Size = UDim2.new(0, 65, 0, 65)
+    toggleButton.Position = UDim2.new(0, 20, 0.5, -32.5)
+end)
+
 -- Enhanced Main GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
 gui.Enabled = false
 
 local mainFrame = Instance.new("Frame")
@@ -1508,9 +1517,26 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- Toggle GUI visibility
+-- FIXED: Toggle GUI visibility with proper parenting
+local playerGui = player:WaitForChild("PlayerGui")
+toggleGui.Parent = playerGui
+gui.Parent = playerGui
+
+-- Fixed toggle functionality with visual feedback
 toggleButton.MouseButton1Click:Connect(function()
     gui.Enabled = not gui.Enabled
+    print("GUI Toggled: " .. tostring(gui.Enabled))
+    
+    -- Visual feedback
+    if gui.Enabled then
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 0) -- Green when open
+        toggleGlow.Color = Color3.fromRGB(0, 255, 0)
+        statusLabel.Text = "GUI: Enabled"
+    else
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255) -- Blue when closed
+        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
+        statusLabel.Text = "GUI: Disabled"
+    end
 end)
 
 -- Enhanced button update function
@@ -1668,4 +1694,5 @@ gui.Destroying:Connect(function()
 end)
 
 print("Enhanced Krypton Hub loaded successfully!")
+print("Toggle button should now work properly")
 print("Discord: https://discord.gg/YSwFZsGk9j")
