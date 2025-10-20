@@ -1363,11 +1363,6 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- Toggle GUI visibility
-toggleButton.MouseButton1Click:Connect(function()
-    gui.Enabled = not gui.Enabled
-end)
-
 -- Enhanced button update function
 local function updateButtonState(button, isActive, activeColor)
     if isActive then
