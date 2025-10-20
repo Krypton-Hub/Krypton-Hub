@@ -43,7 +43,6 @@ local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
 toggleGui.Parent = player:WaitForChild("PlayerGui")
-
 local toggleButton = Instance.new("ImageButton")
 toggleButton.Size = UDim2.new(0, 65, 0, 65)
 toggleButton.Position = UDim2.new(0, 20, 0.5, -32.5)
@@ -63,6 +62,59 @@ toggleGlow.Parent = toggleButton
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(1, 0)
 uiCorner.Parent = toggleButton
+
+-- Enhanced toggle button with visual feedback
+local toggleEnabled = false
+local pulseTween
+
+local function startPulseAnimation()
+    if pulseTween then pulseTween:Cancel() end
+    
+    pulseTween = TweenService:Create(toggleButton, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        ImageColor3 = Color3.fromRGB(0, 255, 150)
+    })
+    pulseTween:Play()
+end
+
+local function stopPulseAnimation()
+    if pulseTween then
+        pulseTween:Cancel()
+        pulseTween = nil
+    end
+    toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
+end
+
+toggleButton.MouseButton1Click:Connect(function()
+    gui.Enabled = not gui.Enabled
+    toggleEnabled = gui.Enabled
+    
+    if toggleEnabled then
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 0)
+        toggleGlow.Color = Color3.fromRGB(0, 255, 0)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        startPulseAnimation()
+    else
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
+        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        stopPulseAnimation()
+    end
+end)
+
+-- Add hover effects for toggle button
+toggleButton.MouseEnter:Connect(function()
+    if not toggleEnabled then
+        toggleButton.ImageColor3 = Color3.fromRGB(100, 200, 255)
+        toggleGlow.Color = Color3.fromRGB(100, 200, 255)
+    end
+end)
+
+toggleButton.MouseLeave:Connect(function()
+    if not toggleEnabled then
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
+        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
+    end
+end)
 
 -- Enhanced Main GUI
 local gui = Instance.new("ScreenGui")
@@ -91,7 +143,7 @@ UICorner.CornerRadius = UDim.new(0, 12)
 UICorner.Parent = mainFrame
 
 local title = Instance.new("TextLabel")
-title.Text = "KRYPTON HUB v2.0"
+title.Text = "KRYPTON HUB"
 title.Size = UDim2.new(1, 0, 0, 35)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
