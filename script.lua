@@ -1,4 +1,4 @@
--- Krypton Hub - Made By agent_duke13 - Enhanced Complete Version (FIXED)
+-- Krypton Hub - Made By agent_duke13 - Enhanced Version
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -42,6 +42,7 @@ end)
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
+toggleGui.Parent = player:WaitForChild("PlayerGui")
 
 local toggleButton = Instance.new("ImageButton")
 toggleButton.Size = UDim2.new(0, 65, 0, 65)
@@ -63,21 +64,11 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(1, 0)
 uiCorner.Parent = toggleButton
 
--- Add click effect
-toggleButton.MouseButton1Down:Connect(function()
-    toggleButton.Size = UDim2.new(0, 60, 0, 60)
-    toggleButton.Position = UDim2.new(0, 22.5, 0.5, -30)
-end)
-
-toggleButton.MouseButton1Up:Connect(function()
-    toggleButton.Size = UDim2.new(0, 65, 0, 65)
-    toggleButton.Position = UDim2.new(0, 20, 0.5, -32.5)
-end)
-
 -- Enhanced Main GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 gui.Enabled = false
 
 local mainFrame = Instance.new("Frame")
@@ -661,7 +652,7 @@ local function toggleAutoFloor()
     end
 end
 
--- ========== ENHANCED SEMI INVISIBLE SYSTEM WITH GOD MODE ==========
+-- ========== ENHANCED SEMI INVISIBLE SYSTEM ==========
 local semiInvisButton = createStyledButton(mainContent, "SEMI INVISIBLE: OFF", UDim2.new(0.05, 0, 0.52, 0))
 
 local connections = {
@@ -671,57 +662,8 @@ local connections = {
 local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection
 
--- Enhanced God Mode function
-local function enableGodMode()
-    updateCharacterReferences()
-    if not humanoid then return end
-    
-    -- Prevent death
-    humanoid.Health = humanoid.MaxHealth
-    humanoid:SetAttribute("GodMode", true)
-    
-    -- Store original states
-    if not humanoid:GetAttribute("OriginalMaxHealth") then
-        humanoid:SetAttribute("OriginalMaxHealth", humanoid.MaxHealth)
-    end
-    
-    -- Health protection
-    local healthConnection = humanoid.HealthChanged:Connect(function()
-        if humanoid.Health < humanoid.MaxHealth then
-            humanoid.Health = humanoid.MaxHealth
-        end
-    end)
-    
-    table.insert(connections.SemiInvisible, healthConnection)
-    
-    -- Disable harmful states
-    for _, state in pairs({
-        Enum.HumanoidStateType.FallingDown,
-        Enum.HumanoidStateType.Ragdoll,
-        Enum.HumanoidStateType.Dead
-    }) do
-        humanoid:SetStateEnabled(state, false)
-    end
-end
-
-local function disableGodMode()
-    updateCharacterReferences()
-    if not humanoid then return end
-    
-    humanoid:SetAttribute("GodMode", false)
-    
-    -- Re-enable states
-    for _, state in pairs({
-        Enum.HumanoidStateType.FallingDown,
-        Enum.HumanoidStateType.Ragdoll,
-        Enum.HumanoidStateType.Dead
-    }) do
-        humanoid:SetStateEnabled(state, true)
-    end
-end
-
 local function semiInvisibleFunction()
-    local DEPTH_OFFSET = 0.15  -- Increased offset for better hiding
+    local DEPTH_OFFSET = 0.15
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -754,9 +696,6 @@ local function semiInvisibleFunction()
             statusLabel.Text = "Cannot enable: No character or dead"
             return false  
         end
-        
-        -- Enable god mode when semi-invisible starts
-        enableGodMode()
         
         hip = humanoid.HipHeight  
         oldRoot = character:FindFirstChild("HumanoidRootPart")  
@@ -798,9 +737,9 @@ local function semiInvisibleFunction()
         end
         
         updateCharacterReferences()
-        
-        -- Disable god mode when semi-invisible ends
-        disableGodMode()
+        if humanoid and humanoid.Health <= 0 then
+            return false
+        end
 
         local tempParent = Instance.new("Model")  
         tempParent.Parent = game  
@@ -881,12 +820,11 @@ local function semiInvisibleFunction()
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")  
                     if root then  
-                        -- Enhanced hiding: further offset and rotation
                         local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1.5 + DEPTH_OFFSET, 0)  
-                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), math.rad(45), 0)  -- Added rotation
+                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), math.rad(45), 0)
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
-                        oldRoot.Transparency = 0.8  -- Make more transparent
+                        oldRoot.Transparency = 0.8
                     end  
                 end  
             end)  
@@ -935,7 +873,7 @@ local function semiInvisibleFunction()
         if enableInvisibility() then
             isInvisible = true
             semiInvisButton.Text = "SEMI INVISIBLE: ON"
-            statusLabel.Text = "Semi Invisible + God Mode enabled"
+            statusLabel.Text = "Semi Invisible enabled"
         else
             statusLabel.Text = "Failed to enable Semi Invisible"
         end
@@ -1047,150 +985,6 @@ end)
 player.CharacterAdded:Connect(function()
     desyncActive=false
     desyncButton.Text = "DESYNC (ANTI HIT): OFF"
-end)
-
--- ========== 3RD FLOOR STEAL SYSTEM ==========
-local floorOn = false
-local floorPart
-local floorConnection
-
-local function setTransparencySpecific(part, transparency)
-    if part and part:IsA("BasePart") then
-        if not part:GetAttribute("OriginalTransparency") then
-            part:SetAttribute("OriginalTransparency", part.Transparency)
-        end
-        if not part:GetAttribute("OriginalCanCollide") then
-            part:SetAttribute("OriginalCanCollide", part.CanCollide)
-        end
-        part.Transparency = transparency
-        part.CanCollide = false
-    end
-end
-
-local function processAnimalPodium(podium, podiumNumber, plotName)
-    local claim = podium:FindFirstChild("Claim")
-    if claim then
-        local hitbox = claim:FindFirstChild("Hitbox")
-        if hitbox then
-            pcall(function()
-                if not hitbox:GetAttribute("OriginalTransparency") then
-                    hitbox:SetAttribute("OriginalTransparency", hitbox.Transparency)
-                    hitbox:SetAttribute("OriginalCanCollide", hitbox.CanCollide)
-                end
-                hitbox.Transparency = 0.5
-                hitbox.CanCollide = false
-                if hitbox:FindFirstChild("SelectionBox") then hitbox.SelectionBox:Destroy() end
-                if hitbox:FindFirstChild("SurfaceGui") then hitbox.SurfaceGui.Enabled=false end
-                if hitbox:FindFirstChild("BillboardGui") then hitbox.BillboardGui.Enabled=false end
-                for _, script in pairs(hitbox:GetChildren()) do
-                    if script:IsA("LocalScript") or script:IsA("Script") then
-                        script.Disabled=true
-                    end
-                end
-            end)
-        end
-    end
-    local base = podium:FindFirstChild("Base")
-    if base then
-        local spawn = base:FindFirstChild("Spawn")
-        setTransparencySpecific(spawn,0.5)
-        local decorations = base:FindFirstChild("Decorations")
-        if decorations then
-            local decoration = decorations:FindFirstChild("Decoration")
-            setTransparencySpecific(decoration,0.5)
-            local part = decorations:FindFirstChild("Part")
-            setTransparencySpecific(part,0.5)
-            for _, child in pairs(decorations:GetChildren()) do
-                if child:IsA("BasePart") and child.Name~="Decoration" and child.Name~="Part" then
-                    setTransparencySpecific(child,0.5)
-                end
-            end
-        end
-    end
-end
-
-local function destroyPlatform()
-    if floorPart then floorPart:Destroy() floorPart=nil end
-    floorOn=false
-    if floorConnection then floorConnection:Disconnect() floorConnection=nil end
-    thirdFloorButton.Text = "3RD FLOOR STEAL"
-end
-
-local function canRise()
-    if not floorPart then return false end
-    local origin = floorPart.Position + Vector3.new(0, floorPart.Size.Y/2,0)
-    local direction = Vector3.new(0,2,0)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {floorPart, player.Character}
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    return not Workspace:Raycast(origin,direction,rayParams)
-end
-
-local function setup3rdFloor()
-    updateCharacterReferences()
-    if not character then return end
-    
-    local root = character:WaitForChild("HumanoidRootPart")
-    
-    thirdFloorButton.MouseButton1Click:Connect(function()
-        floorOn = not floorOn
-        if floorOn then
-            floorPart = Instance.new("Part")
-            floorPart.Size = Vector3.new(6,0.5,6)
-            floorPart.Anchored=true
-            floorPart.CanCollide=true
-            floorPart.Transparency=0
-            floorPart.Material=Enum.Material.Plastic
-            floorPart.Color=Color3.fromRGB(255,200,0)
-            floorPart.Position=root.Position-Vector3.new(0, root.Size.Y/2 + floorPart.Size.Y/2, 0)
-            floorPart.Parent = Workspace
-
-            local plots = Workspace:FindFirstChild("Plots")
-            if plots then
-                for _, plot in pairs(plots:GetChildren()) do
-                    for _, part in pairs(plot:GetDescendants()) do
-                        if part:IsA("BasePart") and (part.Name:lower():find("base plot") or part.Name:lower():find("base") or part.Name:lower():find("plot")) then
-                            part.Transparency = 0.5
-                        end
-                    end
-                    local animalPodiums = plot:FindFirstChild("AnimalPodiums")
-                    if animalPodiums then
-                        for _, podium in pairs(animalPodiums:GetChildren()) do
-                            if podium:IsA("Model") or podium:IsA("Folder") then
-                                processAnimalPodium(podium, podium.Name, plot.Name)
-                            end
-                        end
-                    end
-                end
-            end
-
-            floorConnection = RunService.Heartbeat:Connect(function(dt)
-                if floorPart and floorOn then
-                    local cur = floorPart.Position
-                    local newXZ = Vector3.new(root.Position.X, cur.Y, root.Position.Z)
-                    if canRise() then
-                        floorPart.Position = newXZ + Vector3.new(0, dt*15,0)
-                    else
-                        floorPart.Position=newXZ
-                    end
-                end
-            end)
-            thirdFloorButton.Text = "3RD FLOOR STEAL: ON"
-        else
-            destroyPlatform()
-        end
-    end)
-
-    character:WaitForChild("Humanoid").Died:Connect(destroyPlatform)
-end
-
-if player.Character then setup3rdFloor() end
-player.CharacterAdded:Connect(setup3rdFloor)
-
--- 2nd Floor Steal (placeholder - add your specific functionality)
-secondFloorButton.MouseButton1Click:Connect(function()
-    statusLabel.Text = "2nd Floor Steal activated"
-    -- Add your 2nd floor steal logic here
 end)
 
 -- ========== VISUALS TAB CONTENT ==========
@@ -1517,26 +1311,9 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- FIXED: Toggle GUI visibility with proper parenting
-local playerGui = player:WaitForChild("PlayerGui")
-toggleGui.Parent = playerGui
-gui.Parent = playerGui
-
--- Fixed toggle functionality with visual feedback
+-- Toggle GUI visibility
 toggleButton.MouseButton1Click:Connect(function()
     gui.Enabled = not gui.Enabled
-    print("GUI Toggled: " .. tostring(gui.Enabled))
-    
-    -- Visual feedback
-    if gui.Enabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 0) -- Green when open
-        toggleGlow.Color = Color3.fromRGB(0, 255, 0)
-        statusLabel.Text = "GUI: Enabled"
-    else
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255) -- Blue when closed
-        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
-        statusLabel.Text = "GUI: Disabled"
-    end
 end)
 
 -- Enhanced button update function
@@ -1556,7 +1333,7 @@ local function updateButtonState(button, isActive, activeColor)
     end
 end
 
--- Update your existing button connections to use the new styling:
+-- Button connections
 tweenButton.MouseButton1Click:Connect(function()
     if active then
         stopTweenToBase()
@@ -1595,6 +1372,16 @@ end)
 autoLazerButton.MouseButton1Click:Connect(function()
     toggleAutoLazer()
     updateButtonState(autoLazerButton, autoLazerEnabled)
+end)
+
+-- 2nd Floor Steal placeholder
+secondFloorButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "2nd Floor Steal activated"
+end)
+
+-- 3rd Floor Steal placeholder
+thirdFloorButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "3rd Floor Steal activated"
 end)
 
 -- Drag GUI
@@ -1694,5 +1481,4 @@ gui.Destroying:Connect(function()
 end)
 
 print("Enhanced Krypton Hub loaded successfully!")
-print("Toggle button should now work properly")
 print("Discord: https://discord.gg/YSwFZsGk9j")
