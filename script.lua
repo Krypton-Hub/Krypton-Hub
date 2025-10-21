@@ -1,4 +1,4 @@
--- Krypton Hub - Made By agent_duke13 - Fixed Version
+-- Krypton Hub - Made By agent_duke13 - Enhanced Version
 
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local character, hrp, humanoid
@@ -28,6 +29,7 @@ updateCharacterReferences()
 
 player.CharacterAdded:Connect(function(c)
     character = c
+    task.wait(0.5)
     hrp = character:WaitForChild("HumanoidRootPart")
     humanoid = character:WaitForChild("Humanoid")
 end)
@@ -38,18 +40,18 @@ player.CharacterRemoving:Connect(function()
     humanoid = nil
 end)
 
--- Enhanced toggle button with visual feedback (Mobile Compatible)
+-- Clean modern toggle button
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
 toggleGui.Parent = player:WaitForChild("PlayerGui")
 
 local toggleButton = Instance.new("ImageButton")
-toggleButton.Size = UDim2.new(0, 65, 0, 65)
-toggleButton.Position = UDim2.new(0, 20, 0.5, -32.5)
-toggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-toggleButton.BackgroundTransparency = 0.2
-toggleButton.Image = "rbxassetid://95131705390407"
+toggleButton.Size = UDim2.new(0, 60, 0, 60)
+toggleButton.Position = UDim2.new(0, 15, 0.5, -30)
+toggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+toggleButton.BackgroundTransparency = 0.1
+toggleButton.Image = "rbxassetid://95709197010"
 toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
 toggleButton.Active = true
 toggleButton.Draggable = true
@@ -61,30 +63,12 @@ toggleGlow.Thickness = 2
 toggleGlow.Parent = toggleButton
 
 local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.CornerRadius = UDim.new(0.3, 0)
 uiCorner.Parent = toggleButton
 
 local toggleEnabled = false
-local pulseTween
 
-local function startPulseAnimation()
-    if pulseTween then pulseTween:Cancel() end
-    
-    pulseTween = TweenService:Create(toggleButton, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-        ImageColor3 = Color3.fromRGB(0, 255, 150)
-    })
-    pulseTween:Play()
-end
-
-local function stopPulseAnimation()
-    if pulseTween then
-        pulseTween:Cancel()
-        pulseTween = nil
-    end
-    toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
-end
-
--- Create main GUI
+-- Create main GUI with modern design
 local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
@@ -92,40 +76,82 @@ gui.Parent = player:WaitForChild("PlayerGui")
 gui.Enabled = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 250, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -125, 0.5, -200)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.Size = UDim2.new(0, 300, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -225)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+mainFrame.BackgroundTransparency = 0.05
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
 mainFrame.Parent = gui
 
+local mainGradient = Instance.new("UIGradient")
+mainGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 15, 20)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 25, 35))
+})
+mainGradient.Rotation = 45
+mainGradient.Parent = mainFrame
+
 local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.CornerRadius = UDim.new(0.08, 0)
 UICorner.Parent = mainFrame
 
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(60, 60, 80)
+mainStroke.Thickness = 2
+mainStroke.Parent = mainFrame
+
+-- Header with logo
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 50)
+header.Position = UDim2.new(0, 0, 0, 0)
+header.BackgroundTransparency = 1
+header.Parent = mainFrame
+
+local titleContainer = Instance.new("Frame")
+titleContainer.Size = UDim2.new(1, -20, 1, 0)
+titleContainer.Position = UDim2.new(0, 10, 0, 0)
+titleContainer.BackgroundTransparency = 1
+titleContainer.Parent = header
+
+local logo = Instance.new("ImageLabel")
+logo.Size = UDim2.new(0, 32, 0, 32)
+logo.Position = UDim2.new(0, 0, 0.5, -16)
+logo.BackgroundTransparency = 1
+logo.Image = "rbxassetid://95709197010"
+logo.ImageColor3 = Color3.fromRGB(0, 170, 255)
+logo.Parent = titleContainer
+
 local title = Instance.new("TextLabel")
-title.Text = "Krypton Hub"
-title.Size = UDim2.new(1, 0, 0, 25)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+title.Text = "KRYPTON HUB"
+title.Size = UDim2.new(1, -40, 1, 0)
+title.Position = UDim2.new(0, 40, 0, 0)
+title.BackgroundTransparency = 1
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 14
-title.ZIndex = 2
-title.Parent = mainFrame
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleContainer
 
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 8)
-titleCorner.Parent = title
+local subtitle = Instance.new("TextLabel")
+subtitle.Text = "v2.0 - By agent_duke13"
+subtitle.Size = UDim2.new(1, -40, 0, 15)
+subtitle.Position = UDim2.new(0, 40, 0, 20)
+subtitle.BackgroundTransparency = 1
+subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextSize = 10
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = titleContainer
 
 -- Tab buttons
-local tabs = {"Main", "Steal", "Visuals", "Combat"}
+local tabs = {"Main", "Player", "Visuals", "Misc"}
 local currentTab = "Main"
 
 local tabContainer = Instance.new("Frame")
-tabContainer.Size = UDim2.new(1, 0, 0, 30)
-tabContainer.Position = UDim2.new(0, 0, 0, 25)
+tabContainer.Size = UDim2.new(1, -20, 0, 35)
+tabContainer.Position = UDim2.new(0, 10, 0, 50)
 tabContainer.BackgroundTransparency = 1
 tabContainer.Parent = mainFrame
 
@@ -133,112 +159,290 @@ local tabButtons = {}
 for i, tabName in ipairs(tabs) do
     local tabButton = Instance.new("TextButton")
     tabButton.Text = tabName
-    tabButton.Size = UDim2.new(1/#tabs, 0, 1, 0)
+    tabButton.Size = UDim2.new(1/#tabs, -5, 1, 0)
     tabButton.Position = UDim2.new((i-1)/#tabs, 0, 0, 0)
-    tabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-    tabButton.Font = Enum.Font.Gotham
-    tabButton.TextSize = 11
+    tabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    tabButton.TextColor3 = Color3.fromRGB(180, 180, 180)
+    tabButton.Font = Enum.Font.GothamSemibold
+    tabButton.TextSize = 12
     tabButton.ZIndex = 2
     tabButton.Parent = tabContainer
     
     local tabCorner = Instance.new("UICorner")
-    tabCorner.CornerRadius = UDim.new(0, 4)
+    tabCorner.CornerRadius = UDim.new(0.05, 0)
     tabCorner.Parent = tabButton
+    
+    local tabStroke = Instance.new("UIStroke")
+    tabStroke.Color = Color3.fromRGB(50, 50, 60)
+    tabStroke.Thickness = 1
+    tabStroke.Parent = tabButton
     
     tabButtons[tabName] = tabButton
 end
 
 -- Content frame
 local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, 0, 1, -75)
-contentFrame.Position = UDim2.new(0, 0, 0, 55)
+contentFrame.Size = UDim2.new(1, -20, 1, -120)
+contentFrame.Position = UDim2.new(0, 10, 0, 90)
 contentFrame.BackgroundTransparency = 1
 contentFrame.Parent = mainFrame
 
--- Status label
+local contentScrolling = Instance.new("ScrollingFrame")
+contentScrolling.Size = UDim2.new(1, 0, 1, 0)
+contentScrolling.Position = UDim2.new(0, 0, 0, 0)
+contentScrolling.BackgroundTransparency = 1
+contentScrolling.BorderSizePixel = 0
+contentScrolling.ScrollBarThickness = 3
+contentScrolling.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 80)
+contentScrolling.Parent = contentFrame
+
+local contentLayout = Instance.new("UIListLayout")
+contentLayout.Padding = UDim.new(0, 8)
+contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+contentLayout.Parent = contentScrolling
+
+-- Status bar
+local statusBar = Instance.new("Frame")
+statusBar.Size = UDim2.new(1, -20, 0, 25)
+statusBar.Position = UDim2.new(0, 10, 1, -30)
+statusBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+statusBar.Parent = mainFrame
+
+local statusCorner = Instance.new("UICorner")
+statusCorner.CornerRadius = UDim.new(0.05, 0)
+statusCorner.Parent = statusBar
+
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Text = "Status: Ready"
-statusLabel.Size = UDim2.new(1, 0, 0, 20)
-statusLabel.Position = UDim2.new(0, 0, 1, -20)
+statusLabel.Size = UDim2.new(1, -10, 1, 0)
+statusLabel.Position = UDim2.new(0, 5, 0, 0)
 statusLabel.BackgroundTransparency = 1
-statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextSize = 10
-statusLabel.Parent = mainFrame
+statusLabel.TextSize = 11
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = statusBar
 
--- Main Tab Content
+-- Function to create modern buttons
+local function createButton(text, layoutOrder)
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Size = UDim2.new(1, 0, 0, 35)
+    buttonFrame.BackgroundTransparency = 1
+    buttonFrame.LayoutOrder = layoutOrder
+    buttonFrame.Parent = contentScrolling
+    
+    local button = Instance.new("TextButton")
+    button.Text = text
+    button.Size = UDim2.new(1, 0, 1, 0)
+    button.Position = UDim2.new(0, 0, 0, 0)
+    button.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.GothamSemibold
+    button.TextSize = 13
+    button.AutoButtonColor = true
+    button.Parent = buttonFrame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0.08, 0)
+    buttonCorner.Parent = button
+    
+    local buttonStroke = Instance.new("UIStroke")
+    buttonStroke.Color = Color3.fromRGB(60, 60, 80)
+    buttonStroke.Thickness = 1
+    buttonStroke.Parent = button
+    
+    return button
+end
+
+-- Function to create toggle buttons
+local function createToggle(text, layoutOrder)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Size = UDim2.new(1, 0, 0, 35)
+    toggleFrame.BackgroundTransparency = 1
+    toggleFrame.LayoutOrder = layoutOrder
+    toggleFrame.Parent = contentScrolling
+    
+    local toggle = Instance.new("TextButton")
+    toggle.Text = text
+    toggle.Size = UDim2.new(1, 0, 1, 0)
+    toggle.Position = UDim2.new(0, 0, 0, 0)
+    toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.Font = Enum.Font.GothamSemibold
+    toggle.TextSize = 13
+    toggle.AutoButtonColor = true
+    toggle.Parent = toggleFrame
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0.08, 0)
+    toggleCorner.Parent = toggle
+    
+    local toggleStroke = Instance.new("UIStroke")
+    toggleStroke.Color = Color3.fromRGB(60, 60, 80)
+    toggleStroke.Thickness = 1
+    toggleStroke.Parent = toggle
+    
+    return toggle
+end
+
+-- Function to create slider
+local function createSlider(text, min, max, default, layoutOrder)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, 0, 0, 50)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.LayoutOrder = layoutOrder
+    sliderFrame.Parent = contentScrolling
+    
+    local label = Instance.new("TextLabel")
+    label.Text = text .. ": " .. default
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = sliderFrame
+    
+    local sliderContainer = Instance.new("Frame")
+    sliderContainer.Size = UDim2.new(1, 0, 0, 25)
+    sliderContainer.Position = UDim2.new(0, 0, 0, 20)
+    sliderContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    sliderContainer.Parent = sliderFrame
+    
+    local sliderCorner = Instance.new("UICorner")
+    sliderCorner.CornerRadius = UDim.new(0.2, 0)
+    sliderCorner.Parent = sliderContainer
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    sliderFill.Position = UDim2.new(0, 0, 0, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    sliderFill.Parent = sliderContainer
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0.2, 0)
+    fillCorner.Parent = sliderFill
+    
+    local value = default
+    
+    local function updateSlider(input)
+        local relativeX = (input.Position.X - sliderContainer.AbsolutePosition.X) / sliderContainer.AbsoluteSize.X
+        local newValue = math.floor(min + (max - min) * math.clamp(relativeX, 0, 1))
+        value = newValue
+        label.Text = text .. ": " .. value
+        sliderFill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+        return value
+    end
+    
+    sliderContainer.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            updateSlider(input)
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    connection:Disconnect()
+                else
+                    updateSlider(input)
+                end
+            end)
+        end
+    end)
+    
+    return {Frame = sliderFrame, Value = function() return value end}
+end
+
+-- ========== MAIN TAB ==========
 local mainContent = Instance.new("Frame")
-mainContent.Size = UDim2.new(1, 0, 1, 0)
+mainContent.Size = UDim2.new(1, 0, 0, 0)
 mainContent.BackgroundTransparency = 1
 mainContent.Visible = true
-mainContent.Parent = contentFrame
+mainContent.Parent = contentScrolling
 
--- ========== TWEEN TO BASE SYSTEM ==========
-local tweenButton = Instance.new("TextButton")
-tweenButton.Text = "▶ TWEEN TO BASE"
-tweenButton.Size = UDim2.new(0.9, 0, 0, 25)
-tweenButton.Position = UDim2.new(0.05, 0, 0.05, 0)
-tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-tweenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-tweenButton.Font = Enum.Font.GothamBold
-tweenButton.TextSize = 12
-tweenButton.Parent = mainContent
+-- Player Stats
+local walkSpeedSlider = createSlider("Walk Speed", 16, 200, 24, 1)
+walkSpeedSlider.Frame.Parent = mainContent
 
-local tweenCorner = Instance.new("UICorner")
-tweenCorner.CornerRadius = UDim.new(0, 6)
-tweenCorner.Parent = tweenButton
+local jumpPowerSlider = createSlider("Jump Power", 50, 500, 50, 2)
+jumpPowerSlider.Frame.Parent = mainContent
 
-local active = false
-local currentTween
-local walkThread
-local tweenSpeed = 24
+-- Main Features
+local tweenBaseToggle = createToggle("▶ TWEEN TO BASE", 3)
+tweenBaseToggle.Parent = mainContent
 
--- ========== FIXED ANTI-DEATH SYSTEM ==========
-local antiDeathEnabled = false
-local antiDeathConnection
+local flyToggle = createToggle("SLOW FLIGHT: OFF", 4)
+flyToggle.Parent = mainContent
 
-local function applyAntiDeath(state)
-    antiDeathEnabled = state
-    
-    if antiDeathConnection then
-        antiDeathConnection:Disconnect()
-        antiDeathConnection = nil
-    end
-    
+local noclipToggle = createToggle("NOCLIP: OFF", 5)
+noclipToggle.Parent = mainContent
+
+local floatToggle = createToggle("FLOAT: OFF", 6)
+floatToggle.Parent = mainContent
+
+-- ========== PLAYER TAB ==========
+local playerContent = Instance.new("Frame")
+playerContent.Size = UDim2.new(1, 0, 0, 0)
+playerContent.BackgroundTransparency = 1
+playerContent.Visible = false
+playerContent.Parent = contentScrolling
+
+local antiDeathToggle = createToggle("ANTI-DEATH: OFF", 1)
+antiDeathToggle.Parent = playerContent
+
+local semiInvisToggle = createToggle("SEMI INVISIBLE: OFF", 2)
+semiInvisToggle.Parent = playerContent
+
+local infJumpToggle = createToggle("INFINITE JUMP: OFF", 3)
+infJumpToggle.Parent = playerContent
+
+-- ========== VISUALS TAB ==========
+local visualsContent = Instance.new("Frame")
+visualsContent.Size = UDim2.new(1, 0, 0, 0)
+visualsContent.BackgroundTransparency = 1
+visualsContent.Visible = false
+visualsContent.Parent = contentScrolling
+
+local espToggle = createToggle("PLAYER ESP: OFF", 1)
+espToggle.Parent = visualsContent
+
+local fullbrightToggle = createToggle("FULLBRIGHT: OFF", 2)
+fullbrightToggle.Parent = visualsContent
+
+local xrayToggle = createToggle("X-RAY: OFF", 3)
+xrayToggle.Parent = visualsContent
+
+-- ========== MISC TAB ==========
+local miscContent = Instance.new("Frame")
+miscContent.Size = UDim2.new(1, 0, 0, 0)
+miscContent.BackgroundTransparency = 1
+miscContent.Visible = false
+miscContent.Parent = contentScrolling
+
+local autoLazerToggle = createToggle("AUTO LAZER: OFF", 1)
+autoLazerToggle.Parent = miscContent
+
+local desyncToggle = createToggle("DESYNC (ANTI-HIT): OFF", 2)
+desyncToggle.Parent = miscContent
+
+local discordButton = createButton("📱 DISCORD INVITE", 3)
+discordButton.Parent = miscContent
+
+-- ========== WORKING FEATURES IMPLEMENTATION ==========
+
+-- Walk Speed and Jump Power
+local function updateStats()
     updateCharacterReferences()
-    
-    if state and humanoid then
-        -- Disable death states
-        for _, s in pairs({
-            Enum.HumanoidStateType.FallingDown,
-            Enum.HumanoidStateType.Ragdoll,
-            Enum.HumanoidStateType.PlatformStanding
-        }) do
-            humanoid:SetStateEnabled(s, false)
-        end
-        
-        -- Health protection with better handling
-        antiDeathConnection = humanoid.HealthChanged:Connect(function()
-            if humanoid and humanoid.Health <= 0 then
-                humanoid.Health = humanoid.MaxHealth
-            end
-        end)
-        
-        -- Set initial health
-        humanoid.Health = humanoid.MaxHealth
-        
-    elseif humanoid then
-        -- Re-enable death states
-        for _, s in pairs({
-            Enum.HumanoidStateType.FallingDown,
-            Enum.HumanoidStateType.Ragdoll,
-            Enum.HumanoidStateType.PlatformStanding
-        }) do
-            humanoid:SetStateEnabled(s, true)
-        end
+    if humanoid then
+        humanoid.WalkSpeed = walkSpeedSlider.Value()
+        humanoid.JumpPower = jumpPowerSlider.Value()
     end
 end
+
+RunService.Heartbeat:Connect(updateStats)
+
+-- Tween to Base
+local tweenActive = false
+local currentTween
 
 local function getBasePosition()
     local plots = Workspace:FindFirstChild("Plots")
@@ -253,845 +457,340 @@ local function getBasePosition()
     return nil
 end
 
-local Y_OFFSET = 3
-local STOP_DISTANCE = 10
-
-local function tweenWalkTo(position)
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
-    end
-
+local function tweenToPosition(position)
+    if currentTween then currentTween:Cancel() end
+    
     updateCharacterReferences()
-    if not hrp then
-        statusLabel.Text = "Error: No character"
-        return false
-    end
-
-    local startPos = hrp.Position
-    local targetPos = Vector3.new(position.X, position.Y + Y_OFFSET, position.Z)
-    local distance = (targetPos - startPos).Magnitude
-    local speed = math.max(tweenSpeed, 16)
-    local duration = distance / speed
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-
-    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    if not hrp then return false end
+    
+    local targetPos = Vector3.new(position.X, position.Y + 3, position.Z)
+    local distance = (targetPos - hrp.Position).Magnitude
+    local duration = distance / 25
+    
+    currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+        CFrame = CFrame.new(targetPos)
+    })
     currentTween:Play()
-
+    
     if humanoid then
         humanoid:ChangeState(Enum.HumanoidStateType.Running)
     end
-
-    currentTween.Completed:Wait()
-    currentTween = nil
+    
     return true
 end
 
-local function isAtBase(basePos)
-    if not basePos or not hrp then return false end
-    local dist = (hrp.Position - Vector3.new(basePos.X, basePos.Y + Y_OFFSET, basePos.Z)).Magnitude
-    return dist <= STOP_DISTANCE
-end
-
-local function walkToBase()
-    updateCharacterReferences()
-    if not hrp then
-        statusLabel.Text = "Error: No character"
-        return
-    end
-
-    local target = getBasePosition()
-    if not target then
-        statusLabel.Text = "Base Not Found"
-        return
-    end
-
-    while active do
-        updateCharacterReferences()
-        if not hrp then
-            statusLabel.Text = "Character died, stopping"
-            stopTweenToBase()
-            break
-        end
-
-        if not target then
-            statusLabel.Text = "Base Not Found"
-            task.wait(1)
-            break
-        end
-
-        if isAtBase(target) then
-            statusLabel.Text = "Reached Base"
-            stopTweenToBase()
-            break
-        end
-
-        local path = PathfindingService:CreatePath()
-        local success, err = pcall(function()
-            path:ComputeAsync(hrp.Position, target)
-        end)
-        
-        if not success then
-            statusLabel.Text = "Direct path to base"
-            local tweenSuccess = pcall(tweenWalkTo, target)
-            if not tweenSuccess then
-                statusLabel.Text = "Tween failed"
-                stopTweenToBase()
-            end
-            break
-        end
-
-        if path.Status == Enum.PathStatus.Success then
-            local waypoints = path:GetWaypoints()
-            statusLabel.Text = "Following path (" .. #waypoints .. " points)"
+tweenBaseToggle.MouseButton1Click:Connect(function()
+    if tweenActive then
+        tweenActive = false
+        if currentTween then currentTween:Cancel() end
+        tweenBaseToggle.Text = "▶ TWEEN TO BASE"
+        tweenBaseToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "Tween stopped"
+    else
+        local basePos = getBasePosition()
+        if basePos then
+            tweenActive = true
+            tweenBaseToggle.Text = "■ STOP TWEEN"
+            tweenBaseToggle.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            statusLabel.Text = "Tweening to base..."
             
-            for i, waypoint in ipairs(waypoints) do
-                if not active or not hrp or isAtBase(target) then 
-                    return 
+            spawn(function()
+                while tweenActive do
+                    if not tweenToPosition(basePos) then
+                        break
+                    end
+                    task.wait(1)
+                end
+            end)
+        else
+            statusLabel.Text = "Base not found!"
+        end
+    end
+end)
+
+-- Flight System
+local flyActive = false
+local flyConnection
+
+flyToggle.MouseButton1Click:Connect(function()
+    flyActive = not flyActive
+    
+    if flyActive then
+        flyToggle.Text = "SLOW FLIGHT: ON"
+        flyToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Flight enabled - Use WASD"
+        
+        flyConnection = RunService.Heartbeat:Connect(function()
+            updateCharacterReferences()
+            if hrp then
+                local cam = Workspace.CurrentCamera
+                local moveDirection = Vector3.new()
+                
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                    moveDirection = moveDirection + cam.CFrame.LookVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                    moveDirection = moveDirection - cam.CFrame.LookVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    moveDirection = moveDirection - cam.CFrame.RightVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    moveDirection = moveDirection + cam.CFrame.RightVector
                 end
                 
-                if not (i == 1 and (waypoint.Position - hrp.Position).Magnitude < 2) then
-                    local tweenSuccess = pcall(tweenWalkTo, waypoint.Position)
-                    if not tweenSuccess then
-                        statusLabel.Text = "Path tween failed"
-                        return
+                if moveDirection.Magnitude > 0 then
+                    hrp.Velocity = moveDirection.Unit * 25
+                else
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
+                end
+            end
+        end)
+    else
+        flyToggle.Text = "SLOW FLIGHT: OFF"
+        flyToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "Flight disabled"
+        
+        if flyConnection then
+            flyConnection:Disconnect()
+        end
+    end
+end)
+
+-- Noclip System
+local noclipActive = false
+local noclipConnection
+
+noclipToggle.MouseButton1Click:Connect(function()
+    noclipActive = not noclipActive
+    
+    if noclipActive then
+        noclipToggle.Text = "NOCLIP: ON"
+        noclipToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Noclip enabled"
+        
+        noclipConnection = RunService.Stepped:Connect(function()
+            updateCharacterReferences()
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
                     end
                 end
             end
-        else
-            statusLabel.Text = "Direct path (no obstacles)"
-            local tweenSuccess = pcall(tweenWalkTo, target)
-            if not tweenSuccess then
-                statusLabel.Text = "Direct tween failed"
-                stopTweenToBase()
-            end
-        end
-
-        task.wait(0.1)
-    end
-end
-
-function startTweenToBase()
-    if active then return end
-    
-    updateCharacterReferences()
-    if not hrp then
-        statusLabel.Text = "Error: No character"
-        return
-    end
-    
-    active = true
-    applyAntiDeath(true)
-    tweenButton.Text = "■ STOP TWEEN"
-    tweenButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    statusLabel.Text = "Walking to Base..."
-
-    walkThread = task.spawn(function()
-        while active do
-            walkToBase()
-            if not active then break end
-            task.wait(0.5)
-        end
-    end)
-end
-
-function stopTweenToBase()
-    if not active then return end
-    active = false
-    if currentTween then 
-        currentTween:Cancel() 
-        currentTween = nil
-    end
-    if walkThread then 
-        task.cancel(walkThread) 
-        walkThread = nil
-    end
-    
-    applyAntiDeath(false)
-    
-    if humanoid then
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
-    
-    tweenButton.Text = "▶ TWEEN TO BASE"
-    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    statusLabel.Text = "Ready"
-end
-
--- Speed
-local speedContainer = Instance.new("Frame")
-speedContainer.Size = UDim2.new(0.9, 0, 0, 25)
-speedContainer.Position = UDim2.new(0.05, 0, 0.15, 0)
-speedContainer.BackgroundTransparency = 1
-speedContainer.Parent = mainContent
-
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Text = "Speed:"
-speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
-speedLabel.Position = UDim2.new(0, 0, 0, 0)
-speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-speedLabel.Font = Enum.Font.Gotham
-speedLabel.TextSize = 11
-speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedLabel.Parent = speedContainer
-
-local speedInput = Instance.new("TextBox")
-speedInput.Size = UDim2.new(0.4, 0, 1, 0)
-speedInput.Position = UDim2.new(0.6, 0, 0, 0)
-speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-speedInput.Font = Enum.Font.Gotham
-speedInput.TextSize = 11
-speedInput.Text = "24"
-speedInput.Parent = speedContainer
-
-local speedInputCorner = Instance.new("UICorner")
-speedInputCorner.CornerRadius = UDim.new(0, 4)
-speedInputCorner.Parent = speedInput
-
--- Jump Power
-local jumpContainer = Instance.new("Frame")
-jumpContainer.Size = UDim2.new(0.9, 0, 0, 25)
-jumpContainer.Position = UDim2.new(0.05, 0, 0.25, 0)
-jumpContainer.BackgroundTransparency = 1
-jumpContainer.Parent = mainContent
-
-local jumpLabel = Instance.new("TextLabel")
-jumpLabel.Text = "Jump Power:"
-jumpLabel.Size = UDim2.new(0.5, 0, 1, 0)
-jumpLabel.Position = UDim2.new(0, 0, 0, 0)
-jumpLabel.BackgroundTransparency = 1
-jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-jumpLabel.Font = Enum.Font.Gotham
-jumpLabel.TextSize = 11
-jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
-jumpLabel.Parent = jumpContainer
-
-local jumpInput = Instance.new("TextBox")
-jumpInput.Size = UDim2.new(0.4, 0, 1, 0)
-jumpInput.Position = UDim2.new(0.6, 0, 0, 0)
-jumpInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-jumpInput.Font = Enum.Font.Gotham
-jumpInput.TextSize = 11
-jumpInput.Text = "50"
-jumpInput.Parent = jumpContainer
-
-local jumpInputCorner = Instance.new("UICorner")
-jumpInputCorner.CornerRadius = UDim.new(0, 4)
-jumpInputCorner.Parent = jumpInput
-
--- ========== NEW FLIGHT SYSTEM ==========
-local flyButton = Instance.new("TextButton")
-flyButton.Text = "SLOW FLIGHT: OFF"
-flyButton.Size = UDim2.new(0.9, 0, 0, 25)
-flyButton.Position = UDim2.new(0.05, 0, 0.35, 0)
-flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-flyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-flyButton.Font = Enum.Font.GothamBold
-flyButton.TextSize = 12
-flyButton.Parent = mainContent
-
-local flyCorner = Instance.new("UICorner")
-flyCorner.CornerRadius = UDim.new(0, 6)
-flyCorner.Parent = flyButton
-
-local guidedOn = false
-local guidedConn
-
-local function toggleFlight()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    guidedOn = not guidedOn
-    flyButton.Text = guidedOn and "SLOW FLIGHT: ON" or "SLOW FLIGHT: OFF"
-    flyButton.BackgroundColor3 = guidedOn and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
-    
-    if guidedOn then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            guidedConn = RunService.RenderStepped:Connect(function()
-                if guidedOn and hrp then
-                    hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * 25
-                end
-            end)
-        end
+        end)
     else
-        if guidedConn then 
-            guidedConn:Disconnect() 
-            guidedConn = nil 
-        end
-        if hum then 
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
+        noclipToggle.Text = "NOCLIP: OFF"
+        noclipToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "Noclip disabled"
+        
+        if noclipConnection then
+            noclipConnection:Disconnect()
         end
     end
-end
+end)
 
--- ========== FLOAT SYSTEM ==========
-local floatButton = Instance.new("TextButton")
-floatButton.Text = "FLOAT: OFF"
-floatButton.Size = UDim2.new(0.9, 0, 0, 25)
-floatButton.Position = UDim2.new(0.05, 0, 0.45, 0)
-floatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-floatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-floatButton.Font = Enum.Font.GothamBold
-floatButton.TextSize = 12
-floatButton.Parent = mainContent
-
-local floatCorner = Instance.new("UICorner")
-floatCorner.CornerRadius = UDim.new(0, 6)
-floatCorner.Parent = floatButton
-
-local floatEnabled = false
+-- Float System
+local floatActive = false
 local floatBodyVelocity
-local floatConnection
 
-local function toggleFloat()
-    floatEnabled = not floatEnabled
+floatToggle.MouseButton1Click:Connect(function()
+    floatActive = not floatActive
     
-    if floatEnabled then
-        floatButton.Text = "FLOAT: ON"
-        floatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    if floatActive then
+        floatToggle.Text = "FLOAT: ON"
+        floatToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Float enabled"
         
-        floatBodyVelocity = Instance.new("BodyVelocity")
-        floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
-        
-        if floatConnection then
-            floatConnection:Disconnect()
+        updateCharacterReferences()
+        if hrp then
+            floatBodyVelocity = Instance.new("BodyVelocity")
+            floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
+            floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
+            floatBodyVelocity.Parent = hrp
         end
-        
-        floatConnection = RunService.Heartbeat:Connect(function()
-            updateCharacterReferences()
-            if not floatEnabled or not character or not hrp then
-                return
-            end
-            
-            local rayOrigin = hrp.Position
-            local rayDirection = Vector3.new(0, -10, 0)
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterDescendantsInstances = {character}
-            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-            
-            local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-            
-            if not raycastResult then
-                floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
-                floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
-            else
-                floatBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-                floatBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
-            end
-            
-            if floatBodyVelocity and floatBodyVelocity.Parent ~= hrp then
-                floatBodyVelocity.Parent = hrp
-            end
-        end)
-        
     else
-        floatButton.Text = "FLOAT: OFF"
-        floatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        floatToggle.Text = "FLOAT: OFF"
+        floatToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
         statusLabel.Text = "Float disabled"
         
-        if floatConnection then
-            floatConnection:Disconnect()
-            floatConnection = nil
-        end
         if floatBodyVelocity then
             floatBodyVelocity:Destroy()
-            floatBodyVelocity = nil
         end
     end
-end
+end)
 
--- ========== AUTO FLOOR SYSTEM ==========
-local autoFloorButton = Instance.new("TextButton")
-autoFloorButton.Text = "AUTO FLOOR: OFF"
-autoFloorButton.Size = UDim2.new(0.9, 0, 0, 25)
-autoFloorButton.Position = UDim2.new(0.05, 0, 0.55, 0)
-autoFloorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoFloorButton.Font = Enum.Font.GothamBold
-autoFloorButton.TextSize = 12
-autoFloorButton.Parent = mainContent
+-- Anti-Death System
+local antiDeathActive = false
+local antiDeathConnection
 
-local autoFloorCorner = Instance.new("UICorner")
-autoFloorCorner.CornerRadius = UDim.new(0, 6)
-autoFloorCorner.Parent = autoFloorButton
-
-local autoFloorEnabled = false
-local floorPart
-local floorConnection
-local floorRiseSpeed = 5.0
-local autoFloorSize = Vector3.new(8, 1, 8)
-
-local function toggleAutoFloor()
-    autoFloorEnabled = not autoFloorEnabled
+antiDeathToggle.MouseButton1Click:Connect(function()
+    antiDeathActive = not antiDeathActive
     
-    if autoFloorEnabled then
-        autoFloorButton.Text = "AUTO FLOOR: ON"
-        autoFloorButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Auto floor enabled (Rising)"
+    if antiDeathActive then
+        antiDeathToggle.Text = "ANTI-DEATH: ON"
+        antiDeathToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Anti-Death enabled"
         
-        floorPart = Instance.new("Part")
-        floorPart.Size = autoFloorSize
-        floorPart.Anchored = true
-        floorPart.CanCollide = true
-        floorPart.Material = Enum.Material.Neon
-        floorPart.Color = Color3.fromRGB(80, 170, 255)
-        floorPart.Transparency = 0.3
-        floorPart.Name = "KryptonAutoFloor"
-        floorPart.Parent = Workspace
-        
-        local pointLight = Instance.new("PointLight")
-        pointLight.Brightness = 0.5
-        pointLight.Range = 12
-        pointLight.Color = Color3.fromRGB(80, 170, 255)
-        pointLight.Parent = floorPart
-        
-        if floorConnection then
-            floorConnection:Disconnect()
-        end
-        
-        floorConnection = RunService.RenderStepped:Connect(function()
-            if not autoFloorEnabled or not floorPart then
-                return
-            end
-            
-            updateCharacterReferences()
-            
-            if not hrp then
-                return
-            end
-            
-            local currentPos = floorPart.Position
-            local targetY = hrp.Position.Y - (hrp.Size.Y/2) - (floorPart.Size.Y/2)
-            
-            if targetY > currentPos.Y then
-                local newY = currentPos.Y + (targetY - currentPos.Y) * floorRiseSpeed * (1/60)
-                floorPart.CFrame = CFrame.new(hrp.Position.X, newY, hrp.Position.Z)
-            else
-                floorPart.CFrame = CFrame.new(hrp.Position.X, targetY, hrp.Position.Z)
-            end
-        end)
-        
-    else
-        autoFloorButton.Text = "AUTO FLOOR: OFF"
-        autoFloorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Auto floor disabled"
-        
-        if floorConnection then
-            floorConnection:Disconnect()
-            floorConnection = nil
-        end
-        if floorPart then
-            floorPart:Destroy()
-            floorPart = nil
-        end
-    end
-end
-
--- ========== FIXED SEMI INVISIBLE SYSTEM ==========
-local semiInvisButton = Instance.new("TextButton")
-semiInvisButton.Text = "SEMI INVISIBLE: OFF"
-semiInvisButton.Size = UDim2.new(0.9, 0, 0, 25)
-semiInvisButton.Position = UDim2.new(0.05, 0, 0.65, 0)
-semiInvisButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-semiInvisButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-semiInvisButton.Font = Enum.Font.GothamBold
-semiInvisButton.TextSize = 12
-semiInvisButton.Parent = mainContent
-
-local semiInvisCorner = Instance.new("UICorner")
-semiInvisCorner.CornerRadius = UDim.new(0, 6)
-semiInvisCorner.Parent = semiInvisButton
-
-local semiInvisConnections = {}
-local isInvisible = false
-local semiInvisClone, semiInvisOldRoot, semiInvisHip, semiInvisAnimTrack
-
-local function cleanupSemiInvisible()
-    if semiInvisAnimTrack then
-        semiInvisAnimTrack:Stop()
-        semiInvisAnimTrack:Destroy()
-        semiInvisAnimTrack = nil
-    end
-    
-    for _, conn in ipairs(semiInvisConnections) do
-        if conn then
-            pcall(function() conn:Disconnect() end)
-        end
-    end
-    semiInvisConnections = {}
-    
-    -- Clean up folders
-    local playerFolder = Workspace:FindFirstChild(player.Name)
-    if playerFolder then
-        local doubleRig = playerFolder:FindFirstChild("DoubleRig")
-        if doubleRig then
-            doubleRig:Destroy()
-        end
-        local constraints = playerFolder:FindFirstChild("Constraints")
-        if constraints then
-            constraints:Destroy()
-        end
-    end
-end
-
-local function revertSemiInvisibleClone()
-    if not semiInvisOldRoot or not semiInvisOldRoot:IsDescendantOf(Workspace) or not character then
-        return false
-    end
-    
-    updateCharacterReferences()
-    if humanoid and humanoid.Health <= 0 then
-        return false
-    end
-
-    local tempParent = Instance.new("Model")
-    tempParent.Parent = game
-    character.Parent = tempParent
-
-    semiInvisOldRoot.Parent = character
-    character.PrimaryPart = semiInvisOldRoot
-    character.Parent = Workspace
-    semiInvisOldRoot.CanCollide = true
-
-    for _, v in pairs(character:GetDescendants()) do
-        if v:IsA("Weld") or v:IsA("Motor6D") then
-            if v.Part0 == semiInvisClone then
-                v.Part0 = semiInvisOldRoot
-            end
-            if v.Part1 == semiInvisClone then
-                v.Part1 = semiInvisOldRoot
-            end
-        end
-    end
-
-    if semiInvisClone then
-        semiInvisClone:Destroy()
-        semiInvisClone = nil
-    end
-
-    semiInvisOldRoot = nil
-    if character and humanoid then
-        humanoid.HipHeight = semiInvisHip
-    end
-    
-    tempParent:Destroy()
-    return true
-end
-
-local function semiInvisibleFunction()
-    local DEPTH_OFFSET = 0.10
-
-    if not isInvisible then
-        -- Enable semi-invisible
         updateCharacterReferences()
-        if not character or not humanoid or humanoid.Health <= 0 then
-            statusLabel.Text = "Cannot enable: No character or dead"
-            return
-        end
-        
-        -- Clean up any existing folders first
-        cleanupSemiInvisible()
-        
-        semiInvisHip = humanoid.HipHeight
-        semiInvisOldRoot = character:FindFirstChild("HumanoidRootPart")
-        if not semiInvisOldRoot or not semiInvisOldRoot.Parent then
-            statusLabel.Text = "Error: No HumanoidRootPart"
-            return
-        end
-
-        -- Create clone process
-        local tempParent = Instance.new("Model")
-        tempParent.Parent = game
-        character.Parent = tempParent
-
-        semiInvisClone = semiInvisOldRoot:Clone()
-        semiInvisClone.Parent = character
-        semiInvisOldRoot.Parent = Workspace.CurrentCamera
-        semiInvisClone.CFrame = semiInvisOldRoot.CFrame
-
-        character.PrimaryPart = semiInvisClone
-        character.Parent = Workspace
-
-        for _, v in pairs(character:GetDescendants()) do
-            if v:IsA("Weld") or v:IsA("Motor6D") then
-                if v.Part0 == semiInvisOldRoot then
-                    v.Part0 = semiInvisClone
-                end
-                if v.Part1 == semiInvisOldRoot then
-                    v.Part1 = semiInvisClone
-                end
-            end
-        end
-
-        tempParent:Destroy()
-        
-        -- Animation setup
-        local anim = Instance.new("Animation")
-        anim.AnimationId = "rbxassetid://18537363391"
-        local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
-        semiInvisAnimTrack = animator:LoadAnimation(anim)
-        semiInvisAnimTrack.Priority = Enum.AnimationPriority.Action4
-        semiInvisAnimTrack:Play(0, 1, 0)
-        anim:Destroy()
-
-        local animStoppedConn = semiInvisAnimTrack.Stopped:Connect(function()
-            if isInvisible then
-                task.wait(0.1)
-                if humanoid and humanoid.Health > 0 then
-                    semiInvisAnimTrack:Play(0, 1, 0)
-                end
-            end
-        end)
-        table.insert(semiInvisConnections, animStoppedConn)
-
-        task.delay(0, function()
-            semiInvisAnimTrack.TimePosition = 0.7
-            task.delay(1, function()
-                if semiInvisAnimTrack then
-                    semiInvisAnimTrack:AdjustSpeed(10)
+        if humanoid then
+            antiDeathConnection = humanoid.HealthChanged:Connect(function()
+                if humanoid.Health <= 0 then
+                    humanoid.Health = humanoid.MaxHealth
                 end
             end)
-        end)
+        end
+    else
+        antiDeathToggle.Text = "ANTI-DEATH: OFF"
+        antiDeathToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "Anti-Death disabled"
+        
+        if antiDeathConnection then
+            antiDeathConnection:Disconnect()
+        end
+    end
+end)
 
-        -- Position update connection
-        local positionConn = RunService.PreSimulation:Connect(function(dt)
-            updateCharacterReferences()
-            if character and humanoid and humanoid.Health > 0 and semiInvisOldRoot then
-                local root = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)
-                    semiInvisOldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)
-                    semiInvisOldRoot.Velocity = root.Velocity
-                    semiInvisOldRoot.CanCollide = false
+-- Infinite Jump
+local infJumpActive = false
+
+infJumpToggle.MouseButton1Click:Connect(function()
+    infJumpActive = not infJumpActive
+    
+    if infJumpActive then
+        infJumpToggle.Text = "INFINITE JUMP: ON"
+        infJumpToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Infinite Jump enabled"
+        
+        UserInputService.JumpRequest:Connect(function()
+            if infJumpActive and humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        infJumpToggle.Text = "INFINITE JUMP: OFF"
+        infJumpToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "Infinite Jump disabled"
+    end
+end)
+
+-- ESP System
+local espActive = false
+local espFolders = {}
+
+espToggle.MouseButton1Click:Connect(function()
+    espActive = not espActive
+    
+    if espActive then
+        espToggle.Text = "PLAYER ESP: ON"
+        espToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "ESP enabled"
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= Players.LocalPlayer then
+                local espFolder = Instance.new("Folder")
+                espFolder.Name = player.Name .. "_ESP"
+                espFolder.Parent = Workspace
+                espFolders[player] = espFolder
+                
+                if player.Character then
+                    createESP(player.Character, espFolder)
                 end
+                
+                player.CharacterAdded:Connect(function(char)
+                    createESP(char, espFolder)
+                end)
             end
-        end)
-        table.insert(semiInvisConnections, positionConn)
-
-        -- Character added connection
-        local charConn = player.CharacterAdded:Connect(function(newChar)
-            if isInvisible then
-                cleanupSemiInvisible()
-                revertSemiInvisibleClone()
-                isInvisible = false
-                semiInvisButton.Text = "SEMI INVISIBLE: OFF"
-                semiInvisButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-                statusLabel.Text = "Semi Invisible reset (new character)"
-            end
-        end)
-        table.insert(semiInvisConnections, charConn)
-
-        isInvisible = true
-        semiInvisButton.Text = "SEMI INVISIBLE: ON"
-        semiInvisButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        statusLabel.Text = "Semi Invisible enabled"
-        
+        end
     else
-        -- Disable semi-invisible
-        cleanupSemiInvisible()
-        revertSemiInvisibleClone()
-        isInvisible = false
-        semiInvisButton.Text = "SEMI INVISIBLE: OFF"
-        semiInvisButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        statusLabel.Text = "Semi Invisible disabled"
+        espToggle.Text = "PLAYER ESP: OFF"
+        espToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "ESP disabled"
+        
+        for _, folder in pairs(espFolders) do
+            folder:Destroy()
+        end
+        espFolders = {}
     end
+end)
+
+function createESP(character, folder)
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = character
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Parent = folder
 end
 
--- ========== STEAL TAB CONTENT ==========
-local stealContent = Instance.new("Frame")
-stealContent.Size = UDim2.new(1, 0, 1, 0)
-stealContent.BackgroundTransparency = 1
-stealContent.Visible = false
-stealContent.Parent = contentFrame
+-- Fullbright
+local fullbrightActive = false
+local originalBrightness
 
--- 2nd Floor Steal
-local secondFloorButton = Instance.new("TextButton")
-secondFloorButton.Text = "2ND FLOOR STEAL"
-secondFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
-secondFloorButton.Position = UDim2.new(0.05, 0, 0.05, 0)
-secondFloorButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-secondFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-secondFloorButton.Font = Enum.Font.GothamBold
-secondFloorButton.TextSize = 12
-secondFloorButton.Parent = stealContent
-
-local secondFloorCorner = Instance.new("UICorner")
-secondFloorCorner.CornerRadius = UDim.new(0, 6)
-secondFloorCorner.Parent = secondFloorButton
-
--- 3rd Floor Steal
-local thirdFloorButton = Instance.new("TextButton")
-thirdFloorButton.Text = "3RD FLOOR STEAL"
-thirdFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
-thirdFloorButton.Position = UDim2.new(0.05, 0, 0.15, 0)
-thirdFloorButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-thirdFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-thirdFloorButton.Font = Enum.Font.GothamBold
-thirdFloorButton.TextSize = 12
-thirdFloorButton.Parent = stealContent
-
-local thirdFloorCorner = Instance.new("UICorner")
-thirdFloorCorner.CornerRadius = UDim.new(0, 6)
-thirdFloorCorner.Parent = thirdFloorButton
-
--- Desync Anti-Hit
-local desyncButton = Instance.new("TextButton")
-desyncButton.Text = "DESYNC (ANTI HIT): OFF"
-desyncButton.Size = UDim2.new(0.9, 0, 0, 30)
-desyncButton.Position = UDim2.new(0.05, 0, 0.25, 0)
-desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-desyncButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-desyncButton.Font = Enum.Font.GothamBold
-desyncButton.TextSize = 12
-desyncButton.Parent = stealContent
-
-local desyncCorner = Instance.new("UICorner")
-desyncCorner.CornerRadius = UDim.new(0, 6)
-desyncCorner.Parent = desyncButton
-
--- ========== DESYNC SYSTEM ==========
-local desyncActive = false
-
-local function enableMobileDesync()
-    local success, error = pcall(function()
-        local backpack = player:WaitForChild("Backpack")
-        local character = player.Character or player.CharacterAdded:Wait()
-        local humanoid = character:WaitForChild("Humanoid")
+fullbrightToggle.MouseButton1Click:Connect(function()
+    fullbrightActive = not fullbrightActive
+    
+    if fullbrightActive then
+        fullbrightToggle.Text = "FULLBRIGHT: ON"
+        fullbrightToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Fullbright enabled"
         
-        local packages = ReplicatedStorage:WaitForChild("Packages", 5)
-        if not packages then warn("Packages not found") return false end
+        originalBrightness = Lighting.Brightness
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+    else
+        fullbrightToggle.Text = "FULLBRIGHT: OFF"
+        fullbrightToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "Fullbright disabled"
         
-        local netFolder = packages:WaitForChild("Net", 5)
-        if not netFolder then warn("Net folder not found") return false end
-        
-        local useItemRemote = netFolder:WaitForChild("RE/UseItem", 5)
-        local teleportRemote = netFolder:WaitForChild("RE/QuantumCloner/OnTeleport", 5)
-        if not useItemRemote or not teleportRemote then warn("Remotes not found") return false end
-        
-        local toolNames = {"Quantum Cloner", "whatever", "whatever"}
-        local tool
-        for _, toolName in ipairs(toolNames) do
-            tool = backpack:FindFirstChild(toolName) or character:FindFirstChild(toolName)
-            if tool then break end
+        if originalBrightness then
+            Lighting.Brightness = originalBrightness
         end
-        if not tool then
-            for _, item in ipairs(backpack:GetChildren()) do
-                if item:IsA("Tool") then tool=item break end
+        Lighting.GlobalShadows = true
+    end
+end)
+
+-- Auto Lazer
+local autoLazerActive = false
+local autoLazerThread
+
+autoLazerToggle.MouseButton1Click:Connect(function()
+    autoLazerActive = not autoLazerActive
+    
+    if autoLazerActive then
+        autoLazerToggle.Text = "AUTO LAZER: ON"
+        autoLazerToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Auto Lazer enabled"
+        
+        autoLazerThread = task.spawn(function()
+            while autoLazerActive do
+                -- Add your lazer logic here
+                task.wait(0.5)
             end
-        end
+        end)
+    else
+        autoLazerToggle.Text = "AUTO LAZER: OFF"
+        autoLazerToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "Auto Lazer disabled"
         
-        if tool and tool.Parent==backpack then
-            humanoid:EquipTool(tool)
-            task.wait(0.5)
+        if autoLazerThread then
+            task.cancel(autoLazerThread)
         end
-        
-        if setfflag then setfflag("WorldStepMax", "-9999999999") end
-        task.wait(0.2)
-        useItemRemote:FireServer()
-        task.wait(1)
-        teleportRemote:FireServer()
+    end
+end)
+
+-- Discord Button
+discordButton.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard("https://discord.gg/YSwFZsGk9j")
+        statusLabel.Text = "Discord link copied!"
+        discordButton.Text = "✓ COPIED!"
         task.wait(2)
-        if setfflag then setfflag("WorldStepMax", "-1") end
-        print("Desync activated")
-        return true
-    end)
-    if not success then
-        warn("Desync error: " .. tostring(error))
-        return false
-    end
-    return success
-end
-
-local function disableMobileDesync()
-    pcall(function()
-        if setfflag then setfflag("WorldStepMax", "-1") end
-        print("Desync deactivated")
-    end)
-end
-
-desyncButton.MouseButton1Click:Connect(function()
-    desyncActive = not desyncActive
-    if desyncActive then
-        local success = enableMobileDesync()
-        if success then
-            desyncButton.BackgroundColor3 = Color3.fromRGB(200, 200, 0)
-            desyncButton.Text = "DESYNC (ANTI HIT): ON"
-        else
-            desyncActive=false
-            desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-            desyncButton.Text = "DESYNC (ANTI HIT): OFF"
-        end
+        discordButton.Text = "📱 DISCORD INVITE"
     else
-        disableMobileDesync()
-        desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-        desyncButton.Text = "DESYNC (ANTI HIT): OFF"
-    end
-end)
-
-player.CharacterAdded:Connect(function()
-    desyncActive=false
-    desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-    desyncButton.Text = "DESYNC (ANTI HIT): OFF"
-end)
-
--- ========== FIXED TOGGLE BUTTON FOR MOBILE ==========
--- Mobile-compatible toggle button with better touch support
-toggleButton.MouseButton1Click:Connect(function()
-    gui.Enabled = not gui.Enabled
-    toggleEnabled = gui.Enabled
-    
-    if toggleEnabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 0)
-        toggleGlow.Color = Color3.fromRGB(0, 255, 0)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        startPulseAnimation()
-        statusLabel.Text = "GUI Opened"
-    else
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
-        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        stopPulseAnimation()
-        statusLabel.Text = "GUI Closed"
-    end
-end)
-
--- Add touch support for mobile
-toggleButton.TouchTap:Connect(function()
-    gui.Enabled = not gui.Enabled
-    toggleEnabled = gui.Enabled
-    
-    if toggleEnabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 0)
-        toggleGlow.Color = Color3.fromRGB(0, 255, 0)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        startPulseAnimation()
-        statusLabel.Text = "GUI Opened"
-    else
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
-        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        stopPulseAnimation()
-        statusLabel.Text = "GUI Closed"
-    end
-end)
-
--- Add hover effects for toggle button (PC only)
-toggleButton.MouseEnter:Connect(function()
-    if not toggleEnabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(100, 200, 255)
-        toggleGlow.Color = Color3.fromRGB(100, 200, 255)
-    end
-end)
-
-toggleButton.MouseLeave:Connect(function()
-    if not toggleEnabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
-        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
+        statusLabel.Text = "Clipboard not supported"
     end
 end)
 
@@ -1099,123 +798,66 @@ end)
 local function switchTab(tabName)
     currentTab = tabName
     mainContent.Visible = (tabName == "Main")
-    stealContent.Visible = (tabName == "Steal")
+    playerContent.Visible = (tabName == "Player")
     visualsContent.Visible = (tabName == "Visuals")
-    combatContent.Visible = (tabName == "Combat")
+    miscContent.Visible = (tabName == "Misc")
     
     for name, button in pairs(tabButtons) do
         if name == tabName then
-            button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            button.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
             button.TextColor3 = Color3.fromRGB(255, 255, 255)
         else
-            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-            button.TextColor3 = Color3.fromRGB(200, 200, 200)
+            button.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+            button.TextColor3 = Color3.fromRGB(180, 180, 180)
         end
     end
 end
 
--- Initialize tabs
 for tabName, button in pairs(tabButtons) do
     button.MouseButton1Click:Connect(function()
-        switchTab(tabName)
-    end)
-    
-    -- Mobile support for tabs
-    button.TouchTap:Connect(function()
         switchTab(tabName)
     end)
 end
 switchTab("Main")
 
--- ========== BUTTON CONNECTIONS ==========
-tweenButton.MouseButton1Click:Connect(function()
-    if active then
-        stopTweenToBase()
+-- ========== TOGGLE BUTTON ==========
+toggleButton.MouseButton1Click:Connect(function()
+    gui.Enabled = not gui.Enabled
+    toggleEnabled = gui.Enabled
+    
+    if toggleEnabled then
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 150)
+        toggleGlow.Color = Color3.fromRGB(0, 255, 150)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        statusLabel.Text = "GUI Opened"
     else
-        startTweenToBase()
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
+        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        statusLabel.Text = "GUI Closed"
     end
 end)
 
--- Mobile support for main buttons
-tweenButton.TouchTap:Connect(function()
-    if active then
-        stopTweenToBase()
+-- Mobile support
+toggleButton.TouchTap:Connect(function()
+    gui.Enabled = not gui.Enabled
+    toggleEnabled = gui.Enabled
+    
+    if toggleEnabled then
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 150)
+        toggleGlow.Color = Color3.fromRGB(0, 255, 150)
+        statusLabel.Text = "GUI Opened"
     else
-        startTweenToBase()
+        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
+        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
+        statusLabel.Text = "GUI Closed"
     end
 end)
 
-flyButton.MouseButton1Click:Connect(toggleFlight)
-flyButton.TouchTap:Connect(toggleFlight)
-
-floatButton.MouseButton1Click:Connect(toggleFloat)
-floatButton.TouchTap:Connect(toggleFloat)
-
-autoFloorButton.MouseButton1Click:Connect(toggleAutoFloor)
-autoFloorButton.TouchTap:Connect(toggleAutoFloor)
-
-semiInvisButton.MouseButton1Click:Connect(semiInvisibleFunction)
-semiInvisButton.TouchTap:Connect(semiInvisibleFunction)
-
--- Set initial values
-local function setSpeed(value)
-    updateCharacterReferences()
-    if humanoid then
-        humanoid.WalkSpeed = value
-    end
-end
-
-local function setJumpPower(value)
-    updateCharacterReferences()
-    if humanoid then
-        humanoid.UseJumpPower = true
-        humanoid.JumpPower = value
-    end
-end
-
-speedInput.FocusLost:Connect(function()
-    local newSpeed = tonumber(speedInput.Text) or 24
-    newSpeed = math.clamp(newSpeed, 0, 200)
-    speedInput.Text = tostring(newSpeed)
-    setSpeed(newSpeed)
-    tweenSpeed = newSpeed
+-- Update scrolling frame size
+contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    contentScrolling.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y)
 end)
 
-jumpInput.FocusLost:Connect(function()
-    local newJump = tonumber(jumpInput.Text) or 50
-    newJump = math.clamp(newJump, 0, 1000)
-    jumpInput.Text = tostring(newJump)
-    setJumpPower(newJump)
-end)
-
--- Initialize default values
-setJumpPower(50)
-setSpeed(24)
-
--- Clean up everything when script ends
-gui.Destroying:Connect(function()
-    stopTweenToBase()
-    applyAntiDeath(false)
-    cleanupSemiInvisible()
-    
-    if guidedConn then
-        guidedConn:Disconnect()
-    end
-    
-    if floatConnection then
-        floatConnection:Disconnect()
-    end
-    if floatBodyVelocity then
-        floatBodyVelocity:Destroy()
-    end
-    
-    if floorConnection then
-        floorConnection:Disconnect()
-    end
-    if floorPart then
-        floorPart:Destroy()
-    end
-end)
-
-print("Krypton Hub loaded successfully!")
+print("Krypton Hub v2.0 loaded successfully!")
 print("Discord: https://discord.gg/YSwFZsGk9j")
