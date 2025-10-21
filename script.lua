@@ -11,8 +11,13 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local character, hrp, humanoid
 
--- Global Godmode Protection
+-- Enhanced Global Godmode Protection
+local godmodeEnabled = false
+
 local function setupGodmode()
+    if godmodeEnabled then return end
+    godmodeEnabled = true
+    
     local mt = getrawmetatable(game)
     local oldNC = mt.__namecall
     local oldNI = mt.__newindex
@@ -21,7 +26,7 @@ local function setupGodmode()
     
     mt.__namecall = newcclosure(function(self, ...)
         local m = getnamecallmethod()
-        if self == humanoid then
+        if self == humanoid or (typeof(self) == "Instance" and self:IsA("Humanoid")) then
             if m == "ChangeState" and select(1, ...) == Enum.HumanoidStateType.Dead then
                 return
             end
@@ -34,9 +39,12 @@ local function setupGodmode()
             if m == "Destroy" then
                 return
             end
+            if m == "TakeDamage" then
+                return
+            end
         end
         
-        if self == character and m == "BreakJoints" then
+        if (self == character or (typeof(self) == "Instance" and self:IsDescendantOf(character))) and m == "BreakJoints" then
             return
         end
         
@@ -44,11 +52,15 @@ local function setupGodmode()
     end)
     
     mt.__newindex = newcclosure(function(self, k, v)
-        if self == humanoid then
+        if self == humanoid or (typeof(self) == "Instance" and self:IsA("Humanoid")) then
             if k == "Health" and type(v) == "number" and v <= 0 then
+                -- Force health to stay at max
+                if humanoid then
+                    oldNI(self, k, humanoid.MaxHealth)
+                end
                 return
             end
-            if k == "MaxHealth" and type(v) == "number" and v < humanoid.MaxHealth then
+            if k == "MaxHealth" and type(v) == "number" and v < (humanoid and humanoid.MaxHealth or 100) then
                 return
             end
             if k == "BreakJointsOnDeath" and v == true then
@@ -64,6 +76,13 @@ local function setupGodmode()
     setreadonly(mt, true)
 end
 
+-- Force health restoration
+local function maintainHealth()
+    if humanoid and humanoid.Health < humanoid.MaxHealth then
+        humanoid.Health = humanoid.MaxHealth
+    end
+end
+
 -- Safe character reference system
 local function updateCharacterReferences()
     character = player.Character
@@ -72,6 +91,13 @@ local function updateCharacterReferences()
         humanoid = character:FindFirstChildOfClass("Humanoid")
         if humanoid then
             setupGodmode()
+            -- Start health maintenance
+            spawn(function()
+                while character and humanoid and humanoid.Parent do
+                    maintainHealth()
+                    task.wait(0.1)
+                end
+            end)
         end
     else
         hrp = nil
@@ -87,6 +113,14 @@ player.CharacterAdded:Connect(function(c)
     hrp = character:WaitForChild("HumanoidRootPart")
     humanoid = character:WaitForChild("Humanoid")
     setupGodmode()
+    
+    -- Enhanced health protection on respawn
+    spawn(function()
+        while character and humanoid and humanoid.Parent do
+            maintainHealth()
+            task.wait(0.1)
+        end
+    end)
 end)
 
 -- Circle toggle button
@@ -498,9 +532,15 @@ mainContent[2].MouseButton1Click:Connect(function()
         mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Slow Flight enabled - Use camera direction"
         
+        -- Apply godmode before flight
+        setupGodmode()
+        maintainHealth()
+        
         flyConnection = RunService.RenderStepped:Connect(function()
             updateCharacterReferences()
             if flyActive and hrp then
+                setupGodmode()
+                maintainHealth()
                 hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
             end
         end)
@@ -520,7 +560,7 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FULL INVISIBLE SYSTEM (Modified from Semi-Invisible) ==========
+-- ========== FULL INVISIBLE SYSTEM (Fixed Godmode) ==========
 local connections = {
     FullInvisible = {}
 }
@@ -559,6 +599,10 @@ local function fullInvisibleFunction()
 
     local function doClone()  
         if character and humanoid and humanoid.Health > 0 then  
+            -- Apply godmode before starting invisibility
+            setupGodmode()
+            maintainHealth()
+            
             hip = humanoid.HipHeight  
             oldRoot = hrp
             if not oldRoot or not oldRoot.Parent then  
@@ -689,6 +733,10 @@ local function fullInvisibleFunction()
             animationTrickery()  
             connection = RunService.PreSimulation:Connect(function(dt)  
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
+                    -- Continuous godmode protection
+                    setupGodmode()
+                    maintainHealth()
+                    
                     local root = character.PrimaryPart or hrp
                     if root then  
                         -- Hide real character underground
@@ -749,6 +797,7 @@ local function fullInvisibleFunction()
     if not isInvisible then
         removeFolders()  
         setupGodmode()  
+        maintainHealth()
         if enableInvisibility() then
             isInvisible = true
             playerContent[1].Text = "FULL INVISIBLE: ON"
@@ -783,7 +832,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ========== INFINITE JUMP (From your file) ==========
+-- ========== INFINITE JUMP (Fixed Godmode) ==========
 local infJumpActive = false
 local infJumpConnection
 
@@ -795,9 +844,15 @@ playerContent[2].MouseButton1Click:Connect(function()
         playerContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Infinite Jump enabled"
         
+        -- Apply godmode before starting infinite jump
+        setupGodmode()
+        maintainHealth()
+        
         infJumpConnection = UserInputService.JumpRequest:Connect(function()
             if infJumpActive and humanoid and humanoid.Health > 0 then
+                -- Continuous protection during jumps
                 setupGodmode()
+                maintainHealth()
                 humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                 if hrp then
                     hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
@@ -815,7 +870,7 @@ playerContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== SPEED BOOSTER (From your file) ==========
+-- ========== SPEED BOOSTER (Fixed Godmode) ==========
 local speedActive = false
 local speedConn
 local baseSpeed = 27
@@ -827,6 +882,10 @@ playerContent[3].MouseButton1Click:Connect(function()
         playerContent[3].Text = "SPEED BOOSTER: ON"
         playerContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Speed Booster enabled"
+        
+        -- Apply godmode before speed
+        setupGodmode()
+        maintainHealth()
         
         local function GetCharacter()
             local Char = player.Character or player.CharacterAdded:Wait()
@@ -848,6 +907,11 @@ playerContent[3].MouseButton1Click:Connect(function()
         speedConn = RunService.Heartbeat:Connect(function()
             local Char, HRP, Hum = GetCharacter()
             if not Char or not HRP or not Hum then return end
+            
+            -- Continuous protection during speed
+            setupGodmode()
+            maintainHealth()
+            
             local inputDirection = getMovementInput()
             if inputDirection.Magnitude > 0 then
                 HRP.AssemblyLinearVelocity = Vector3.new(
@@ -894,6 +958,7 @@ mainContent[3].MouseButton1Click:Connect(function()
         updateCharacterReferences()
         if hrp then
             setupGodmode()
+            maintainHealth()
             floatBodyVelocity = Instance.new("BodyVelocity")
             floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
             floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
@@ -1101,6 +1166,6 @@ player.CharacterAdded:Connect(function()
 end)
 
 print("Krypton Hub v5.0 - Complete Edition Loaded!")
-print("Features: Full Invisible with underground system + indicator box")
+print("Features: Full Invisible with enhanced godmode protection")
 print("Controls: F key to toggle full invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
