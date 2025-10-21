@@ -366,7 +366,7 @@ contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     contentScrolling.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y)
 end)
 
--- ========== SMOOTH TWEEN WITH GODMODE ==========
+-- ========== FIXED TWEEN THAT STAYS ON GROUND ==========
 local tweenActive = false
 local currentTween
 
@@ -381,6 +381,21 @@ local function getBasePosition()
         end
     end
     return nil
+end
+
+local function getGroundHeight(position)
+    -- Raycast down to find ground height
+    local rayOrigin = Vector3.new(position.X, position.Y + 10, position.Z)
+    local rayDirection = Vector3.new(0, -50, 0)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {character}
+    
+    local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+    if raycastResult then
+        return raycastResult.Position.Y + 3 -- Stay slightly above ground
+    end
+    return position.Y -- Fallback to current Y
 end
 
 mainContent[1].MouseButton1Click:Connect(function()
@@ -411,12 +426,21 @@ mainContent[1].MouseButton1Click:Connect(function()
                 -- Enable godmode during tween
                 setupGodmode()
                 
-                local targetPos = Vector3.new(basePos.X, basePos.Y + 3, basePos.Z)
-                local distance = (targetPos - hrp.Position).Magnitude
-                local duration = math.max(2, distance / 25) -- Smooth speed
+                -- Get current ground height and base ground height
+                local currentGroundY = getGroundHeight(hrp.Position)
+                local baseGroundY = getGroundHeight(basePos)
                 
-                -- Use smaller increments for smoother movement
-                local startPos = hrp.Position
+                -- Use the lower of the two heights to stay on ground
+                local targetY = math.min(currentGroundY, baseGroundY)
+                
+                local startPos = Vector3.new(hrp.Position.X, currentGroundY, hrp.Position.Z)
+                local targetPos = Vector3.new(basePos.X, targetY, basePos.Z)
+                
+                local distance = (targetPos - startPos).Magnitude
+                local duration = math.max(3, distance / 15) -- Slow speed to avoid lag back
+                
+                statusLabel.Text = "Tweening (slow to avoid lag)..."
+                
                 local startTime = tick()
                 
                 while tweenActive and tick() - startTime < duration do
@@ -425,25 +449,33 @@ mainContent[1].MouseButton1Click:Connect(function()
                     local elapsed = tick() - startTime
                     local progress = elapsed / duration
                     
-                    -- Smooth easing function
-                    local easedProgress = 1 - (1 - progress) * (1 - progress) * (1 - progress)
+                    -- Very smooth easing to prevent lag back
+                    local easedProgress = progress * progress * (3 - 2 * progress) -- Smoothstep
                     
                     local newPos = startPos + (targetPos - startPos) * easedProgress
+                    
+                    -- Keep character at ground level during tween
+                    local currentGround = getGroundHeight(newPos)
+                    newPos = Vector3.new(newPos.X, currentGround, newPos.Z)
+                    
                     hrp.CFrame = CFrame.new(newPos)
                     
-                    -- Keep character alive
+                    -- Keep character alive and in running state
                     if humanoid then
                         humanoid.Health = humanoid.MaxHealth
+                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
                     end
                     
-                    task.wait(0.03) -- Smooth updates
+                    task.wait(0.05) -- Even slower updates for stability
                 end
                 
                 if tweenActive and hrp then
-                    hrp.CFrame = CFrame.new(targetPos)
+                    -- Final position adjustment to ground
+                    local finalGroundY = getGroundHeight(targetPos)
+                    hrp.CFrame = CFrame.new(targetPos.X, finalGroundY, targetPos.Z)
+                    statusLabel.Text = "Reached base safely!"
                 end
                 
-                statusLabel.Text = "Reached base!"
                 tweenActive = false
                 mainContent[1].Text = "▶ TWEEN TO BASE"
                 mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
@@ -453,7 +485,6 @@ mainContent[1].MouseButton1Click:Connect(function()
         end
     end
 end)
-
 -- ========== YOUR EXACT FLIGHT SYSTEM ==========
 local flyActive = false
 local flyConnection
