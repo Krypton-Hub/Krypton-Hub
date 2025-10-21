@@ -1,4 +1,4 @@
--- Krypton Hub - Underground with Position Indicator
+-- Krypton Hub - Godmode Flight & Invisible Edition
 -- Made by agent_duke13
 
 local Players = game:GetService("Players")
@@ -11,12 +11,68 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local character, hrp, humanoid
 
+-- Global Godmode Protection
+local function setupGodmode()
+    local mt = getrawmetatable(game)
+    local oldNC = mt.__namecall
+    local oldNI = mt.__newindex
+    
+    setreadonly(mt, false)
+    
+    mt.__namecall = newcclosure(function(self, ...)
+        local m = getnamecallmethod()
+        if self == humanoid then
+            if m == "ChangeState" and select(1, ...) == Enum.HumanoidStateType.Dead then
+                return
+            end
+            if m == "SetStateEnabled" then
+                local st, en = ...
+                if st == Enum.HumanoidStateType.Dead and en == true then
+                    return
+                end
+            end
+            if m == "Destroy" then
+                return
+            end
+        end
+        
+        if self == character and m == "BreakJoints" then
+            return
+        end
+        
+        return oldNC(self, ...)
+    end)
+    
+    mt.__newindex = newcclosure(function(self, k, v)
+        if self == humanoid then
+            if k == "Health" and type(v) == "number" and v <= 0 then
+                return
+            end
+            if k == "MaxHealth" and type(v) == "number" and v < humanoid.MaxHealth then
+                return
+            end
+            if k == "BreakJointsOnDeath" and v == true then
+                return
+            end
+            if k == "Parent" and v == nil then
+                return
+            end
+        end
+        return oldNI(self, k, v)
+    end)
+    
+    setreadonly(mt, true)
+end
+
 -- Safe character reference system
 local function updateCharacterReferences()
     character = player.Character
     if character then
         hrp = character:FindFirstChild("HumanoidRootPart")
         humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            setupGodmode()
+        end
     else
         hrp = nil
         humanoid = nil
@@ -30,9 +86,10 @@ player.CharacterAdded:Connect(function(c)
     task.wait(0.5)
     hrp = character:WaitForChild("HumanoidRootPart")
     humanoid = character:WaitForChild("Humanoid")
+    setupGodmode()
 end)
 
--- Circle toggle button (simple click)
+-- Circle toggle button
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
@@ -228,11 +285,11 @@ local visualsContent = {}
 
 -- MAIN TAB
 table.insert(mainContent, createToggle("▶ TWEEN TO BASE", 1))
-table.insert(mainContent, createToggle("FLIGHT: OFF", 2))
+table.insert(mainContent, createToggle("SLOW FLIGHT: OFF", 2))
 table.insert(mainContent, createToggle("FLOAT: OFF", 3))
 
 -- PLAYER TAB
-table.insert(playerContent, createToggle("UNDERGROUND: OFF", 1))
+table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
 table.insert(playerContent, createToggle("INFINITE JUMP: OFF", 2))
 table.insert(playerContent, createToggle("SPEED BOOST: OFF", 3))
 
@@ -309,9 +366,7 @@ contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     contentScrolling.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y)
 end)
 
--- ========== FIXED FEATURE IMPLEMENTATIONS ==========
-
--- Improved Tween to Base (Smooth)
+-- ========== SMOOTH TWEEN WITH GODMODE ==========
 local tweenActive = false
 local currentTween
 
@@ -353,17 +408,40 @@ mainContent[1].MouseButton1Click:Connect(function()
                     return 
                 end
                 
+                -- Enable godmode during tween
+                setupGodmode()
+                
                 local targetPos = Vector3.new(basePos.X, basePos.Y + 3, basePos.Z)
                 local distance = (targetPos - hrp.Position).Magnitude
-                local duration = distance / 30 -- Good speed
+                local duration = math.max(2, distance / 25) -- Smooth speed
                 
-                currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad), {
-                    CFrame = CFrame.new(targetPos)
-                })
+                -- Use smaller increments for smoother movement
+                local startPos = hrp.Position
+                local startTime = tick()
                 
-                humanoid:ChangeState(Enum.HumanoidStateType.Running)
-                currentTween:Play()
-                currentTween.Completed:Wait()
+                while tweenActive and tick() - startTime < duration do
+                    if not hrp then break end
+                    
+                    local elapsed = tick() - startTime
+                    local progress = elapsed / duration
+                    
+                    -- Smooth easing function
+                    local easedProgress = 1 - (1 - progress) * (1 - progress) * (1 - progress)
+                    
+                    local newPos = startPos + (targetPos - startPos) * easedProgress
+                    hrp.CFrame = CFrame.new(newPos)
+                    
+                    -- Keep character alive
+                    if humanoid then
+                        humanoid.Health = humanoid.MaxHealth
+                    end
+                    
+                    task.wait(0.03) -- Smooth updates
+                end
+                
+                if tweenActive and hrp then
+                    hrp.CFrame = CFrame.new(targetPos)
+                end
                 
                 statusLabel.Text = "Reached base!"
                 tweenActive = false
@@ -376,7 +454,7 @@ mainContent[1].MouseButton1Click:Connect(function()
     end
 end)
 
--- Flight System (from your previous file)
+-- ========== YOUR EXACT FLIGHT SYSTEM ==========
 local flyActive = false
 local flyConnection
 
@@ -384,46 +462,267 @@ mainContent[2].MouseButton1Click:Connect(function()
     flyActive = not flyActive
     
     if flyActive then
-        mainContent[2].Text = "FLIGHT: ON"
+        mainContent[2].Text = "SLOW FLIGHT: ON"
         mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Flight enabled - Use WASD"
+        statusLabel.Text = "Slow Flight enabled - Use camera direction"
         
-        flyConnection = RunService.Heartbeat:Connect(function()
+        flyConnection = RunService.RenderStepped:Connect(function()
             updateCharacterReferences()
-            if hrp and flyActive then
-                local cam = Workspace.CurrentCamera
-                local moveDirection = Vector3.new()
-                
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                    moveDirection = moveDirection + cam.CFrame.LookVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                    moveDirection = moveDirection - cam.CFrame.LookVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                    moveDirection = moveDirection - cam.CFrame.RightVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                    moveDirection = moveDirection + cam.CFrame.RightVector
-                end
-                
-                if moveDirection.Magnitude > 0 then
-                    hrp.Velocity = moveDirection.Unit * 50
-                else
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
-                end
+            if flyActive and hrp then
+                hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
             end
         end)
     else
-        mainContent[2].Text = "FLIGHT: OFF"
+        mainContent[2].Text = "SLOW FLIGHT: OFF"
         mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Flight disabled"
+        statusLabel.Text = "Slow Flight disabled"
         
         if flyConnection then
             flyConnection:Disconnect()
+            flyConnection = nil
+        end
+        
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
     end
 end)
+
+-- ========== YOUR EXACT SEMI-INVISIBLE SYSTEM ==========
+local connections = {
+    SemiInvisible = {}
+}
+
+local isInvisible = false
+local clone, oldRoot, hip, animTrack, connection, characterConnection
+
+local function semiInvisibleFunction()
+    local DEPTH_OFFSET = 0.09  
+
+    local function removeFolders()  
+        local playerName = player.Name  
+        local playerFolder = Workspace:FindFirstChild(playerName)  
+        if not playerFolder then  
+            return  
+        end  
+
+        local doubleRig = playerFolder:FindFirstChild("DoubleRig")  
+        if doubleRig then  
+            doubleRig:Destroy()  
+        end  
+
+        local constraints = playerFolder:FindFirstChild("Constraints")  
+        if constraints then  
+            constraints:Destroy()  
+        end  
+
+        local childAddedConn = playerFolder.ChildAdded:Connect(function(child)  
+            if child.Name == "DoubleRig" or child.Name == "Constraints" then  
+                child:Destroy()  
+            end  
+        end)  
+        table.insert(connections.SemiInvisible, childAddedConn)  
+    end  
+
+    local function doClone()  
+        if character and humanoid and humanoid.Health > 0 then  
+            hip = humanoid.HipHeight  
+            oldRoot = hrp
+            if not oldRoot or not oldRoot.Parent then  
+                return false  
+            end  
+
+            local tempParent = Instance.new("Model")  
+            tempParent.Parent = game  
+            character.Parent = tempParent  
+
+            clone = oldRoot:Clone()  
+            clone.Parent = character  
+            oldRoot.Parent = Workspace.CurrentCamera  
+            clone.CFrame = oldRoot.CFrame  
+
+            character.PrimaryPart = clone  
+            character.Parent = Workspace  
+
+            for _, v in pairs(character:GetDescendants()) do  
+                if v:IsA("Weld") or v:IsA("Motor6D") then  
+                    if v.Part0 == oldRoot then  
+                        v.Part0 = clone  
+                    end  
+                    if v.Part1 == oldRoot then  
+                        v.Part1 = clone  
+                    end  
+                end  
+            end  
+
+            tempParent:Destroy()  
+            return true  
+        end  
+        return false  
+    end  
+
+    local function revertClone()  
+        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
+            return false  
+        end  
+
+        local tempParent = Instance.new("Model")  
+        tempParent.Parent = game  
+        character.Parent = tempParent  
+
+        oldRoot.Parent = character  
+        character.PrimaryPart = oldRoot  
+        character.Parent = Workspace  
+        oldRoot.CanCollide = true  
+
+        for _, v in pairs(character:GetDescendants()) do  
+            if v:IsA("Weld") or v:IsA("Motor6D") then  
+                if v.Part0 == clone then  
+                    v.Part0 = oldRoot  
+                end  
+                if v.Part1 == clone then  
+                    v.Part1 = oldRoot  
+                end  
+            end  
+        end  
+
+        if clone then  
+            local oldPos = clone.CFrame  
+            clone:Destroy()  
+            clone = nil  
+            oldRoot.CFrame = oldPos  
+        end  
+
+        oldRoot = nil  
+        if character and humanoid then  
+            humanoid.HipHeight = hip  
+        end  
+    end  
+
+    local function animationTrickery()  
+        if character and humanoid and humanoid.Health > 0 then  
+            local anim = Instance.new("Animation")  
+            anim.AnimationId = "http://www.roblox.com/asset/?id=18537363391"  
+            local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
+            animTrack = animator:LoadAnimation(anim)  
+            animTrack.Priority = Enum.AnimationPriority.Action4  
+            animTrack:Play(0, 1, 0)  
+            anim:Destroy()  
+
+            local animStoppedConn = animTrack.Stopped:Connect(function()  
+                if isInvisible then  
+                    animationTrickery()  
+                end  
+            end)  
+            table.insert(connections.SemiInvisible, animStoppedConn)  
+
+            task.delay(0, function()  
+                animTrack.TimePosition = 0.7  
+                task.delay(1, function()  
+                    animTrack:AdjustSpeed(math.huge)  
+                end)  
+            end)  
+        end  
+    end  
+
+    local function enableInvisibility()  
+        if not character or humanoid.Health <= 0 then  
+            return false
+        end  
+
+        removeFolders()  
+        local success = doClone()  
+        if success then  
+            task.wait(0.1)  
+            animationTrickery()  
+            connection = RunService.PreSimulation:Connect(function(dt)  
+                if character and humanoid and humanoid.Health > 0 and oldRoot then  
+                    local root = character.PrimaryPart or hrp
+                    if root then  
+                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)  
+                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
+                        oldRoot.Velocity = root.Velocity  
+                        oldRoot.CanCollide = false  
+                    end  
+                end  
+            end)  
+            table.insert(connections.SemiInvisible, connection)  
+
+            characterConnection = player.CharacterAdded:Connect(function(newChar)
+                if isInvisible then
+                    if animTrack then  
+                        animTrack:Stop()  
+                        animTrack:Destroy()  
+                        animTrack = nil  
+                    end  
+                    if connection then connection:Disconnect() end  
+                    revertClone()
+                    removeFolders()
+                    isInvisible = false
+                    
+                    for _, conn in ipairs(connections.SemiInvisible) do  
+                        if conn then conn:Disconnect() end  
+                    end  
+                    connections.SemiInvisible = {}
+                end
+            end)
+            table.insert(connections.SemiInvisible, characterConnection)
+            
+            return true
+        end  
+        return false
+    end  
+
+    local function disableInvisibility()  
+        if animTrack then  
+            animTrack:Stop()  
+            animTrack:Destroy()  
+            animTrack = nil  
+        end  
+        if connection then connection:Disconnect() end  
+        if characterConnection then characterConnection:Disconnect() end  
+        revertClone()  
+        removeFolders()  
+    end
+
+    if not isInvisible then
+        removeFolders()  
+        setupGodmode()  
+        if enableInvisibility() then
+            isInvisible = true
+            playerContent[1].Text = "SEMI INVISIBLE: ON"
+            playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+            statusLabel.Text = "Semi-Invisible enabled (F key to toggle)"
+        end
+    else
+        disableInvisibility()
+        isInvisible = false
+        playerContent[1].Text = "SEMI INVISIBLE: OFF"
+        playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Semi-Invisible disabled"
+        
+        pcall(function()  
+            local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")  
+            if oldGui then oldGui:Destroy() end  
+        end)  
+        for _, conn in ipairs(connections.SemiInvisible) do  
+            if conn then conn:Disconnect() end  
+        end  
+        connections.SemiInvisible = {}  
+    end
+end
+
+-- Connect semi-invisible to button
+playerContent[1].MouseButton1Click:Connect(semiInvisibleFunction)
+
+-- F key toggle for semi-invisible
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
+        semiInvisibleFunction()
+    end
+end)
+
+-- ========== OTHER FEATURES WITH GODMODE ==========
 
 -- Float System
 local floatActive = false
@@ -439,6 +738,7 @@ mainContent[3].MouseButton1Click:Connect(function()
         
         updateCharacterReferences()
         if hrp then
+            setupGodmode()
             floatBodyVelocity = Instance.new("BodyVelocity")
             floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
             floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
@@ -455,124 +755,6 @@ mainContent[3].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== UNDERGROUND WITH GREEN BOX INDICATOR ==========
-local undergroundActive = false
-local undergroundConnections = {}
-local positionIndicator
-
-local function createPositionIndicator()
-    if positionIndicator then positionIndicator:Destroy() end
-    
-    positionIndicator = Instance.new("Part")
-    positionIndicator.Name = "PositionIndicator"
-    positionIndicator.Size = Vector3.new(3, 5, 2)
-    positionIndicator.Anchored = true
-    positionIndicator.CanCollide = false
-    positionIndicator.Material = Enum.Material.Neon
-    positionIndicator.BrickColor = BrickColor.new("Bright green")
-    positionIndicator.Transparency = 0.3
-    positionIndicator.Parent = Workspace
-    
-    return positionIndicator
-end
-
-local function cleanupUnderground()
-    for _, conn in ipairs(undergroundConnections) do
-        if conn then
-            pcall(function() conn:Disconnect() end)
-        end
-    end
-    undergroundConnections = {}
-    
-    if positionIndicator then
-        positionIndicator:Destroy()
-        positionIndicator = nil
-    end
-end
-
-playerContent[1].MouseButton1Click:Connect(function()
-    undergroundActive = not undergroundActive
-    
-    if undergroundActive then
-        -- Enable Underground Mode
-        playerContent[1].Text = "UNDERGROUND: ON"
-        playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Underground mode enabled"
-        
-        updateCharacterReferences()
-        if not character or not humanoid or humanoid.Health <= 0 then
-            statusLabel.Text = "Cannot enable: No character or dead"
-            return
-        end
-        
-        -- Clean up first
-        cleanupUnderground()
-        
-        -- Create green position indicator
-        local indicator = createPositionIndicator()
-        
-        -- Store original position
-        local originalPosition = hrp.Position
-        
-        -- Move character underground (10 studs below)
-        local undergroundPosition = Vector3.new(hrp.Position.X, hrp.Position.Y - 10, hrp.Position.Z)
-        hrp.CFrame = CFrame.new(undergroundPosition)
-        
-        -- Make character transparent
-        for _, part in pairs(character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Transparency = 0.9
-            end
-        end
-        
-        -- Update position indicator to follow character
-        local positionConn = RunService.Heartbeat:Connect(function()
-            if hrp and undergroundActive then
-                -- Update green box position (above ground where torso should be)
-                local aboveGroundPos = Vector3.new(hrp.Position.X, originalPosition.Y, hrp.Position.Z)
-                indicator.Position = aboveGroundPos
-                
-                -- Keep character underground but allow movement
-                local currentUndergroundPos = Vector3.new(hrp.Position.X, originalPosition.Y - 10, hrp.Position.Z)
-                hrp.CFrame = CFrame.new(currentUndergroundPos)
-            end
-        end)
-        table.insert(undergroundConnections, positionConn)
-
-        -- Character added connection
-        local charConn = player.CharacterAdded:Connect(function(newChar)
-            if undergroundActive then
-                cleanupUnderground()
-                undergroundActive = false
-                playerContent[1].Text = "UNDERGROUND: OFF"
-                playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-                statusLabel.Text = "Underground reset (new character)"
-            end
-        end)
-        table.insert(undergroundConnections, charConn)
-        
-    else
-        -- Disable Underground Mode
-        playerContent[1].Text = "UNDERGROUND: OFF"
-        playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Underground mode disabled"
-        
-        cleanupUnderground()
-        
-        -- Restore visibility and position
-        updateCharacterReferences()
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Transparency = 0
-                end
-            end
-        end
-    end
-end)
-
--- ========== OTHER FEATURES ==========
-
 -- Infinite Jump
 local infJumpActive = false
 local infJumpConnection
@@ -587,6 +769,7 @@ playerContent[2].MouseButton1Click:Connect(function()
         
         infJumpConnection = UserInputService.JumpRequest:Connect(function()
             if infJumpActive and humanoid and humanoid.Health > 0 then
+                setupGodmode()
                 humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                 if hrp then
                     hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
@@ -618,6 +801,7 @@ playerContent[3].MouseButton1Click:Connect(function()
         
         updateCharacterReferences()
         if humanoid then
+            setupGodmode()
             originalWalkSpeed = humanoid.WalkSpeed
             humanoid.WalkSpeed = 50
         end
@@ -745,25 +929,13 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Mobile support
-toggleButton.TouchTap:Connect(function()
-    gui.Enabled = not gui.Enabled
-    if gui.Enabled then
-        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-        statusLabel.Text = "GUI Opened"
-    else
-        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-        statusLabel.Text = "GUI Closed"
-    end
-end)
-
 -- Auto-cleanup on character death
 player.CharacterAdded:Connect(function()
     -- Reset all states
     tweenActive = false
     flyActive = false
     floatActive = false
-    undergroundActive = false
+    isInvisible = false
     infJumpActive = false
     speedBoostActive = false
     espActive = false
@@ -773,13 +945,13 @@ player.CharacterAdded:Connect(function()
     mainContent[1].Text = "▶ TWEEN TO BASE"
     mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
-    mainContent[2].Text = "FLIGHT: OFF"
+    mainContent[2].Text = "SLOW FLIGHT: OFF"
     mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
     mainContent[3].Text = "FLOAT: OFF"
     mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
-    playerContent[1].Text = "UNDERGROUND: OFF"
+    playerContent[1].Text = "SEMI INVISIBLE: OFF"
     playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
     playerContent[2].Text = "INFINITE JUMP: OFF"
@@ -803,8 +975,11 @@ player.CharacterAdded:Connect(function()
     if floatBodyVelocity then floatBodyVelocity:Destroy() end
     if infJumpConnection then infJumpConnection:Disconnect() end
     
-    -- Clean up underground
-    cleanupUnderground()
+    -- Clean up semi-invisible
+    for _, conn in ipairs(connections.SemiInvisible) do
+        if conn then conn:Disconnect() end
+    end
+    connections.SemiInvisible = {}
     
     -- Reset ESP
     for _, folder in pairs(espFolders) do
@@ -824,6 +999,7 @@ player.CharacterAdded:Connect(function()
     statusLabel.Text = "Character respawned - Ready"
 end)
 
-print("Krypton Hub v3.0 - Underground Edition Loaded!")
-print("Features: Underground mode with green position indicator, Smooth tween, Flight, Simple click toggle")
+print("Krypton Hub v4.0 - Godmode Edition Loaded!")
+print("Features: Your exact flight & semi-invisible systems, Godmode protection, Smooth tween")
+print("Controls: F key to toggle semi-invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
