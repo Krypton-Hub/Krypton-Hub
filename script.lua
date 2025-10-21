@@ -1,4 +1,4 @@
--- Krypton Hub - Fixed Version
+-- Krypton Hub - Underground with Position Indicator
 -- Made by agent_duke13
 
 local Players = game:GetService("Players")
@@ -7,7 +7,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local PathfindingService = game:GetService("PathfindingService")
 
 local player = Players.LocalPlayer
 local character, hrp, humanoid
@@ -33,29 +32,30 @@ player.CharacterAdded:Connect(function(c)
     humanoid = character:WaitForChild("Humanoid")
 end)
 
--- Old style toggle button
+-- Circle toggle button (simple click)
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
 toggleGui.Parent = player:WaitForChild("PlayerGui")
 
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 80, 0, 35)
-toggleButton.Position = UDim2.new(0, 10, 0.5, -17)
+toggleButton.Size = UDim2.new(0, 60, 0, 60)
+toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
 toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+toggleButton.BackgroundTransparency = 0.3
 toggleButton.Text = "Krypton"
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextSize = 14
+toggleButton.TextSize = 12
 toggleButton.Active = true
 toggleButton.Draggable = true
 toggleButton.Parent = toggleGui
 
 local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0.2, 0)
+uiCorner.CornerRadius = UDim.new(1, 0)
 uiCorner.Parent = toggleButton
 
--- Main GUI (Shorter)
+-- Main GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
@@ -63,7 +63,7 @@ gui.Parent = player:WaitForChild("PlayerGui")
 gui.Enabled = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 320)  -- Shorter height
+mainFrame.Size = UDim2.new(0, 280, 0, 320)
 mainFrame.Position = UDim2.new(0.5, -140, 0.5, -160)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 mainFrame.BorderSizePixel = 0
@@ -136,9 +136,9 @@ for i, tabName in ipairs(tabs) do
     tabButtons[tabName] = tabButton
 end
 
--- Content Area (Shorter)
+-- Content Area
 local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, -20, 1, -110)  -- Adjusted for shorter GUI
+contentFrame.Size = UDim2.new(1, -20, 1, -110)
 contentFrame.Position = UDim2.new(0, 10, 0, 80)
 contentFrame.BackgroundTransparency = 1
 contentFrame.Parent = mainFrame
@@ -153,7 +153,7 @@ contentScrolling.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
 contentScrolling.Parent = contentFrame
 
 local contentLayout = Instance.new("UIListLayout")
-contentLayout.Padding = UDim.new(0, 6)  -- Less padding for shorter GUI
+contentLayout.Padding = UDim.new(0, 6)
 contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 contentLayout.Parent = contentScrolling
 
@@ -183,7 +183,7 @@ statusLabel.Parent = statusBar
 local function createButton(text, layoutOrder)
     local button = Instance.new("TextButton")
     button.Text = text
-    button.Size = UDim2.new(1, 0, 0, 32)  -- Smaller buttons
+    button.Size = UDim2.new(1, 0, 0, 32)
     button.Position = UDim2.new(0, 0, 0, 0)
     button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -204,7 +204,7 @@ end
 local function createToggle(text, layoutOrder)
     local toggle = Instance.new("TextButton")
     toggle.Text = text
-    toggle.Size = UDim2.new(1, 0, 0, 32)  -- Smaller toggles
+    toggle.Size = UDim2.new(1, 0, 0, 32)
     toggle.Position = UDim2.new(0, 0, 0, 0)
     toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -221,18 +221,18 @@ local function createToggle(text, layoutOrder)
     return toggle
 end
 
--- Tab Contents (Removed Noclip)
+-- Tab Contents
 local mainContent = {}
 local playerContent = {}
 local visualsContent = {}
 
--- MAIN TAB (Only 3 features now)
+-- MAIN TAB
 table.insert(mainContent, createToggle("▶ TWEEN TO BASE", 1))
 table.insert(mainContent, createToggle("FLIGHT: OFF", 2))
 table.insert(mainContent, createToggle("FLOAT: OFF", 3))
 
 -- PLAYER TAB
-table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
+table.insert(playerContent, createToggle("UNDERGROUND: OFF", 1))
 table.insert(playerContent, createToggle("INFINITE JUMP: OFF", 2))
 table.insert(playerContent, createToggle("SPEED BOOST: OFF", 3))
 
@@ -311,7 +311,7 @@ end)
 
 -- ========== FIXED FEATURE IMPLEMENTATIONS ==========
 
--- Improved Tween to Base (Less Glitchy)
+-- Improved Tween to Base (Smooth)
 local tweenActive = false
 local currentTween
 
@@ -341,7 +341,7 @@ mainContent[1].MouseButton1Click:Connect(function()
             tweenActive = true
             mainContent[1].Text = "■ STOP TWEEN"
             mainContent[1].BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-            statusLabel.Text = "Finding path to base..."
+            statusLabel.Text = "Tweening to base..."
             
             spawn(function()
                 updateCharacterReferences()
@@ -354,65 +354,16 @@ mainContent[1].MouseButton1Click:Connect(function()
                 end
                 
                 local targetPos = Vector3.new(basePos.X, basePos.Y + 3, basePos.Z)
+                local distance = (targetPos - hrp.Position).Magnitude
+                local duration = distance / 30 -- Good speed
                 
-                -- Use pathfinding for better path
-                local path = PathfindingService:CreatePath({
-                    AgentRadius = 2,
-                    AgentHeight = 5,
-                    AgentCanJump = true
+                currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad), {
+                    CFrame = CFrame.new(targetPos)
                 })
                 
-                local success, error = pcall(function()
-                    path:ComputeAsync(hrp.Position, targetPos)
-                end)
-                
-                if success and path.Status == Enum.PathStatus.Success then
-                    local waypoints = path:GetWaypoints()
-                    statusLabel.Text = "Following path (" .. #waypoints .. " points)"
-                    
-                    for i, waypoint in ipairs(waypoints) do
-                        if not tweenActive or not hrp then break end
-                        
-                        if i > 1 then -- Skip first waypoint (current position)
-                            local waypointPos = waypoint.Position
-                            local distance = (waypointPos - hrp.Position).Magnitude
-                            
-                            if distance > 5 then
-                                local duration = distance / 20 -- Slower speed for less glitching
-                                
-                                currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
-                                    CFrame = CFrame.new(waypointPos)
-                                })
-                                
-                                humanoid:ChangeState(Enum.HumanoidStateType.Running)
-                                currentTween:Play()
-                                currentTween.Completed:Wait()
-                            end
-                        end
-                        
-                        -- Check if we're close enough to base
-                        local baseDistance = (targetPos - hrp.Position).Magnitude
-                        if baseDistance <= 15 then
-                            statusLabel.Text = "Reached base!"
-                            break
-                        end
-                        
-                        task.wait(0.1)
-                    end
-                else
-                    -- Fallback to direct tween if pathfinding fails
-                    statusLabel.Text = "Direct tween to base"
-                    local distance = (targetPos - hrp.Position).Magnitude
-                    local duration = distance / 25
-                    
-                    currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad), {
-                        CFrame = CFrame.new(targetPos)
-                    })
-                    
-                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
-                    currentTween:Play()
-                    currentTween.Completed:Wait()
-                end
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                currentTween:Play()
+                currentTween.Completed:Wait()
                 
                 statusLabel.Text = "Reached base!"
                 tweenActive = false
@@ -425,7 +376,7 @@ mainContent[1].MouseButton1Click:Connect(function()
     end
 end)
 
--- Flight System
+-- Flight System (from your previous file)
 local flyActive = false
 local flyConnection
 
@@ -489,7 +440,7 @@ mainContent[3].MouseButton1Click:Connect(function()
         updateCharacterReferences()
         if hrp then
             floatBodyVelocity = Instance.new("BodyVelocity")
-            floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)  -- Slower float
+            floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
             floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
             floatBodyVelocity.Parent = hrp
         end
@@ -504,27 +455,49 @@ mainContent[3].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FIXED SEMI INVISIBLE (No Lag Back) ==========
-local semiInvisActive = false
-local semiInvisConnections = {}
+-- ========== UNDERGROUND WITH GREEN BOX INDICATOR ==========
+local undergroundActive = false
+local undergroundConnections = {}
+local positionIndicator
 
-local function cleanupSemiInvisible()
-    for _, conn in ipairs(semiInvisConnections) do
+local function createPositionIndicator()
+    if positionIndicator then positionIndicator:Destroy() end
+    
+    positionIndicator = Instance.new("Part")
+    positionIndicator.Name = "PositionIndicator"
+    positionIndicator.Size = Vector3.new(3, 5, 2)
+    positionIndicator.Anchored = true
+    positionIndicator.CanCollide = false
+    positionIndicator.Material = Enum.Material.Neon
+    positionIndicator.BrickColor = BrickColor.new("Bright green")
+    positionIndicator.Transparency = 0.3
+    positionIndicator.Parent = Workspace
+    
+    return positionIndicator
+end
+
+local function cleanupUnderground()
+    for _, conn in ipairs(undergroundConnections) do
         if conn then
             pcall(function() conn:Disconnect() end)
         end
     end
-    semiInvisConnections = {}
+    undergroundConnections = {}
+    
+    if positionIndicator then
+        positionIndicator:Destroy()
+        positionIndicator = nil
+    end
 end
 
 playerContent[1].MouseButton1Click:Connect(function()
-    semiInvisActive = not semiInvisActive
+    undergroundActive = not undergroundActive
     
-    if semiInvisActive then
-        -- Enable Semi-Invisible with Anti-Death
-        playerContent[1].Text = "SEMI INVISIBLE: ON"
+    if undergroundActive then
+        -- Enable Underground Mode
+        playerContent[1].Text = "UNDERGROUND: ON"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Semi-Invisible & Anti-Death enabled"
+        statusLabel.Text = "Underground mode enabled"
         
         updateCharacterReferences()
         if not character or not humanoid or humanoid.Health <= 0 then
@@ -533,56 +506,60 @@ playerContent[1].MouseButton1Click:Connect(function()
         end
         
         -- Clean up first
-        cleanupSemiInvisible()
+        cleanupUnderground()
         
-        -- Store current position to prevent lag back
-        local currentPosition = hrp.Position
+        -- Create green position indicator
+        local indicator = createPositionIndicator()
         
-        -- Setup Anti-Death protection
-        local antiDeathConnection = humanoid.HealthChanged:Connect(function()
-            if humanoid and humanoid.Health <= 0 then
-                humanoid.Health = humanoid.MaxHealth
-            end
-        end)
-        table.insert(semiInvisConnections, antiDeathConnection)
+        -- Store original position
+        local originalPosition = hrp.Position
+        
+        -- Move character underground (10 studs below)
+        local undergroundPosition = Vector3.new(hrp.Position.X, hrp.Position.Y - 10, hrp.Position.Z)
+        hrp.CFrame = CFrame.new(undergroundPosition)
         
         -- Make character transparent
         for _, part in pairs(character:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.Transparency = 0.8
+                part.Transparency = 0.9
             end
         end
         
-        -- Prevent lag back by updating position continuously
+        -- Update position indicator to follow character
         local positionConn = RunService.Heartbeat:Connect(function()
-            if hrp and semiInvisActive then
-                -- Keep updating the actual position to prevent lag back
-                hrp.Velocity = Vector3.new(0, 0, 0)
+            if hrp and undergroundActive then
+                -- Update green box position (above ground where torso should be)
+                local aboveGroundPos = Vector3.new(hrp.Position.X, originalPosition.Y, hrp.Position.Z)
+                indicator.Position = aboveGroundPos
+                
+                -- Keep character underground but allow movement
+                local currentUndergroundPos = Vector3.new(hrp.Position.X, originalPosition.Y - 10, hrp.Position.Z)
+                hrp.CFrame = CFrame.new(currentUndergroundPos)
             end
         end)
-        table.insert(semiInvisConnections, positionConn)
+        table.insert(undergroundConnections, positionConn)
 
         -- Character added connection
         local charConn = player.CharacterAdded:Connect(function(newChar)
-            if semiInvisActive then
-                cleanupSemiInvisible()
-                semiInvisActive = false
-                playerContent[1].Text = "SEMI INVISIBLE: OFF"
+            if undergroundActive then
+                cleanupUnderground()
+                undergroundActive = false
+                playerContent[1].Text = "UNDERGROUND: OFF"
                 playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-                statusLabel.Text = "Semi-Invisible reset (new character)"
+                statusLabel.Text = "Underground reset (new character)"
             end
         end)
-        table.insert(semiInvisConnections, charConn)
+        table.insert(undergroundConnections, charConn)
         
     else
-        -- Disable Semi-Invisible and Anti-Death
-        playerContent[1].Text = "SEMI INVISIBLE: OFF"
+        -- Disable Underground Mode
+        playerContent[1].Text = "UNDERGROUND: OFF"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Semi-Invisible & Anti-Death disabled"
+        statusLabel.Text = "Underground mode disabled"
         
-        cleanupSemiInvisible()
+        cleanupUnderground()
         
-        -- Restore visibility
+        -- Restore visibility and position
         updateCharacterReferences()
         if character then
             for _, part in pairs(character:GetDescendants()) do
@@ -594,7 +571,9 @@ playerContent[1].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FIXED INFINITE JUMP (No Death) ==========
+-- ========== OTHER FEATURES ==========
+
+-- Infinite Jump
 local infJumpActive = false
 local infJumpConnection
 
@@ -608,10 +587,7 @@ playerContent[2].MouseButton1Click:Connect(function()
         
         infJumpConnection = UserInputService.JumpRequest:Connect(function()
             if infJumpActive and humanoid and humanoid.Health > 0 then
-                -- Safe jump without causing death
                 humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                
-                -- Add gentle upward force instead of instant teleport
                 if hrp then
                     hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
                 end
@@ -757,7 +733,7 @@ visualsContent[3].MouseButton1Click:Connect(function()
     end
 end)
 
--- Toggle Button (Old Style)
+-- Simple Click Toggle Button
 toggleButton.MouseButton1Click:Connect(function()
     gui.Enabled = not gui.Enabled
     if gui.Enabled then
@@ -787,7 +763,7 @@ player.CharacterAdded:Connect(function()
     tweenActive = false
     flyActive = false
     floatActive = false
-    semiInvisActive = false
+    undergroundActive = false
     infJumpActive = false
     speedBoostActive = false
     espActive = false
@@ -803,7 +779,7 @@ player.CharacterAdded:Connect(function()
     mainContent[3].Text = "FLOAT: OFF"
     mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
-    playerContent[1].Text = "SEMI INVISIBLE: OFF"
+    playerContent[1].Text = "UNDERGROUND: OFF"
     playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
     playerContent[2].Text = "INFINITE JUMP: OFF"
@@ -827,8 +803,8 @@ player.CharacterAdded:Connect(function()
     if floatBodyVelocity then floatBodyVelocity:Destroy() end
     if infJumpConnection then infJumpConnection:Disconnect() end
     
-    -- Clean up semi-invisible
-    cleanupSemiInvisible()
+    -- Clean up underground
+    cleanupUnderground()
     
     -- Reset ESP
     for _, folder in pairs(espFolders) do
@@ -848,6 +824,6 @@ player.CharacterAdded:Connect(function()
     statusLabel.Text = "Character respawned - Ready"
 end)
 
-print("Krypton Hub v2.1 - Fixed Version Loaded!")
-print("Fixed: Removed Noclip, Fixed Infinite Jump death, Fixed Semi-Invisible lag back, Better toggle button, Less glitchy tween")
+print("Krypton Hub v3.0 - Underground Edition Loaded!")
+print("Features: Underground mode with green position indicator, Smooth tween, Flight, Simple click toggle")
 print("Discord: https://discord.gg/YSwFZsGk9j")
