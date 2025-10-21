@@ -1,4 +1,4 @@
--- Krypton Hub - Complete Full Script
+-- Krypton Hub - Fixed Version
 -- Made by agent_duke13
 
 local Players = game:GetService("Players")
@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local PathfindingService = game:GetService("PathfindingService")
 
 local player = Players.LocalPlayer
 local character, hrp, humanoid
@@ -32,20 +33,20 @@ player.CharacterAdded:Connect(function(c)
     humanoid = character:WaitForChild("Humanoid")
 end)
 
--- Simple toggle button
+-- Old style toggle button
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
 toggleGui.Parent = player:WaitForChild("PlayerGui")
 
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 60, 0, 60)
-toggleButton.Position = UDim2.new(0, 10, 0.5, -30)
+toggleButton.Size = UDim2.new(0, 80, 0, 35)
+toggleButton.Position = UDim2.new(0, 10, 0.5, -17)
 toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-toggleButton.Text = "☰"
+toggleButton.Text = "Krypton"
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextSize = 20
+toggleButton.TextSize = 14
 toggleButton.Active = true
 toggleButton.Draggable = true
 toggleButton.Parent = toggleGui
@@ -54,7 +55,7 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0.2, 0)
 uiCorner.Parent = toggleButton
 
--- Main GUI
+-- Main GUI (Shorter)
 local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
@@ -62,8 +63,8 @@ gui.Parent = player:WaitForChild("PlayerGui")
 gui.Enabled = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+mainFrame.Size = UDim2.new(0, 280, 0, 320)  -- Shorter height
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -160)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -135,9 +136,9 @@ for i, tabName in ipairs(tabs) do
     tabButtons[tabName] = tabButton
 end
 
--- Content Area
+-- Content Area (Shorter)
 local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, -20, 1, -120)
+contentFrame.Size = UDim2.new(1, -20, 1, -110)  -- Adjusted for shorter GUI
 contentFrame.Position = UDim2.new(0, 10, 0, 80)
 contentFrame.BackgroundTransparency = 1
 contentFrame.Parent = mainFrame
@@ -152,7 +153,7 @@ contentScrolling.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
 contentScrolling.Parent = contentFrame
 
 local contentLayout = Instance.new("UIListLayout")
-contentLayout.Padding = UDim.new(0, 8)
+contentLayout.Padding = UDim.new(0, 6)  -- Less padding for shorter GUI
 contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 contentLayout.Parent = contentScrolling
 
@@ -182,12 +183,12 @@ statusLabel.Parent = statusBar
 local function createButton(text, layoutOrder)
     local button = Instance.new("TextButton")
     button.Text = text
-    button.Size = UDim2.new(1, 0, 0, 35)
+    button.Size = UDim2.new(1, 0, 0, 32)  -- Smaller buttons
     button.Position = UDim2.new(0, 0, 0, 0)
     button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
     button.Font = Enum.Font.GothamSemibold
-    button.TextSize = 13
+    button.TextSize = 12
     button.AutoButtonColor = true
     button.LayoutOrder = layoutOrder
     button.Parent = contentScrolling
@@ -203,12 +204,12 @@ end
 local function createToggle(text, layoutOrder)
     local toggle = Instance.new("TextButton")
     toggle.Text = text
-    toggle.Size = UDim2.new(1, 0, 0, 35)
+    toggle.Size = UDim2.new(1, 0, 0, 32)  -- Smaller toggles
     toggle.Position = UDim2.new(0, 0, 0, 0)
     toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
     toggle.Font = Enum.Font.GothamSemibold
-    toggle.TextSize = 13
+    toggle.TextSize = 12
     toggle.AutoButtonColor = true
     toggle.LayoutOrder = layoutOrder
     toggle.Parent = contentScrolling
@@ -220,16 +221,15 @@ local function createToggle(text, layoutOrder)
     return toggle
 end
 
--- Tab Contents
+-- Tab Contents (Removed Noclip)
 local mainContent = {}
 local playerContent = {}
 local visualsContent = {}
 
--- MAIN TAB
+-- MAIN TAB (Only 3 features now)
 table.insert(mainContent, createToggle("▶ TWEEN TO BASE", 1))
 table.insert(mainContent, createToggle("FLIGHT: OFF", 2))
-table.insert(mainContent, createToggle("NOCLIP: OFF", 3))
-table.insert(mainContent, createToggle("FLOAT: OFF", 4))
+table.insert(mainContent, createToggle("FLOAT: OFF", 3))
 
 -- PLAYER TAB
 table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
@@ -309,9 +309,9 @@ contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     contentScrolling.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y)
 end)
 
--- ========== FEATURE IMPLEMENTATIONS ==========
+-- ========== FIXED FEATURE IMPLEMENTATIONS ==========
 
--- Tween to Base
+-- Improved Tween to Base (Less Glitchy)
 local tweenActive = false
 local currentTween
 
@@ -341,35 +341,83 @@ mainContent[1].MouseButton1Click:Connect(function()
             tweenActive = true
             mainContent[1].Text = "■ STOP TWEEN"
             mainContent[1].BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-            statusLabel.Text = "Tweening to base..."
+            statusLabel.Text = "Finding path to base..."
             
             spawn(function()
                 updateCharacterReferences()
-                if not hrp then 
+                if not hrp or not humanoid then 
                     statusLabel.Text = "No character found"
+                    tweenActive = false
+                    mainContent[1].Text = "▶ TWEEN TO BASE"
+                    mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
                     return 
                 end
                 
-                while tweenActive and hrp do
-                    local targetPos = Vector3.new(basePos.X, basePos.Y + 3, basePos.Z)
-                    local distance = (targetPos - hrp.Position).Magnitude
+                local targetPos = Vector3.new(basePos.X, basePos.Y + 3, basePos.Z)
+                
+                -- Use pathfinding for better path
+                local path = PathfindingService:CreatePath({
+                    AgentRadius = 2,
+                    AgentHeight = 5,
+                    AgentCanJump = true
+                })
+                
+                local success, error = pcall(function()
+                    path:ComputeAsync(hrp.Position, targetPos)
+                end)
+                
+                if success and path.Status == Enum.PathStatus.Success then
+                    local waypoints = path:GetWaypoints()
+                    statusLabel.Text = "Following path (" .. #waypoints .. " points)"
                     
-                    if distance > 10 then
-                        local duration = distance / 25
-                        currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
-                            CFrame = CFrame.new(targetPos)
-                        })
-                        currentTween:Play()
-                        currentTween.Completed:Wait()
-                    else
-                        statusLabel.Text = "Reached base!"
-                        tweenActive = false
-                        mainContent[1].Text = "▶ TWEEN TO BASE"
-                        mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-                        break
+                    for i, waypoint in ipairs(waypoints) do
+                        if not tweenActive or not hrp then break end
+                        
+                        if i > 1 then -- Skip first waypoint (current position)
+                            local waypointPos = waypoint.Position
+                            local distance = (waypointPos - hrp.Position).Magnitude
+                            
+                            if distance > 5 then
+                                local duration = distance / 20 -- Slower speed for less glitching
+                                
+                                currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+                                    CFrame = CFrame.new(waypointPos)
+                                })
+                                
+                                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                                currentTween:Play()
+                                currentTween.Completed:Wait()
+                            end
+                        end
+                        
+                        -- Check if we're close enough to base
+                        local baseDistance = (targetPos - hrp.Position).Magnitude
+                        if baseDistance <= 15 then
+                            statusLabel.Text = "Reached base!"
+                            break
+                        end
+                        
+                        task.wait(0.1)
                     end
-                    task.wait(0.1)
+                else
+                    -- Fallback to direct tween if pathfinding fails
+                    statusLabel.Text = "Direct tween to base"
+                    local distance = (targetPos - hrp.Position).Magnitude
+                    local duration = distance / 25
+                    
+                    currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad), {
+                        CFrame = CFrame.new(targetPos)
+                    })
+                    
+                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                    currentTween:Play()
+                    currentTween.Completed:Wait()
                 end
+                
+                statusLabel.Text = "Reached base!"
+                tweenActive = false
+                mainContent[1].Text = "▶ TWEEN TO BASE"
+                mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
             end)
         else
             statusLabel.Text = "Base not found!"
@@ -413,9 +461,6 @@ mainContent[2].MouseButton1Click:Connect(function()
                 else
                     hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
                 end
-                
-                -- Anti-gravity
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
             end
         end)
     else
@@ -429,61 +474,28 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- Noclip System
-local noclipActive = false
-local noclipConnection
-
-mainContent[3].MouseButton1Click:Connect(function()
-    noclipActive = not noclipActive
-    
-    if noclipActive then
-        mainContent[3].Text = "NOCLIP: ON"
-        mainContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Noclip enabled"
-        
-        noclipConnection = RunService.Stepped:Connect(function()
-            updateCharacterReferences()
-            if character and noclipActive then
-                for _, part in pairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end)
-    else
-        mainContent[3].Text = "NOCLIP: OFF"
-        mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Noclip disabled"
-        
-        if noclipConnection then
-            noclipConnection:Disconnect()
-        end
-    end
-end)
-
 -- Float System
 local floatActive = false
 local floatBodyVelocity
 
-mainContent[4].MouseButton1Click:Connect(function()
+mainContent[3].MouseButton1Click:Connect(function()
     floatActive = not floatActive
     
     if floatActive then
-        mainContent[4].Text = "FLOAT: ON"
-        mainContent[4].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        mainContent[3].Text = "FLOAT: ON"
+        mainContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Float enabled"
         
         updateCharacterReferences()
         if hrp then
             floatBodyVelocity = Instance.new("BodyVelocity")
-            floatBodyVelocity.Velocity = Vector3.new(0, 30, 0)
+            floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)  -- Slower float
             floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
             floatBodyVelocity.Parent = hrp
         end
     else
-        mainContent[4].Text = "FLOAT: OFF"
-        mainContent[4].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        mainContent[3].Text = "FLOAT: OFF"
+        mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
         statusLabel.Text = "Float disabled"
         
         if floatBodyVelocity then
@@ -492,78 +504,17 @@ mainContent[4].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== SEMI INVISIBLE WITH ANTI-DEATH ==========
+-- ========== FIXED SEMI INVISIBLE (No Lag Back) ==========
 local semiInvisActive = false
 local semiInvisConnections = {}
-local semiInvisClone, semiInvisOldRoot, semiInvisHip, semiInvisAnimTrack
-local antiDeathConnection
 
 local function cleanupSemiInvisible()
-    -- Clean up connections
     for _, conn in ipairs(semiInvisConnections) do
         if conn then
             pcall(function() conn:Disconnect() end)
         end
     end
     semiInvisConnections = {}
-    
-    -- Clean up animation
-    if semiInvisAnimTrack then
-        semiInvisAnimTrack:Stop()
-        semiInvisAnimTrack:Destroy()
-        semiInvisAnimTrack = nil
-    end
-    
-    -- Clean up anti-death
-    if antiDeathConnection then
-        antiDeathConnection:Disconnect()
-        antiDeathConnection = nil
-    end
-    
-    -- Clean up folders
-    local playerFolder = Workspace:FindFirstChild(player.Name)
-    if playerFolder then
-        local doubleRig = playerFolder:FindFirstChild("DoubleRig")
-        if doubleRig then doubleRig:Destroy() end
-        local constraints = playerFolder:FindFirstChild("Constraints")
-        if constraints then constraints:Destroy() end
-    end
-end
-
-local function revertSemiInvisibleClone()
-    if not semiInvisOldRoot or not character then return false end
-    
-    local tempParent = Instance.new("Model")
-    tempParent.Parent = game
-    character.Parent = tempParent
-
-    semiInvisOldRoot.Parent = character
-    character.PrimaryPart = semiInvisOldRoot
-    character.Parent = Workspace
-
-    for _, v in pairs(character:GetDescendants()) do
-        if v:IsA("Weld") or v:IsA("Motor6D") then
-            if v.Part0 == semiInvisClone then
-                v.Part0 = semiInvisOldRoot
-            end
-            if v.Part1 == semiInvisClone then
-                v.Part1 = semiInvisOldRoot
-            end
-        end
-    end
-
-    if semiInvisClone then
-        semiInvisClone:Destroy()
-        semiInvisClone = nil
-    end
-
-    semiInvisOldRoot = nil
-    if character and humanoid then
-        humanoid.HipHeight = semiInvisHip
-    end
-    
-    tempParent:Destroy()
-    return true
 end
 
 playerContent[1].MouseButton1Click:Connect(function()
@@ -584,80 +535,29 @@ playerContent[1].MouseButton1Click:Connect(function()
         -- Clean up first
         cleanupSemiInvisible()
         
+        -- Store current position to prevent lag back
+        local currentPosition = hrp.Position
+        
         -- Setup Anti-Death protection
-        antiDeathConnection = humanoid.HealthChanged:Connect(function()
+        local antiDeathConnection = humanoid.HealthChanged:Connect(function()
             if humanoid and humanoid.Health <= 0 then
                 humanoid.Health = humanoid.MaxHealth
             end
         end)
         table.insert(semiInvisConnections, antiDeathConnection)
         
-        -- Disable death states
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        
-        -- Setup Semi-Invisible
-        semiInvisHip = humanoid.HipHeight
-        semiInvisOldRoot = character:FindFirstChild("HumanoidRootPart")
-        if not semiInvisOldRoot then return end
-
-        -- Create clone process
-        local tempParent = Instance.new("Model")
-        tempParent.Parent = game
-        character.Parent = tempParent
-
-        semiInvisClone = semiInvisOldRoot:Clone()
-        semiInvisClone.Parent = character
-        semiInvisOldRoot.Parent = Workspace.CurrentCamera
-        semiInvisClone.CFrame = semiInvisOldRoot.CFrame
-
-        character.PrimaryPart = semiInvisClone
-        character.Parent = Workspace
-
-        for _, v in pairs(character:GetDescendants()) do
-            if v:IsA("Weld") or v:IsA("Motor6D") then
-                if v.Part0 == semiInvisOldRoot then
-                    v.Part0 = semiInvisClone
-                end
-                if v.Part1 == semiInvisOldRoot then
-                    v.Part1 = semiInvisClone
-                end
+        -- Make character transparent
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 0.8
             end
         end
-
-        tempParent:Destroy()
         
-        -- Animation setup
-        local anim = Instance.new("Animation")
-        anim.AnimationId = "rbxassetid://18537363391"
-        local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
-        semiInvisAnimTrack = animator:LoadAnimation(anim)
-        semiInvisAnimTrack.Priority = Enum.AnimationPriority.Action4
-        semiInvisAnimTrack:Play(0, 1, 0)
-        anim:Destroy()
-
-        local animStoppedConn = semiInvisAnimTrack.Stopped:Connect(function()
-            if semiInvisActive then
-                task.wait(0.1)
-                if humanoid and humanoid.Health > 0 then
-                    semiInvisAnimTrack:Play(0, 1, 0)
-                end
-            end
-        end)
-        table.insert(semiInvisConnections, animStoppedConn)
-
-        -- Position update connection
-        local DEPTH_OFFSET = 0.10
+        -- Prevent lag back by updating position continuously
         local positionConn = RunService.Heartbeat:Connect(function()
-            updateCharacterReferences()
-            if character and humanoid and humanoid.Health > 0 and semiInvisOldRoot then
-                local root = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)
-                    semiInvisOldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)
-                    semiInvisOldRoot.Velocity = root.Velocity
-                    semiInvisOldRoot.CanCollide = false
-                end
+            if hrp and semiInvisActive then
+                -- Keep updating the actual position to prevent lag back
+                hrp.Velocity = Vector3.new(0, 0, 0)
             end
         end)
         table.insert(semiInvisConnections, positionConn)
@@ -666,7 +566,6 @@ playerContent[1].MouseButton1Click:Connect(function()
         local charConn = player.CharacterAdded:Connect(function(newChar)
             if semiInvisActive then
                 cleanupSemiInvisible()
-                revertSemiInvisibleClone()
                 semiInvisActive = false
                 playerContent[1].Text = "SEMI INVISIBLE: OFF"
                 playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
@@ -682,17 +581,20 @@ playerContent[1].MouseButton1Click:Connect(function()
         statusLabel.Text = "Semi-Invisible & Anti-Death disabled"
         
         cleanupSemiInvisible()
-        revertSemiInvisibleClone()
         
-        -- Re-enable death states
-        if humanoid then
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+        -- Restore visibility
+        updateCharacterReferences()
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 0
+                end
+            end
         end
     end
 end)
 
--- Infinite Jump
+-- ========== FIXED INFINITE JUMP (No Death) ==========
 local infJumpActive = false
 local infJumpConnection
 
@@ -705,8 +607,14 @@ playerContent[2].MouseButton1Click:Connect(function()
         statusLabel.Text = "Infinite Jump enabled"
         
         infJumpConnection = UserInputService.JumpRequest:Connect(function()
-            if infJumpActive and humanoid then
+            if infJumpActive and humanoid and humanoid.Health > 0 then
+                -- Safe jump without causing death
                 humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                
+                -- Add gentle upward force instead of instant teleport
+                if hrp then
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+                end
             end
         end)
     else
@@ -849,7 +757,7 @@ visualsContent[3].MouseButton1Click:Connect(function()
     end
 end)
 
--- Toggle Button
+-- Toggle Button (Old Style)
 toggleButton.MouseButton1Click:Connect(function()
     gui.Enabled = not gui.Enabled
     if gui.Enabled then
@@ -878,7 +786,6 @@ player.CharacterAdded:Connect(function()
     -- Reset all states
     tweenActive = false
     flyActive = false
-    noclipActive = false
     floatActive = false
     semiInvisActive = false
     infJumpActive = false
@@ -893,11 +800,8 @@ player.CharacterAdded:Connect(function()
     mainContent[2].Text = "FLIGHT: OFF"
     mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
-    mainContent[3].Text = "NOCLIP: OFF"
+    mainContent[3].Text = "FLOAT: OFF"
     mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    
-    mainContent[4].Text = "FLOAT: OFF"
-    mainContent[4].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
     playerContent[1].Text = "SEMI INVISIBLE: OFF"
     playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
@@ -920,13 +824,11 @@ player.CharacterAdded:Connect(function()
     -- Clean up connections
     if currentTween then currentTween:Cancel() end
     if flyConnection then flyConnection:Disconnect() end
-    if noclipConnection then noclipConnection:Disconnect() end
     if floatBodyVelocity then floatBodyVelocity:Destroy() end
     if infJumpConnection then infJumpConnection:Disconnect() end
     
     -- Clean up semi-invisible
     cleanupSemiInvisible()
-    revertSemiInvisibleClone()
     
     -- Reset ESP
     for _, folder in pairs(espFolders) do
@@ -946,6 +848,6 @@ player.CharacterAdded:Connect(function()
     statusLabel.Text = "Character respawned - Ready"
 end)
 
-print("Krypton Hub v2.0 - Complete Script Loaded!")
-print("Features: Tween to Base, Flight, Noclip, Float, Semi-Invisible (with Anti-Death), Infinite Jump, Speed Boost, ESP, Fullbright")
+print("Krypton Hub v2.1 - Fixed Version Loaded!")
+print("Fixed: Removed Noclip, Fixed Infinite Jump death, Fixed Semi-Invisible lag back, Better toggle button, Less glitchy tween")
 print("Discord: https://discord.gg/YSwFZsGk9j")
