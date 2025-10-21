@@ -520,7 +520,7 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FULL INVISIBLE SYSTEM (UNDERGROUND + TRANSPARENT + TORSO BOX + NO LAG BACK) ==========
+-- ========== FULL INVISIBLE SYSTEM (UNDERGROUND + TORSO BOX) ==========
 local connections = {
     FullInvisible = {}
 }
@@ -530,6 +530,112 @@ local clone, oldRoot, hip, animTrack, connection, characterConnection, torsoBox
 
 local function fullInvisibleFunction()
     local DEPTH_OFFSET = 0.09  
+
+    local function removeFolders()  
+        local playerName = player.Name  
+        local playerFolder = Workspace:FindFirstChild(playerName)  
+        if not playerFolder then  
+            return  
+        end  
+
+        local doubleRig = playerFolder:FindFirstChild("DoubleRig")  
+        if doubleRig then  
+            doubleRig:Destroy()  
+        end  
+
+        local constraints = playerFolder:FindFirstChild("Constraints")  
+        if constraints then  
+            constraints:Destroy()  
+        end  
+
+        local childAddedConn = playerFolder.ChildAdded:Connect(function(child)  
+            if child.Name == "DoubleRig" or child.Name == "Constraints" then  
+                child:Destroy()  
+            end  
+        end)  
+        table.insert(connections.FullInvisible, childAddedConn)  
+    end  
+
+    local function doClone()  
+        if character and humanoid and humanoid.Health > 0 then  
+            hip = humanoid.HipHeight  
+            oldRoot = hrp
+            if not oldRoot or not oldRoot.Parent then  
+                return false  
+            end  
+
+            local tempParent = Instance.new("Model")  
+            tempParent.Parent = game  
+            character.Parent = tempParent  
+
+            clone = oldRoot:Clone()  
+            clone.Parent = character  
+            oldRoot.Parent = Workspace.CurrentCamera  
+            clone.CFrame = oldRoot.CFrame  
+
+            character.PrimaryPart = clone  
+            character.Parent = Workspace  
+
+            for _, v in pairs(character:GetDescendants()) do  
+                if v:IsA("Weld") or v:IsA("Motor6D") then  
+                    if v.Part0 == oldRoot then  
+                        v.Part0 = clone  
+                    end  
+                    if v.Part1 == oldRoot then  
+                        v.Part1 = clone  
+                    end  
+                end  
+            end  
+
+            tempParent:Destroy()  
+            return true  
+        end  
+        return false  
+    end  
+
+    local function createTorsoBox()
+        if not clone then return end
+        
+        torsoBox = Instance.new("Part")
+        torsoBox.Name = "TorsoIndicator"
+        torsoBox.Size = Vector3.new(2, 3, 1)
+        torsoBox.BrickColor = BrickColor.new("Bright blue")
+        torsoBox.Material = Enum.Material.Neon
+        torsoBox.Transparency = 0.3
+        torsoBox.Anchored = false
+        torsoBox.CanCollide = false
+        torsoBox.Parent = Workspace
+        
+        local weld = Instance.new("Weld")
+        weld.Part0 = clone
+        weld.Part1 = torsoBox
+        weld.C0 = CFrame.new(0, 0, 0)
+        weld.Parent = torsoBox
+    end
+
+    local function revertClone()  
+        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
+            return false  
+        end  
+
+        local tempParent = Instance.new("Model")  
+        tempParent.Parent = game  
+        character.Parent = tempParent  
+
+        oldRoot.Parent = character  
+        character.PrimaryPart = oldRoot  
+        character.Parent = Workspace  
+        
+   -- ========== FULL INVISIBLE SYSTEM ==========
+local connections = {
+    FullInvisible = {}
+}
+
+local isInvisible = false
+local clone, oldRoot, hip, animTrack, connection, characterConnection, torsoBox
+
+local function fullInvisibleFunction()
+    local DEEP_DEPTH_OFFSET = 50  -- Much deeper underground (was 0.09)
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -725,10 +831,14 @@ local function fullInvisibleFunction()
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or hrp
                     if root then  
-                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)  
+                        -- Move real character DEEP underground but keep clone at surface for interaction
+                        local cf = root.CFrame - Vector3.new(0, DEEP_DEPTH_OFFSET, 0)  
                         oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
+                        
+                        -- Keep the clone (visible torso box) at the surface position for interactions
+                        -- The clone moves normally while real character is deep underground
                     end  
                 end  
             end)  
@@ -784,7 +894,7 @@ local function fullInvisibleFunction()
             isInvisible = true
             playerContent[1].Text = "FULL INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Full Invisible enabled (F key to toggle)"
+            statusLabel.Text = "Full Invisible enabled - Deep underground (F key to toggle)"
         end
     else
         disableInvisibility()
@@ -802,17 +912,7 @@ local function fullInvisibleFunction()
         end  
         connections.FullInvisible = {}  
     end
-end
-
--- Connect full-invisible to button
-playerContent[1].MouseButton1Click:Connect(fullInvisibleFunction)
-
--- F key toggle for full-invisible
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
-        fullInvisibleFunction()
-    end
-end)
+        end                 
 
 -- ========== INFINITE JUMP (From your file) ==========
 local infJumpActive = false
@@ -1126,6 +1226,6 @@ player.CharacterAdded:Connect(function()
 end)
 
 print("Krypton Hub v5.0 - Full Invisible Edition Loaded!")
-print("Features: Full invisible (underground + transparent + torso box + no lag back)")
+print("Features: Full invisible (underground + torso box), flight, speed, etc.")
 print("Controls: F key to toggle full invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
