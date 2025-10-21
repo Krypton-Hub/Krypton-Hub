@@ -486,9 +486,11 @@ mainContent[1].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== YOUR EXACT FLIGHT SYSTEM ==========
+-- ========== FLIGHT SYSTEM ==========
 local flyActive = false
 local flyConnection
+local lastUpdate = 0
+local UPDATE_INTERVAL = 0.05 -- 20 FPS instead of 60+ FPS
 
 mainContent[2].MouseButton1Click:Connect(function()
     flyActive = not flyActive
@@ -498,7 +500,12 @@ mainContent[2].MouseButton1Click:Connect(function()
         mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Slow Flight enabled - Use camera direction"
         
-        flyConnection = RunService.RenderStepped:Connect(function()
+        flyConnection = RunService.Heartbeat:Connect(function()
+            -- Reduce update frequency to prevent lag
+            local currentTime = tick()
+            if currentTime - lastUpdate < UPDATE_INTERVAL then return end
+            lastUpdate = currentTime
+            
             updateCharacterReferences()
             if flyActive and hrp then
                 hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
