@@ -1,4 +1,4 @@
--- Krypton Hub - Godmode Flight & Invisible Edition
+-- Krypton Hub - Complete Edition
 -- Made by agent_duke13
 
 local Players = game:GetService("Players")
@@ -291,7 +291,7 @@ table.insert(mainContent, createToggle("FLOAT: OFF", 3))
 -- PLAYER TAB
 table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
 table.insert(playerContent, createToggle("INFINITE JUMP: OFF", 2))
-table.insert(playerContent, createToggle("SPEED BOOST: OFF", 3))
+table.insert(playerContent, createToggle("SPEED BOOSTER: OFF", 3))
 
 -- VISUALS TAB
 table.insert(visualsContent, createToggle("PLAYER ESP: OFF", 1))
@@ -485,6 +485,7 @@ mainContent[1].MouseButton1Click:Connect(function()
         end
     end
 end)
+
 -- ========== YOUR EXACT FLIGHT SYSTEM ==========
 local flyActive = false
 local flyConnection
@@ -753,40 +754,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ========== OTHER FEATURES WITH GODMODE ==========
-
--- Float System
-local floatActive = false
-local floatBodyVelocity
-
-mainContent[3].MouseButton1Click:Connect(function()
-    floatActive = not floatActive
-    
-    if floatActive then
-        mainContent[3].Text = "FLOAT: ON"
-        mainContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Float enabled"
-        
-        updateCharacterReferences()
-        if hrp then
-            setupGodmode()
-            floatBodyVelocity = Instance.new("BodyVelocity")
-            floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
-            floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
-            floatBodyVelocity.Parent = hrp
-        end
-    else
-        mainContent[3].Text = "FLOAT: OFF"
-        mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Float disabled"
-        
-        if floatBodyVelocity then
-            floatBodyVelocity:Destroy()
-        end
-    end
-end)
-
--- Infinite Jump
+-- ========== INFINITE JUMP (From your file) ==========
 local infJumpActive = false
 local infJumpConnection
 
@@ -818,31 +786,97 @@ playerContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- Speed Boost
-local speedBoostActive = false
-local originalWalkSpeed = 16
+-- ========== SPEED BOOSTER (From your file) ==========
+local speedActive = false
+local speedConn
+local baseSpeed = 27
 
 playerContent[3].MouseButton1Click:Connect(function()
-    speedBoostActive = not speedBoostActive
+    speedActive = not speedActive
     
-    if speedBoostActive then
-        playerContent[3].Text = "SPEED BOOST: ON"
+    if speedActive then
+        playerContent[3].Text = "SPEED BOOSTER: ON"
         playerContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Speed Boost enabled"
+        statusLabel.Text = "Speed Booster enabled"
+        
+        local function GetCharacter()
+            local Char = player.Character or player.CharacterAdded:Wait()
+            local HRP = Char:WaitForChild("HumanoidRootPart")
+            local Hum = Char:FindFirstChildOfClass("Humanoid")
+            return Char, HRP, Hum
+        end
+        
+        local function getMovementInput()
+            local Char, HRP, Hum = GetCharacter()
+            if not Char or not HRP or not Hum then return Vector3.new(0,0,0) end
+            local moveVector = Hum.MoveDirection
+            if moveVector.Magnitude > 0.1 then
+                return Vector3.new(moveVector.X, 0, moveVector.Z).Unit
+            end
+            return Vector3.new(0,0,0)
+        end
+        
+        speedConn = RunService.Heartbeat:Connect(function()
+            local Char, HRP, Hum = GetCharacter()
+            if not Char or not HRP or not Hum then return end
+            local inputDirection = getMovementInput()
+            if inputDirection.Magnitude > 0 then
+                HRP.AssemblyLinearVelocity = Vector3.new(
+                    inputDirection.X * baseSpeed,
+                    HRP.AssemblyLinearVelocity.Y,
+                    inputDirection.Z * baseSpeed
+                )
+            else
+                HRP.AssemblyLinearVelocity = Vector3.new(0, HRP.AssemblyLinearVelocity.Y, 0)
+            end
+        end)
+    else
+        playerContent[3].Text = "SPEED BOOSTER: OFF"
+        playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Speed Booster disabled"
+        
+        if speedConn then 
+            speedConn:Disconnect() 
+            speedConn = nil 
+        end
+        
+        -- Stop movement when disabled
+        updateCharacterReferences()
+        if hrp then
+            hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+        end
+    end
+end)
+
+-- ========== OTHER FEATURES ==========
+
+-- Float System
+local floatActive = false
+local floatBodyVelocity
+
+mainContent[3].MouseButton1Click:Connect(function()
+    floatActive = not floatActive
+    
+    if floatActive then
+        mainContent[3].Text = "FLOAT: ON"
+        mainContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Float enabled"
         
         updateCharacterReferences()
-        if humanoid then
+        if hrp then
             setupGodmode()
-            originalWalkSpeed = humanoid.WalkSpeed
-            humanoid.WalkSpeed = 50
+            floatBodyVelocity = Instance.new("BodyVelocity")
+            floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
+            floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
+            floatBodyVelocity.Parent = hrp
         end
     else
-        playerContent[3].Text = "SPEED BOOST: OFF"
-        playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Speed Boost disabled"
+        mainContent[3].Text = "FLOAT: OFF"
+        mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Float disabled"
         
-        if humanoid then
-            humanoid.WalkSpeed = originalWalkSpeed
+        if floatBodyVelocity then
+            floatBodyVelocity:Destroy()
         end
     end
 end)
@@ -968,7 +1002,7 @@ player.CharacterAdded:Connect(function()
     floatActive = false
     isInvisible = false
     infJumpActive = false
-    speedBoostActive = false
+    speedActive = false
     espActive = false
     fullbrightActive = false
     
@@ -988,7 +1022,7 @@ player.CharacterAdded:Connect(function()
     playerContent[2].Text = "INFINITE JUMP: OFF"
     playerContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
-    playerContent[3].Text = "SPEED BOOST: OFF"
+    playerContent[3].Text = "SPEED BOOSTER: OFF"
     playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
     visualsContent[1].Text = "PLAYER ESP: OFF"
@@ -1005,6 +1039,7 @@ player.CharacterAdded:Connect(function()
     if flyConnection then flyConnection:Disconnect() end
     if floatBodyVelocity then floatBodyVelocity:Destroy() end
     if infJumpConnection then infJumpConnection:Disconnect() end
+    if speedConn then speedConn:Disconnect() end
     
     -- Clean up semi-invisible
     for _, conn in ipairs(connections.SemiInvisible) do
@@ -1030,7 +1065,7 @@ player.CharacterAdded:Connect(function()
     statusLabel.Text = "Character respawned - Ready"
 end)
 
-print("Krypton Hub v4.0 - Godmode Edition Loaded!")
-print("Features: Your exact flight & semi-invisible systems, Godmode protection, Smooth tween")
+print("Krypton Hub v5.0 - Complete Edition Loaded!")
+print("Features: Your exact flight, semi-invisible, jump, and speed systems")
 print("Controls: F key to toggle semi-invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
