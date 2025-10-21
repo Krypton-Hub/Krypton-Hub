@@ -1,5 +1,3 @@
--- Krypton Hub - Made By agent_duke13 - Enhanced Version
-
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -38,85 +36,107 @@ player.CharacterRemoving:Connect(function()
     humanoid = nil
 end)
 
--- Enhanced GUI Design
+-- God Mode function
+local godModeConnection
+local function godMode(state)
+    updateCharacterReferences()
+    if not humanoid then return end
+    if state then
+        for _, s in pairs({
+            Enum.HumanoidStateType.FallingDown,
+            Enum.HumanoidStateType.Ragdoll,
+            Enum.HumanoidStateType.PlatformStanding,
+            Enum.HumanoidStateType.Seated
+        }) do
+            humanoid:SetStateEnabled(s, false)
+        end
+        humanoid.Health = humanoid.MaxHealth
+        if godModeConnection then godModeConnection:Disconnect() end
+        godModeConnection = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+            if humanoid.Health < humanoid.MaxHealth then
+                humanoid.Health = humanoid.MaxHealth
+            end
+        end)
+    else
+        for _, s in pairs({
+            Enum.HumanoidStateType.FallingDown,
+            Enum.HumanoidStateType.Ragdoll,
+            Enum.HumanoidStateType.PlatformStanding,
+            Enum.HumanoidStateType.Seated
+        }) do
+            humanoid:SetStateEnabled(s, true)
+        end
+        if godModeConnection then
+            godModeConnection:Disconnect()
+            godModeConnection = nil
+        end
+    end
+end
+
+-- Anti-Kick Protection
+local antiKickConnections = {}
+local function setupAntiKick()
+    local function hookRemote(remote)
+        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+            local oldNameCall
+            oldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
+                if self == remote and (remote.Name:lower():find("kick") or remote.Name:lower():find("ban") or remote.Name:lower():find("disconnect")) then
+                    print("Blocked kick attempt via remote: " .. remote.Name)
+                    return
+                end
+                return oldNameCall(self, ...)
+            end)
+            table.insert(antiKickConnections, {Remote = remote, Connection = oldNameCall})
+        end
+    end
+
+    for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+        if (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) and
+           (remote.Name:lower():find("kick") or remote.Name:lower():find("ban") or remote.Name:lower():find("disconnect")) then
+            hookRemote(remote)
+        end
+    end
+
+    local connection = ReplicatedStorage.DescendantAdded:Connect(function(descendant)
+        if (descendant:IsA("RemoteEvent") or descendant:IsA("RemoteFunction")) and
+           (descendant.Name:lower():find("kick") or descendant.Name:lower():find("ban") or descendant.Name:lower():find("disconnect")) then
+            hookRemote(descendant)
+        end
+    end)
+    table.insert(antiKickConnections, {Connection = connection})
+end
+
+-- Initialize anti-kick
+setupAntiKick()
+
+-- Create toggle button
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
 toggleGui.Parent = player:WaitForChild("PlayerGui")
+
 local toggleButton = Instance.new("ImageButton")
-toggleButton.Size = UDim2.new(0, 65, 0, 65)
-toggleButton.Position = UDim2.new(0, 20, 0.5, -32.5)
-toggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+toggleButton.Size = UDim2.new(0, 70, 0, 70)
+toggleButton.Position = UDim2.new(0, 20, 0.5, -35)
+toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 toggleButton.BackgroundTransparency = 0.2
-toggleButton.Image = "rbxassetid://95131705390407"
-toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
+toggleButton.Image = "rbxassetid://95131705390407" -- Your image ID
 toggleButton.Active = true
 toggleButton.Draggable = true
 toggleButton.Parent = toggleGui
 
-local toggleGlow = Instance.new("UIStroke")
-toggleGlow.Color = Color3.fromRGB(0, 170, 255)
-toggleGlow.Thickness = 2
-toggleGlow.Parent = toggleButton
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 12)
+toggleCorner.Parent = toggleButton
 
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(1, 0)
-uiCorner.Parent = toggleButton
+local toggleGradient = Instance.new("UIGradient")
+toggleGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 150))
+}
+toggleGradient.Parent = toggleButton
 
--- Enhanced toggle button with visual feedback
-local toggleEnabled = false
-local pulseTween
-
-local function startPulseAnimation()
-    if pulseTween then pulseTween:Cancel() end
-    
-    pulseTween = TweenService:Create(toggleButton, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-        ImageColor3 = Color3.fromRGB(0, 255, 150)
-    })
-    pulseTween:Play()
-end
-
-local function stopPulseAnimation()
-    if pulseTween then
-        pulseTween:Cancel()
-        pulseTween = nil
-    end
-    toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
-end
-
-toggleButton.MouseButton1Click:Connect(function()
-    gui.Enabled = not gui.Enabled
-    toggleEnabled = gui.Enabled
-    
-    if toggleEnabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 255, 0)
-        toggleGlow.Color = Color3.fromRGB(0, 255, 0)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        startPulseAnimation()
-    else
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
-        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        stopPulseAnimation()
-    end
-end)
-
--- Add hover effects for toggle button
-toggleButton.MouseEnter:Connect(function()
-    if not toggleEnabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(100, 200, 255)
-        toggleGlow.Color = Color3.fromRGB(100, 200, 255)
-    end
-end)
-
-toggleButton.MouseLeave:Connect(function()
-    if not toggleEnabled then
-        toggleButton.ImageColor3 = Color3.fromRGB(0, 170, 255)
-        toggleGlow.Color = Color3.fromRGB(0, 170, 255)
-    end
-end)
-
--- Enhanced Main GUI
+-- Create main GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
@@ -133,24 +153,37 @@ mainFrame.Active = true
 mainFrame.Draggable = true
 mainFrame.Parent = gui
 
-local mainGlow = Instance.new("UIStroke")
-mainGlow.Color = Color3.fromRGB(0, 170, 255)
-mainGlow.Thickness = 2
-mainGlow.Parent = mainFrame
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = mainFrame
+local mainGradient = Instance.new("UIGradient")
+mainGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+}
+mainGradient.Parent = mainFrame
+
+local mainShadow = Instance.new("ImageLabel")
+mainShadow.Size = UDim2.new(1, 20, 1, 20)
+mainShadow.Position = UDim2.new(0, -10, 0, -10)
+mainShadow.BackgroundTransparency = 1
+mainShadow.Image = "rbxassetid://1316045217" -- Roblox shadow image
+mainShadow.ImageTransparency = 0.5
+mainShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+mainShadow.ZIndex = 0
+mainShadow.Parent = mainFrame
 
 local title = Instance.new("TextLabel")
-title.Text = "KRYPTON HUB"
-title.Size = UDim2.new(1, 0, 0, 35)
+title.Text = "Krypton Hub"
+title.Size = UDim2.new(1, 0, 0, 40)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-title.BackgroundTransparency = 0.1
-title.TextColor3 = Color3.fromRGB(0, 170, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
+title.BackgroundTransparency = 0.2
+title.TextColor3 = Color3.fromRGB(200, 200, 255)
+title.Font = Enum.Font.SourceSansPro
+title.TextSize = 20
+title.TextStrokeTransparency = 0.8
 title.ZIndex = 2
 title.Parent = mainFrame
 
@@ -158,204 +191,114 @@ local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = title
 
-local subtitle = Instance.new("TextLabel")
-subtitle.Text = "by agent_duke13"
-subtitle.Size = UDim2.new(1, 0, 0, 15)
-subtitle.Position = UDim2.new(0, 0, 0, 35)
-subtitle.BackgroundTransparency = 1
-subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
-subtitle.Font = Enum.Font.Gotham
-subtitle.TextSize = 10
-subtitle.Parent = mainFrame
+local closeButton = Instance.new("TextButton")
+closeButton.Text = "✕"
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -40, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.SourceSansPro
+closeButton.TextSize = 16
+closeButton.ZIndex = 3
+closeButton.Parent = title
 
--- Enhanced Tab buttons
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = closeButton
+
+-- Tab buttons
 local tabs = {"Main", "Steal", "Visuals", "Combat"}
 local currentTab = "Main"
 
 local tabContainer = Instance.new("Frame")
-tabContainer.Size = UDim2.new(1, -20, 0, 35)
-tabContainer.Position = UDim2.new(0, 10, 0, 55)
-tabContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-tabContainer.BackgroundTransparency = 0.1
+tabContainer.Size = UDim2.new(1, 0, 0, 40)
+tabContainer.Position = UDim2.new(0, 0, 0, 40)
+tabContainer.BackgroundTransparency = 1
 tabContainer.Parent = mainFrame
-
-local tabCorner = Instance.new("UICorner")
-tabCorner.CornerRadius = UDim.new(0, 8)
-tabCorner.Parent = tabContainer
 
 local tabButtons = {}
 for i, tabName in ipairs(tabs) do
     local tabButton = Instance.new("TextButton")
     tabButton.Text = tabName
-    tabButton.Size = UDim2.new(1/#tabs, -5, 0.8, 0)
-    tabButton.Position = UDim2.new((i-1)/#tabs, 2.5, 0.1, 0)
-    tabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    tabButton.Size = UDim2.new(1/#tabs, 0, 1, 0)
+    tabButton.Position = UDim2.new((i-1)/#tabs, 0, 0, 0)
+    tabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-    tabButton.Font = Enum.Font.GothamBold
-    tabButton.TextSize = 11
+    tabButton.Font = Enum.Font.SourceSansPro
+    tabButton.TextSize = 14
     tabButton.ZIndex = 2
     tabButton.Parent = tabContainer
     
-    local tabBtnCorner = Instance.new("UICorner")
-    tabBtnCorner.CornerRadius = UDim.new(0, 6)
-    tabBtnCorner.Parent = tabButton
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 8)
+    tabCorner.Parent = tabButton
     
-    local tabStroke = Instance.new("UIStroke")
-    tabStroke.Color = Color3.fromRGB(60, 60, 60)
-    tabStroke.Thickness = 1
-    tabStroke.Parent = tabButton
+    local tabGradient = Instance.new("UIGradient")
+    tabGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))
+    }
+    tabGradient.Parent = tabButton
     
     tabButtons[tabName] = tabButton
 end
 
--- Content frame
-local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, -20, 1, -110)
-contentFrame.Position = UDim2.new(0, 10, 0, 95)
+-- Content frame with scrolling
+local contentFrame = Instance.new("ScrollingFrame")
+contentFrame.Size = UDim2.new(1, 0, 1, -90)
+contentFrame.Position = UDim2.new(0, 0, 0, 80)
 contentFrame.BackgroundTransparency = 1
+contentFrame.CanvasSize = UDim2.new(0, 0, 0, 600) -- Adjust based on content
+contentFrame.ScrollBarThickness = 4
+contentFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 255)
 contentFrame.Parent = mainFrame
 
--- Enhanced Status label
+-- Status label
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Text = "Status: Ready"
-statusLabel.Size = UDim2.new(1, -20, 0, 25)
-statusLabel.Position = UDim2.new(0, 10, 1, -30)
-statusLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-statusLabel.BackgroundTransparency = 0.1
-statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextSize = 11
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 1, -40)
+statusLabel.BackgroundTransparency = 0.2
+statusLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+statusLabel.Font = Enum.Font.SourceSansPro
+statusLabel.TextSize = 12
+statusLabel.TextStrokeTransparency = 0.8
 statusLabel.Parent = mainFrame
 
-local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0, 6)
-statusCorner.Parent = statusLabel
-
--- Enhanced button styling function
-local function createStyledButton(parent, text, position, customColor)
-    local button = Instance.new("TextButton")
-    button.Text = text
-    button.Size = UDim2.new(0.9, 0, 0, 32)
-    button.Position = position
-    button.BackgroundColor3 = customColor or Color3.fromRGB(35, 35, 35)
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.Font = Enum.Font.GothamBold
-    button.TextSize = 12
-    button.AutoButtonColor = false
-    button.Parent = parent
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = button
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(60, 60, 60)
-    stroke.Thickness = 1
-    stroke.Parent = button
-    
-    local hoverEffect = Instance.new("Frame")
-    hoverEffect.Size = UDim2.new(1, 0, 1, 0)
-    hoverEffect.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    hoverEffect.BackgroundTransparency = 0.9
-    hoverEffect.BorderSizePixel = 0
-    hoverEffect.Parent = button
-    hoverEffect.Visible = false
-    
-    local hoverCorner = Instance.new("UICorner")
-    hoverCorner.CornerRadius = UDim.new(0, 8)
-    hoverCorner.Parent = hoverEffect
-    
-    button.MouseEnter:Connect(function()
-        hoverEffect.Visible = true
-        stroke.Color = Color3.fromRGB(0, 170, 255)
-    end)
-    
-    button.MouseLeave:Connect(function()
-        hoverEffect.Visible = false
-        stroke.Color = Color3.fromRGB(60, 60, 60)
-    end)
-    
-    return button
-end
-
--- Enhanced input field function
-local function createInputField(parent, label, position, defaultValue)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(0.9, 0, 0, 30)
-    container.Position = position
-    container.BackgroundTransparency = 1
-    container.Parent = parent
-
-    local label = Instance.new("TextLabel")
-    label.Text = label
-    label.Size = UDim2.new(0.5, 0, 1, 0)
-    label.Position = UDim2.new(0, 0, 0, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 11
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = container
-
-    local input = Instance.new("TextBox")
-    input.Size = UDim2.new(0.4, 0, 1, 0)
-    input.Position = UDim2.new(0.6, 0, 0, 0)
-    input.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    input.TextColor3 = Color3.fromRGB(255, 255, 255)
-    input.Font = Enum.Font.Gotham
-    input.TextSize = 11
-    input.Text = tostring(defaultValue)
-    input.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-    input.Parent = container
-
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 6)
-    inputCorner.Parent = input
-
-    local inputStroke = Instance.new("UIStroke")
-    inputStroke.Color = Color3.fromRGB(60, 60, 60)
-    inputStroke.Thickness = 1
-    inputStroke.Parent = input
-
-    return input
-end
+local statusGradient = Instance.new("UIGradient")
+statusGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))
+}
+statusGradient.Parent = statusLabel
 
 -- Main Tab Content
 local mainContent = Instance.new("Frame")
-mainContent.Size = UDim2.new(1, 0, 1, 0)
+mainContent.Size = UDim2.new(1, 0, 0, 600)
 mainContent.BackgroundTransparency = 1
 mainContent.Visible = true
 mainContent.Parent = contentFrame
 
--- ========== ENHANCED TWEEN TO BASE SYSTEM ==========
-local tweenButton = createStyledButton(mainContent, "▶ TWEEN TO BASE", UDim2.new(0.05, 0, 0.02, 0))
+-- Tween to Base System
+local tweenButton = Instance.new("TextButton")
+tweenButton.Text = "▶ TWEEN TO BASE"
+tweenButton.Size = UDim2.new(0.9, 0, 0, 30)
+tweenButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+tweenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+tweenButton.Font = Enum.Font.SourceSansPro
+tweenButton.TextSize = 14
+tweenButton.Parent = mainContent
+
+local tweenCorner = Instance.new("UICorner")
+tweenCorner.CornerRadius = UDim.new(0, 8)
+tweenCorner.Parent = tweenButton
 
 local active = false
 local currentTween
 local walkThread
 local tweenSpeed = 24
-
-local function applyAntiDeath(state)
-    updateCharacterReferences()
-    if humanoid then
-        for _, s in pairs({
-            Enum.HumanoidStateType.FallingDown,
-            Enum.HumanoidStateType.Ragdoll,
-            Enum.HumanoidStateType.PlatformStanding,
-            Enum.HumanoidStateType.Seated
-        }) do
-            humanoid:SetStateEnabled(s, not state)
-        end
-        if state then
-            humanoid.Health = humanoid.MaxHealth
-            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                if humanoid.Health <= 0 then
-                    humanoid.Health = humanoid.MaxHealth
-                end
-            end)
-        end
-    end
-end
 
 local function getBasePosition()
     local plots = Workspace:FindFirstChild("Plots")
@@ -498,8 +441,9 @@ function startTweenToBase()
     end
     
     active = true
-    applyAntiDeath(true)
+    godMode(true) -- Enable god mode
     tweenButton.Text = "■ STOP TWEEN"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
     statusLabel.Text = "Walking to Base..."
 
     walkThread = task.spawn(function()
@@ -526,17 +470,91 @@ function stopTweenToBase()
     if humanoid then
         humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
     end
+    godMode(false) -- Disable god mode
     
     tweenButton.Text = "▶ TWEEN TO BASE"
+    tweenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     statusLabel.Text = "Ready"
 end
 
--- Enhanced Speed and Jump inputs
-local speedInput = createInputField(mainContent, "Speed:", UDim2.new(0.05, 0, 0.12, 0), 24)
-local jumpInput = createInputField(mainContent, "Jump Power:", UDim2.new(0.05, 0, 0.20, 0), 50)
+-- Speed
+local speedContainer = Instance.new("Frame")
+speedContainer.Size = UDim2.new(0.9, 0, 0, 30)
+speedContainer.Position = UDim2.new(0.05, 0, 0.15, 0)
+speedContainer.BackgroundTransparency = 1
+speedContainer.Parent = mainContent
 
--- ========== ENHANCED FLIGHT SYSTEM ==========
-local flyButton = createStyledButton(mainContent, "SLOW FLIGHT: OFF", UDim2.new(0.05, 0, 0.28, 0))
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Text = "Speed:"
+speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
+speedLabel.Position = UDim2.new(0, 0, 0, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+speedLabel.Font = Enum.Font.SourceSansPro
+speedLabel.TextSize = 12
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = speedContainer
+
+local speedInput = Instance.new("TextBox")
+speedInput.Size = UDim2.new(0.4, 0, 1, 0)
+speedInput.Position = UDim2.new(0.6, 0, 0, 0)
+speedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedInput.Font = Enum.Font.SourceSansPro
+speedInput.TextSize = 12
+speedInput.Text = "24"
+speedInput.Parent = speedContainer
+
+local speedInputCorner = Instance.new("UICorner")
+speedInputCorner.CornerRadius = UDim.new(0, 8)
+speedInputCorner.Parent = speedInput
+
+-- Jump Power
+local jumpContainer = Instance.new("Frame")
+jumpContainer.Size = UDim2.new(0.9, 0, 0, 30)
+jumpContainer.Position = UDim2.new(0.05, 0, 0.25, 0)
+jumpContainer.BackgroundTransparency = 1
+jumpContainer.Parent = mainContent
+
+local jumpLabel = Instance.new("TextLabel")
+jumpLabel.Text = "Jump Power:"
+jumpLabel.Size = UDim2.new(0.5, 0, 1, 0)
+jumpLabel.Position = UDim2.new(0, 0, 0, 0)
+jumpLabel.BackgroundTransparency = 1
+jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+jumpLabel.Font = Enum.Font.SourceSansPro
+jumpLabel.TextSize = 12
+jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
+jumpLabel.Parent = jumpContainer
+
+local jumpInput = Instance.new("TextBox")
+jumpInput.Size = UDim2.new(0.4, 0, 1, 0)
+jumpInput.Position = UDim2.new(0.6, 0, 0, 0)
+jumpInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+jumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+jumpInput.Font = Enum.Font.SourceSansPro
+jumpInput.TextSize = 12
+jumpInput.Text = "50"
+jumpInput.Parent = jumpContainer
+
+local jumpInputCorner = Instance.new("UICorner")
+jumpInputCorner.CornerRadius = UDim.new(0, 8)
+jumpInputCorner.Parent = jumpInput
+
+-- Flight System
+local flyButton = Instance.new("TextButton")
+flyButton.Text = "SLOW FLIGHT: OFF"
+flyButton.Size = UDim2.new(0.9, 0, 0, 30)
+flyButton.Position = UDim2.new(0.05, 0, 0.35, 0)
+flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+flyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+flyButton.Font = Enum.Font.SourceSansPro
+flyButton.TextSize = 14
+flyButton.Parent = mainContent
+
+local flyCorner = Instance.new("UICorner")
+flyCorner.CornerRadius = UDim.new(0, 8)
+flyCorner.Parent = flyButton
 
 local guidedOn = false
 local guidedConn
@@ -546,6 +564,7 @@ local function toggleFlight()
     local hum = char:FindFirstChildOfClass("Humanoid")
     guidedOn = not guidedOn
     flyButton.Text = guidedOn and "SLOW FLIGHT: ON" or "SLOW FLIGHT: OFF"
+    flyButton.BackgroundColor3 = guidedOn and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
     
     if guidedOn then
         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -567,8 +586,20 @@ local function toggleFlight()
     end
 end
 
--- ========== ENHANCED FLOAT SYSTEM ==========
-local floatButton = createStyledButton(mainContent, "FLOAT: OFF", UDim2.new(0.05, 0, 0.36, 0))
+-- Float System
+local floatButton = Instance.new("TextButton")
+floatButton.Text = "FLOAT: OFF"
+floatButton.Size = UDim2.new(0.9, 0, 0, 30)
+floatButton.Position = UDim2.new(0.05, 0, 0.45, 0)
+floatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+floatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+floatButton.Font = Enum.Font.SourceSansPro
+floatButton.TextSize = 14
+floatButton.Parent = mainContent
+
+local floatCorner = Instance.new("UICorner")
+floatCorner.CornerRadius = UDim.new(0, 8)
+floatCorner.Parent = floatButton
 
 local floatEnabled = false
 local floatBodyVelocity
@@ -579,6 +610,7 @@ local function toggleFloat()
     
     if floatEnabled then
         floatButton.Text = "FLOAT: ON"
+        floatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
         statusLabel.Text = "Float enabled"
         
         floatBodyVelocity = Instance.new("BodyVelocity")
@@ -618,6 +650,7 @@ local function toggleFloat()
         
     else
         floatButton.Text = "FLOAT: OFF"
+        floatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         statusLabel.Text = "Float disabled"
         
         if floatConnection then
@@ -631,8 +664,20 @@ local function toggleFloat()
     end
 end
 
--- ========== ENHANCED AUTO FLOOR SYSTEM ==========
-local autoFloorButton = createStyledButton(mainContent, "AUTO FLOOR: OFF", UDim2.new(0.05, 0, 0.44, 0))
+-- Auto Floor System
+local autoFloorButton = Instance.new("TextButton")
+autoFloorButton.Text = "AUTO FLOOR: OFF"
+autoFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
+autoFloorButton.Position = UDim2.new(0.05, 0, 0.55, 0)
+autoFloorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+autoFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoFloorButton.Font = Enum.Font.SourceSansPro
+autoFloorButton.TextSize = 14
+autoFloorButton.Parent = mainContent
+
+local autoFloorCorner = Instance.new("UICorner")
+autoFloorCorner.CornerRadius = UDim.new(0, 8)
+autoFloorCorner.Parent = autoFloorButton
 
 local floorOn = false
 local floorPart
@@ -645,6 +690,7 @@ local function toggleAutoFloor()
     
     if floorOn then
         autoFloorButton.Text = "AUTO FLOOR: ON"
+        autoFloorButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
         statusLabel.Text = "Auto floor enabled (Rising)"
         
         floorPart = Instance.new("Part")
@@ -691,6 +737,7 @@ local function toggleAutoFloor()
         
     else
         autoFloorButton.Text = "AUTO FLOOR: OFF"
+        autoFloorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         statusLabel.Text = "Auto floor disabled"
         
         if floorConnection then
@@ -704,8 +751,20 @@ local function toggleAutoFloor()
     end
 end
 
--- ========== ENHANCED SEMI INVISIBLE SYSTEM ==========
-local semiInvisButton = createStyledButton(mainContent, "SEMI INVISIBLE: OFF", UDim2.new(0.05, 0, 0.52, 0))
+-- Semi Invisible System
+local semiInvisButton = Instance.new("TextButton")
+semiInvisButton.Text = "SEMI INVISIBLE: OFF"
+semiInvisButton.Size = UDim2.new(0.9, 0, 0, 30)
+semiInvisButton.Position = UDim2.new(0.05, 0, 0.65, 0)
+semiInvisButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+semiInvisButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+semiInvisButton.Font = Enum.Font.SourceSansPro
+semiInvisButton.TextSize = 14
+semiInvisButton.Parent = mainContent
+
+local semiInvisCorner = Instance.new("UICorner")
+semiInvisCorner.CornerRadius = UDim.new(0, 8)
+semiInvisCorner.Parent = semiInvisButton
 
 local connections = {
     SemiInvisible = {}
@@ -715,7 +774,7 @@ local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection
 
 local function semiInvisibleFunction()
-    local DEPTH_OFFSET = 0.15
+    local DEPTH_OFFSET = 2.5 -- Fine-tuned to show feet slightly above map
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -742,6 +801,103 @@ local function semiInvisibleFunction()
         table.insert(connections.SemiInvisible, childAddedConn)  
     end  
 
+    local function makeCharacterInvisible(character)
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part ~= clone then
+                if not part:GetAttribute("OriginalTransparency") then
+                    part:SetAttribute("OriginalTransparency", part.Transparency)
+                    part:SetAttribute("OriginalCanCollide", part.CanCollide)
+                end
+                if part.Name == "LeftFoot" or part.Name == "RightFoot" then
+                    part.Transparency = 0.7 -- Faintly visible feet
+                else
+                    part.Transparency = 1 -- Fully invisible for other parts
+                end
+                part.CanCollide = false
+            elseif part:IsA("Decal") then
+                if not part:GetAttribute("OriginalTransparency") then
+                    part:SetAttribute("OriginalTransparency", part.Transparency)
+                end
+                part.Transparency = 1
+            elseif part:IsA("BillboardGui") or part:IsA("SurfaceGui") then
+                if not part:GetAttribute("OriginalEnabled") then
+                    part:SetAttribute("OriginalEnabled", part.Enabled)
+                end
+                part.Enabled = false
+            elseif part:IsA("ParticleEmitter") or part:IsA("Trail") then
+                if not part:GetAttribute("OriginalEnabled") then
+                    part:SetAttribute("OriginalEnabled", part.Enabled)
+                end
+                part.Enabled = false
+            end
+        end
+        for _, accessory in pairs(character:GetChildren()) do
+            if accessory:IsA("Accessory") then
+                local handle = accessory:FindFirstChild("Handle")
+                if handle then
+                    if not handle:GetAttribute("OriginalTransparency") then
+                        handle:SetAttribute("OriginalTransparency", handle.Transparency)
+                        handle:SetAttribute("OriginalCanCollide", handle.CanCollide)
+                    end
+                    handle.Transparency = 1
+                    handle.CanCollide = false
+                end
+            end
+        end
+    end
+
+    local function restoreCharacterVisibility(character)
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part ~= clone then
+                local originalTransparency = part:GetAttribute("OriginalTransparency")
+                local originalCanCollide = part:GetAttribute("OriginalCanCollide")
+                if originalTransparency then
+                    part.Transparency = originalTransparency
+                    part:SetAttribute("OriginalTransparency", nil)
+                end
+                if originalCanCollide ~= nil then
+                    part.CanCollide = originalCanCollide
+                    part:SetAttribute("OriginalCanCollide", nil)
+                end
+            elseif part:IsA("Decal") then
+                local originalTransparency = part:GetAttribute("OriginalTransparency")
+                if originalTransparency then
+                    part.Transparency = originalTransparency
+                    part:SetAttribute("OriginalTransparency", nil)
+                end
+            elseif part:IsA("BillboardGui") or part:IsA("SurfaceGui") then
+                local originalEnabled = part:GetAttribute("OriginalEnabled")
+                if originalEnabled ~= nil then
+                    part.Enabled = originalEnabled
+                    part:SetAttribute("OriginalEnabled", nil)
+                end
+            elseif part:IsA("ParticleEmitter") or part:IsA("Trail") then
+                local originalEnabled = part:GetAttribute("OriginalEnabled")
+                if originalEnabled ~= nil then
+                    part.Enabled = originalEnabled
+                    part:SetAttribute("OriginalEnabled", nil)
+                end
+            end
+        end
+        for _, accessory in pairs(character:GetChildren()) do
+            if accessory:IsA("Accessory") then
+                local handle = accessory:FindFirstChild("Handle")
+                if handle then
+                    local originalTransparency = handle:GetAttribute("OriginalTransparency")
+                    local originalCanCollide = handle:GetAttribute("OriginalCanCollide")
+                    if originalTransparency then
+                        handle.Transparency = originalTransparency
+                        handle:SetAttribute("OriginalTransparency", nil)
+                    end
+                    if originalCanCollide ~= nil then
+                        handle.CanCollide = originalCanCollide
+                        handle:SetAttribute("OriginalCanCollide", nil)
+                    end
+                end
+            end
+        end
+    end
+
     local function doClone()  
         updateCharacterReferences()
         if not character or not humanoid or humanoid.Health <= 0 then  
@@ -762,6 +918,7 @@ local function semiInvisibleFunction()
 
         clone = oldRoot:Clone()  
         clone.Parent = character  
+        clone.Transparency = 1 -- Make clone invisible
         oldRoot.Parent = Workspace.CurrentCamera  
         clone.CFrame = oldRoot.CFrame  
 
@@ -823,7 +980,7 @@ local function semiInvisibleFunction()
         oldRoot = nil  
         if character and humanoid then  
             humanoid.HipHeight = hip  
-        end  
+        end
     end  
 
     local function animationTrickery()  
@@ -833,7 +990,7 @@ local function semiInvisibleFunction()
         end
             
         local anim = Instance.new("Animation")  
-        anim.AnimationId = "rbxassetid://18537363391"
+        anim.AnimationId = "rbxassetid://0" -- Static animation to minimize visibility
         local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
         animTrack = animator:LoadAnimation(anim)  
         animTrack.Priority = Enum.AnimationPriority.Action4  
@@ -846,13 +1003,6 @@ local function semiInvisibleFunction()
             end  
         end)  
         table.insert(connections.SemiInvisible, animStoppedConn)  
-
-        task.delay(0, function()  
-            animTrack.TimePosition = 0.7  
-            task.delay(1, function()  
-                animTrack:AdjustSpeed(math.huge)  
-            end)  
-        end)  
     end  
 
     local function enableInvisibility()  
@@ -865,6 +1015,8 @@ local function semiInvisibleFunction()
         removeFolders()  
         local success = doClone()  
         if success then  
+            godMode(true) -- Enable god mode
+            makeCharacterInvisible(character)
             task.wait(0.1)  
             animationTrickery()  
             connection = RunService.PreSimulation:Connect(function(dt)  
@@ -872,11 +1024,10 @@ local function semiInvisibleFunction()
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")  
                     if root then  
-                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1.5 + DEPTH_OFFSET, 0)  
-                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), math.rad(45), 0)
+                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) + DEPTH_OFFSET, 0)  
+                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0) -- Upside-down
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
-                        oldRoot.Transparency = 0.8
                     end  
                 end  
             end)  
@@ -884,21 +1035,7 @@ local function semiInvisibleFunction()
 
             characterConnection = player.CharacterAdded:Connect(function(newChar)
                 if isInvisible then
-                    if animTrack then  
-                        animTrack:Stop()  
-                        animTrack:Destroy()  
-                        animTrack = nil  
-                    end  
-                    if connection then connection:Disconnect() end  
-                    revertClone()
-                    removeFolders()
-                    isInvisible = false
-                    semiInvisButton.Text = "SEMI INVISIBLE: OFF"
-                    
-                    for _, conn in ipairs(connections.SemiInvisible) do  
-                        if conn then conn:Disconnect() end  
-                    end  
-                    connections.SemiInvisible = {}
+                    disableInvisibility()
                 end
             end)
             table.insert(connections.SemiInvisible, characterConnection)
@@ -909,6 +1046,7 @@ local function semiInvisibleFunction()
     end  
 
     local function disableInvisibility()  
+        godMode(false) -- Disable god mode
         if animTrack then  
             animTrack:Stop()  
             animTrack:Destroy()  
@@ -916,6 +1054,7 @@ local function semiInvisibleFunction()
         end  
         if connection then connection:Disconnect() end  
         if characterConnection then characterConnection:Disconnect() end  
+        restoreCharacterVisibility(character)
         revertClone()  
         removeFolders()  
     end
@@ -925,7 +1064,8 @@ local function semiInvisibleFunction()
         if enableInvisibility() then
             isInvisible = true
             semiInvisButton.Text = "SEMI INVISIBLE: ON"
-            statusLabel.Text = "Semi Invisible enabled"
+            semiInvisButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+            statusLabel.Text = "Semi Invisible enabled - Feet visible"
         else
             statusLabel.Text = "Failed to enable Semi Invisible"
         end
@@ -933,6 +1073,7 @@ local function semiInvisibleFunction()
         disableInvisibility()
         isInvisible = false
         semiInvisButton.Text = "SEMI INVISIBLE: OFF"
+        semiInvisButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         statusLabel.Text = "Semi Invisible disabled"
         
         for _, conn in ipairs(connections.SemiInvisible) do  
@@ -942,23 +1083,59 @@ local function semiInvisibleFunction()
     end
 end
 
--- ========== STEAL TAB CONTENT ==========
+-- Steal Tab Content
 local stealContent = Instance.new("Frame")
-stealContent.Size = UDim2.new(1, 0, 1, 0)
+stealContent.Size = UDim2.new(1, 0, 0, 600)
 stealContent.BackgroundTransparency = 1
 stealContent.Visible = false
 stealContent.Parent = contentFrame
 
 -- 2nd Floor Steal
-local secondFloorButton = createStyledButton(stealContent, "2ND FLOOR STEAL", UDim2.new(0.05, 0, 0.05, 0), Color3.fromRGB(220, 20, 60))
+local secondFloorButton = Instance.new("TextButton")
+secondFloorButton.Text = "2ND FLOOR STEAL"
+secondFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
+secondFloorButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+secondFloorButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+secondFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+secondFloorButton.Font = Enum.Font.SourceSansPro
+secondFloorButton.TextSize = 14
+secondFloorButton.Parent = stealContent
+
+local secondFloorCorner = Instance.new("UICorner")
+secondFloorCorner.CornerRadius = UDim.new(0, 8)
+secondFloorCorner.Parent = secondFloorButton
 
 -- 3rd Floor Steal
-local thirdFloorButton = createStyledButton(stealContent, "3RD FLOOR STEAL", UDim2.new(0.05, 0, 0.15, 0), Color3.fromRGB(220, 20, 60))
+local thirdFloorButton = Instance.new("TextButton")
+thirdFloorButton.Text = "3RD FLOOR STEAL"
+thirdFloorButton.Size = UDim2.new(0.9, 0, 0, 30)
+thirdFloorButton.Position = UDim2.new(0.05, 0, 0.15, 0)
+thirdFloorButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+thirdFloorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+thirdFloorButton.Font = Enum.Font.SourceSansPro
+thirdFloorButton.TextSize = 14
+thirdFloorButton.Parent = stealContent
+
+local thirdFloorCorner = Instance.new("UICorner")
+thirdFloorCorner.CornerRadius = UDim.new(0, 8)
+thirdFloorCorner.Parent = thirdFloorButton
 
 -- Desync Anti-Hit
-local desyncButton = createStyledButton(stealContent, "DESYNC (ANTI HIT): OFF", UDim2.new(0.05, 0, 0.25, 0), Color3.fromRGB(220, 20, 60))
+local desyncButton = Instance.new("TextButton")
+desyncButton.Text = "DESYNC (ANTI HIT): OFF"
+desyncButton.Size = UDim2.new(0.9, 0, 0, 30)
+desyncButton.Position = UDim2.new(0.05, 0, 0.25, 0)
+desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+desyncButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+desyncButton.Font = Enum.Font.SourceSansPro
+desyncButton.TextSize = 14
+desyncButton.Parent = stealContent
 
--- ========== DESYNC SYSTEM ==========
+local desyncCorner = Instance.new("UICorner")
+desyncCorner.CornerRadius = UDim.new(0, 8)
+desyncCorner.Parent = desyncButton
+
+-- Desync System
 local desyncActive = false
 
 local function enableMobileDesync()
@@ -1023,31 +1200,193 @@ desyncButton.MouseButton1Click:Connect(function()
     if desyncActive then
         local success = enableMobileDesync()
         if success then
+            desyncButton.BackgroundColor3 = Color3.fromRGB(200, 200, 0)
             desyncButton.Text = "DESYNC (ANTI HIT): ON"
         else
             desyncActive=false
+            desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
             desyncButton.Text = "DESYNC (ANTI HIT): OFF"
         end
     else
         disableMobileDesync()
+        desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
         desyncButton.Text = "DESYNC (ANTI HIT): OFF"
     end
 end)
 
 player.CharacterAdded:Connect(function()
     desyncActive=false
+    desyncButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
     desyncButton.Text = "DESYNC (ANTI HIT): OFF"
 end)
 
--- ========== VISUALS TAB CONTENT ==========
+-- 3rd Floor Steal System
+local floorOn = false
+local floorPart
+local floorConnection
+
+local function setTransparencySpecific(part, transparency)
+    if part and part:IsA("BasePart") then
+        if not part:GetAttribute("OriginalTransparency") then
+            part:SetAttribute("OriginalTransparency", part.Transparency)
+        end
+        if not part:GetAttribute("OriginalCanCollide") then
+            part:SetAttribute("OriginalCanCollide", part.CanCollide)
+        end
+        part.Transparency = transparency
+        part.CanCollide = false
+    end
+end
+
+local function processAnimalPodium(podium, podiumNumber, plotName)
+    local claim = podium:FindFirstChild("Claim")
+    if claim then
+        local hitbox = claim:FindFirstChild("Hitbox")
+        if hitbox then
+            pcall(function()
+                if not hitbox:GetAttribute("OriginalTransparency") then
+                    hitbox:SetAttribute("OriginalTransparency", hitbox.Transparency)
+                    hitbox:SetAttribute("OriginalCanCollide", hitbox.CanCollide)
+                end
+                hitbox.Transparency = 0.5
+                hitbox.CanCollide = false
+                if hitbox:FindFirstChild("SelectionBox") then hitbox.SelectionBox:Destroy() end
+                if hitbox:FindFirstChild("SurfaceGui") then hitbox.SurfaceGui.Enabled=false end
+                if hitbox:FindFirstChild("BillboardGui") then hitbox.BillboardGui.Enabled=false end
+                for _, script in pairs(hitbox:GetChildren()) do
+                    if script:IsA("LocalScript") or script:IsA("Script") then
+                        script.Disabled=true
+                    end
+                end
+            end)
+        end
+    end
+    local base = podium:FindFirstChild("Base")
+    if base then
+        local spawn = base:FindFirstChild("Spawn")
+        setTransparencySpecific(spawn,0.5)
+        local decorations = base:FindFirstChild("Decorations")
+        if decorations then
+            local decoration = decorations:FindFirstChild("Decoration")
+            setTransparencySpecific(decoration,0.5)
+            local part = decorations:FindFirstChild("Part")
+            setTransparencySpecific(part,0.5)
+            for _, child in pairs(decorations:GetChildren()) do
+                if child:IsA("BasePart") and child.Name~="Decoration" and child.Name~="Part" then
+                    setTransparencySpecific(child,0.5)
+                end
+            end
+        end
+    end
+end
+
+local function destroyPlatform()
+    if floorPart then floorPart:Destroy() floorPart=nil end
+    floorOn=false
+    if floorConnection then floorConnection:Disconnect() floorConnection=nil end
+    thirdFloorButton.BackgroundColor3 = Color3.fromRGB(220,20,60)
+    thirdFloorButton.Text = "3RD FLOOR STEAL"
+end
+
+local function canRise()
+    if not floorPart then return false end
+    local origin = floorPart.Position + Vector3.new(0, floorPart.Size.Y/2,0)
+    local direction = Vector3.new(0,2,0)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {floorPart, player.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    return not Workspace:Raycast(origin,direction,rayParams)
+end
+
+local function setup3rdFloor()
+    updateCharacterReferences()
+    if not character then return end
+    
+    local root = character:WaitForChild("HumanoidRootPart")
+    
+    thirdFloorButton.MouseButton1Click:Connect(function()
+        floorOn = not floorOn
+        if floorOn then
+            floorPart = Instance.new("Part")
+            floorPart.Size = Vector3.new(6,0.5,6)
+            floorPart.Anchored=true
+            floorPart.CanCollide=true
+            floorPart.Transparency=0
+            floorPart.Material=Enum.Material.Plastic
+            floorPart.Color=Color3.fromRGB(255,200,0)
+            floorPart.Position=root.Position-Vector3.new(0, root.Size.Y/2 + floorPart.Size.Y/2, 0)
+            floorPart.Parent = Workspace
+
+            local plots = Workspace:FindFirstChild("Plots")
+            if plots then
+                for _, plot in pairs(plots:GetChildren()) do
+                    for _, part in pairs(plot:GetDescendants()) do
+                        if part:IsA("BasePart") and (part.Name:lower():find("base plot") or part.Name:lower():find("base") or part.Name:lower():find("plot")) then
+                            part.Transparency = 0.5
+                        end
+                    end
+                    local animalPodiums = plot:FindFirstChild("AnimalPodiums")
+                    if animalPodiums then
+                        for _, podium in pairs(animalPodiums:GetChildren()) do
+                            if podium:IsA("Model") or podium:IsA("Folder") then
+                                processAnimalPodium(podium, podium.Name, plot.Name)
+                            end
+                        end
+                    end
+                end
+            end
+
+            floorConnection = RunService.Heartbeat:Connect(function(dt)
+                if floorPart and floorOn then
+                    local cur = floorPart.Position
+                    local newXZ = Vector3.new(root.Position.X, cur.Y, root.Position.Z)
+                    if canRise() then
+                        floorPart.Position = newXZ + Vector3.new(0, dt*15,0)
+                    else
+                        floorPart.Position=newXZ
+                    end
+                end
+            end)
+            thirdFloorButton.BackgroundColor3=Color3.fromRGB(0,170,0)
+            thirdFloorButton.Text = "3RD FLOOR STEAL: ON"
+        else
+            destroyPlatform()
+        end
+    end)
+
+    character:WaitForChild("Humanoid").Died:Connect(destroyPlatform)
+end
+
+if player.Character then setup3rdFloor() end
+player.CharacterAdded:Connect(setup3rdFloor)
+
+-- 2nd Floor Steal (placeholder)
+secondFloorButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "2nd Floor Steal activated"
+    -- Add your 2nd floor steal logic here
+end)
+
+-- Visuals Tab Content
 local visualsContent = Instance.new("Frame")
-visualsContent.Size = UDim2.new(1, 0, 1, 0)
+visualsContent.Size = UDim2.new(1, 0, 0, 600)
 visualsContent.BackgroundTransparency = 1
 visualsContent.Visible = false
 visualsContent.Parent = contentFrame
 
 -- Player ESP
-local espButton = createStyledButton(visualsContent, "PLAYER ESP: OFF", UDim2.new(0.05, 0, 0.05, 0))
+local espButton = Instance.new("TextButton")
+espButton.Text = "PLAYER ESP: OFF"
+espButton.Size = UDim2.new(0.9, 0, 0, 30)
+espButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+espButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+espButton.Font = Enum.Font.SourceSansPro
+espButton.TextSize = 14
+espButton.Parent = visualsContent
+
+local espCorner = Instance.new("UICorner")
+espCorner.CornerRadius = UDim.new(0, 8)
+espCorner.Parent = espButton
 
 local espEnabled = false
 local espFolders = {}
@@ -1091,7 +1430,7 @@ local function createESP(player)
         nameLabel.Text = player.Name
         nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         nameLabel.TextStrokeTransparency = 0
-        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.Font = Enum.Font.SourceSansPro
         nameLabel.TextSize = 14
         
         local healthLabel = Instance.new("TextLabel", billboard)
@@ -1101,7 +1440,7 @@ local function createESP(player)
         healthLabel.Text = "HP: " .. math.floor(humanoid.Health)
         healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         healthLabel.TextStrokeTransparency = 0
-        healthLabel.Font = Enum.Font.Gotham
+        healthLabel.Font = Enum.Font.SourceSansPro
         healthLabel.TextSize = 12
         
         billboard.Parent = folder
@@ -1136,6 +1475,7 @@ end
 local function toggleESP()
     espEnabled = not espEnabled
     espButton.Text = espEnabled and "PLAYER ESP: ON" or "PLAYER ESP: OFF"
+    espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
     
     if espEnabled then
         statusLabel.Text = "ESP enabled"
@@ -1169,15 +1509,27 @@ local function toggleESP()
     end
 end
 
--- ========== COMBAT TAB CONTENT ==========
+-- Combat Tab Content
 local combatContent = Instance.new("Frame")
-combatContent.Size = UDim2.new(1, 0, 1, 0)
+combatContent.Size = UDim2.new(1, 0, 0, 600)
 combatContent.BackgroundTransparency = 1
 combatContent.Visible = false
 combatContent.Parent = contentFrame
 
 -- Auto Lazer
-local autoLazerButton = createStyledButton(combatContent, "AUTO LAZER: OFF", UDim2.new(0.05, 0, 0.05, 0))
+local autoLazerButton = Instance.new("TextButton")
+autoLazerButton.Text = "AUTO LAZER: OFF"
+autoLazerButton.Size = UDim2.new(0.9, 0, 0, 30)
+autoLazerButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+autoLazerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+autoLazerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoLazerButton.Font = Enum.Font.SourceSansPro
+autoLazerButton.TextSize = 14
+autoLazerButton.Parent = combatContent
+
+local autoLazerCorner = Instance.new("UICorner")
+autoLazerCorner.CornerRadius = UDim.new(0, 8)
+autoLazerCorner.Parent = autoLazerButton
 
 local autoLazerEnabled = false
 local autoLazerThread = nil
@@ -1306,6 +1658,7 @@ end
 local function toggleAutoLazer()
     autoLazerEnabled = not autoLazerEnabled
     autoLazerButton.Text = autoLazerEnabled and "AUTO LAZER: ON" or "AUTO LAZER: OFF"
+    autoLazerButton.BackgroundColor3 = autoLazerEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
     statusLabel.Text = autoLazerEnabled and "Auto lazer enabled" or "Auto lazer disabled"
     
     if autoLazerEnabled then
@@ -1321,8 +1674,21 @@ local function toggleAutoLazer()
     end
 end
 
--- Enhanced DISCORD BUTTON
-local discordBtn = createStyledButton(contentFrame, "📱 DISCORD", UDim2.new(0.05, 0, 0.85, 0), Color3.fromRGB(88, 101, 242))
+-- Discord Button
+local discordBtn = Instance.new("TextButton")
+discordBtn.Size = UDim2.new(0.9, 0, 0, 30)
+discordBtn.Position = UDim2.new(0.05, 0, 0.85, 0)
+discordBtn.Text = "Discord"
+discordBtn.Font = Enum.Font.SourceSansPro
+discordBtn.TextSize = 14
+discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+discordBtn.AutoButtonColor = false
+discordBtn.Parent = mainContent
+
+local discordCorner = Instance.new("UICorner")
+discordCorner.CornerRadius = UDim.new(0, 8)
+discordCorner.Parent = discordBtn
 
 discordBtn.MouseButton1Click:Connect(function()
     if setclipboard then 
@@ -1336,7 +1702,7 @@ discordBtn.MouseButton1Click:Connect(function()
     discordBtn.Text = originalText
 end)
 
--- ========== TAB SYSTEM ==========
+-- Tab System
 local function switchTab(tabName)
     currentTab = tabName
     mainContent.Visible = (tabName == "Main")
@@ -1349,13 +1715,12 @@ local function switchTab(tabName)
             button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
             button.TextColor3 = Color3.fromRGB(255, 255, 255)
         else
-            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
             button.TextColor3 = Color3.fromRGB(200, 200, 200)
         end
     end
 end
 
--- Initialize tabs
 for tabName, button in pairs(tabButtons) do
     button.MouseButton1Click:Connect(function()
         switchTab(tabName)
@@ -1363,73 +1728,66 @@ for tabName, button in pairs(tabButtons) do
 end
 switchTab("Main")
 
--- Enhanced button update function
-local function updateButtonState(button, isActive, activeColor)
-    if isActive then
-        button.BackgroundColor3 = activeColor or Color3.fromRGB(0, 170, 0)
-        local stroke = button:FindFirstChild("UIStroke")
-        if stroke then
-            stroke.Color = activeColor or Color3.fromRGB(0, 200, 0)
+-- GUI Animations and Interactions
+local function animateButton(button)
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(100, 100, 255)}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        local targetColor = button.Text:find("ON") and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+        if button == desyncButton then
+            targetColor = button.Text:find("ON") and Color3.fromRGB(200, 200, 0) or Color3.fromRGB(220, 20, 60)
+        elseif button == discordBtn then
+            targetColor = Color3.fromRGB(88, 101, 242)
         end
-    else
-        button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-        local stroke = button:FindFirstChild("UIStroke")
-        if stroke then
-            stroke.Color = Color3.fromRGB(60, 60, 60)
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+    end)
+    button.MouseButton1Down:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1), {Size = UDim2.new(0.88, 0, 0, 28)}):Play()
+    end)
+    button.MouseButton1Up:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1), {Size = UDim2.new(0.9, 0, 0, 30)}):Play()
+    end)
+end
+
+-- Apply animations to buttons
+for _, button in pairs({tweenButton, flyButton, floatButton, autoFloorButton, semiInvisButton, espButton, autoLazerButton, secondFloorButton, thirdFloorButton, desyncButton, discordBtn}) do
+    animateButton(button)
+end
+for _, tabButton in pairs(tabButtons) do
+    animateButton(tabButton)
+end
+
+-- Toggle GUI visibility
+local function toggleGui()
+    gui.Enabled = not gui.Enabled
+    local targetTransparency = gui.Enabled and 0 or 1
+    TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = targetTransparency}):Play()
+    for _, child in pairs(mainFrame:GetDescendants()) do
+        if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") then
+            TweenService:Create(child, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = targetTransparency}):Play()
         end
     end
 end
 
--- Button connections
+toggleButton.MouseButton1Click:Connect(toggleGui)
+closeButton.MouseButton1Click:Connect(toggleGui)
+
+-- Button Connections
 tweenButton.MouseButton1Click:Connect(function()
     if active then
         stopTweenToBase()
-        updateButtonState(tweenButton, false)
     else
         startTweenToBase()
-        updateButtonState(tweenButton, true, Color3.fromRGB(200, 0, 0))
     end
 end)
 
-flyButton.MouseButton1Click:Connect(function()
-    toggleFlight()
-    updateButtonState(flyButton, guidedOn)
-end)
-
-floatButton.MouseButton1Click:Connect(function()
-    toggleFloat()
-    updateButtonState(floatButton, floatEnabled)
-end)
-
-autoFloorButton.MouseButton1Click:Connect(function()
-    toggleAutoFloor()
-    updateButtonState(autoFloorButton, floorOn)
-end)
-
-semiInvisButton.MouseButton1Click:Connect(function()
-    semiInvisibleFunction()
-    updateButtonState(semiInvisButton, isInvisible)
-end)
-
-espButton.MouseButton1Click:Connect(function()
-    toggleESP()
-    updateButtonState(espButton, espEnabled)
-end)
-
-autoLazerButton.MouseButton1Click:Connect(function()
-    toggleAutoLazer()
-    updateButtonState(autoLazerButton, autoLazerEnabled)
-end)
-
--- 2nd Floor Steal placeholder
-secondFloorButton.MouseButton1Click:Connect(function()
-    statusLabel.Text = "2nd Floor Steal activated"
-end)
-
--- 3rd Floor Steal placeholder
-thirdFloorButton.MouseButton1Click:Connect(function()
-    statusLabel.Text = "3rd Floor Steal activated"
-end)
+flyButton.MouseButton1Click:Connect(toggleFlight)
+floatButton.MouseButton1Click:Connect(toggleFloat)
+autoFloorButton.MouseButton1Click:Connect(toggleAutoFloor)
+semiInvisButton.MouseButton1Click:Connect(semiInvisibleFunction)
+espButton.MouseButton1Click:Connect(toggleESP)
+autoLazerButton.MouseButton1Click:Connect(toggleAutoLazer)
 
 -- Drag GUI
 local dragging, dragInput, dragStart, startPos
@@ -1492,40 +1850,8 @@ end)
 setJumpPower(50)
 setSpeed(24)
 
--- Clean up everything when script ends
-gui.Destroying:Connect(function()
-    stopTweenToBase()
-    
-    if guidedConn then
-        guidedConn:Disconnect()
-    end
-    
-    if floatConnection then
-        floatConnection:Disconnect()
-    end
-    if floatBodyVelocity then
-        floatBodyVelocity:Destroy()
-    end
-    
-    if floorConnection then
-        floorConnection:Disconnect()
-    end
-    if floorPart then
-        floorPart:Destroy()
-    end
-    
-    if isInvisible then
-        semiInvisibleFunction()
-    end
-    
-    if autoLazerEnabled then
-        toggleAutoLazer()
-    end
-    
-    if espEnabled then
-        toggleESP()
-    end
-end)
-
-print("Enhanced Krypton Hub loaded successfully!")
-print("Discord: https://discord.gg/YSwFZsGk9j")
+--Cleanup on player leaving Players.PlayerRemoving:Connect(function(plr) if plr == player then -- Clean up connections if godModeConnection then godModeConnection:Disconnect() godModeConnection = nil end for _, conn in pairs(antiKickConnections) do if conn.Connection then conn.Connection:Disconnect() end end antiKickConnections = {} if guidedConn then guidedConn:Disconnect() guidedConn = nil end if floatConnection then floatConnection:Disconnect() floatConnection = nil end if floatBodyVelocity then floatBodyVelocity:Destroy() floatBodyVelocity = nil end if floorConnection then floorConnection:Disconnect() floorConnection = nil end if floorPart then floorPart:Destroy() floorPart = nil end if autoLazerThread then task.cancel(autoLazerThread) autoLazerThread = nil end for _, conn in pairs(connections.SemiInvisible) do if conn then conn:Disconnect() end end connections.SemiInvisible = {} for _, conn in pairs(espConnections) do if conn then conn:Disconnect() end end for _, folder in pairs(espFolders) do if folder then folder:Destroy() end end espFolders = {} espConnections = {} if walkThread then task.cancel(walkThread) walkThread = nil end if currentTween then currentTween:Cancel() currentTween = nil end end end)
+-- Initialize character settings if player.Character then
+setJumpPower(50)
+setSpeed(24)
+end
