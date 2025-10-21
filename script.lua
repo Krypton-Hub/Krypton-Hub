@@ -292,6 +292,7 @@ table.insert(mainContent, createToggle("FLOAT: OFF", 3))
 table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
 table.insert(playerContent, createToggle("INFINITE JUMP: OFF", 2))
 table.insert(playerContent, createToggle("SPEED BOOSTER: OFF", 3))
+table.insert(playerContent, createToggle("AUTO STEAL: OFF", 4))
 
 -- VISUALS TAB
 table.insert(visualsContent, createToggle("PLAYER ESP: OFF", 1))
@@ -486,11 +487,9 @@ mainContent[1].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FLIGHT SYSTEM ==========
+-- ========== YOUR EXACT FLIGHT SYSTEM ==========
 local flyActive = false
 local flyConnection
-local lastUpdate = 0
-local UPDATE_INTERVAL = 0.05 -- 20 FPS instead of 60+ FPS
 
 mainContent[2].MouseButton1Click:Connect(function()
     flyActive = not flyActive
@@ -500,12 +499,7 @@ mainContent[2].MouseButton1Click:Connect(function()
         mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Slow Flight enabled - Use camera direction"
         
-        flyConnection = RunService.Heartbeat:Connect(function()
-            -- Reduce update frequency to prevent lag
-            local currentTime = tick()
-            if currentTime - lastUpdate < UPDATE_INTERVAL then return end
-            lastUpdate = currentTime
-            
+        flyConnection = RunService.RenderStepped:Connect(function()
             updateCharacterReferences()
             if flyActive and hrp then
                 hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
@@ -855,6 +849,83 @@ playerContent[3].MouseButton1Click:Connect(function()
     end
 end)
 
+-- ========== AUTO STEAL FOR STEAL A BRAINROT ==========
+local autoStealActive = false
+local autoStealConnection
+local stealRange = 10
+
+local function autoStealFunction()
+    if not autoStealActive then return end
+    
+    updateCharacterReferences()
+    if not character or not hrp then return end
+    
+    -- Look for brainrots and other stealable items
+    for _, item in pairs(Workspace:GetDescendants()) do
+        if autoStealActive and item:IsA("Part") then
+            -- Check for brainrot items
+            if item.Name:lower():find("brainrot") or 
+               item.Name:lower():find("brain") or
+               item.Name:lower():find("rot") or
+               item.Name:lower():find("item") or
+               item.Name:lower():find("collect") then
+               
+                -- Check if item is close enough
+                local distance = (hrp.Position - item.Position).Magnitude
+                if distance <= stealRange then
+                    -- Try to interact with the item
+                    pcall(function()
+                        -- Method 1: Fire touch events
+                        firetouchinterest(hrp, item, 0) -- Touch start
+                        task.wait(0.1)
+                        firetouchinterest(hrp, item, 1) -- Touch end
+                        
+                        -- Method 2: Try to click if it has click detectors
+                        local clickDetector = item:FindFirstChildOfClass("ClickDetector")
+                        if clickDetector then
+                            clickDetector:MaxActivationDistance = 100
+                            fireclickdetector(clickDetector)
+                        end
+                        
+                        -- Method 3: Try proximity prompts
+                        local prompt = item:FindFirstChildOfClass("ProximityPrompt")
+                        if prompt then
+                            prompt:InputHoldBegin()
+                            task.wait(0.2)
+                            prompt:InputHoldEnd()
+                        end
+                        
+                        statusLabel.Text = "Auto stealing: " .. item.Name
+                    end)
+                end
+            end
+        end
+    end
+end
+
+-- Connect auto steal button
+playerContent[4].MouseButton1Click:Connect(function()
+    autoStealActive = not autoStealActive
+    
+    if autoStealActive then
+        playerContent[4].Text = "AUTO STEAL: ON"
+        playerContent[4].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Auto Steal enabled - Will steal nearby brainrots"
+        
+        autoStealConnection = RunService.Heartbeat:Connect(function()
+            autoStealFunction()
+        end)
+    else
+        playerContent[4].Text = "AUTO STEAL: OFF"
+        playerContent[4].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Auto Steal disabled"
+        
+        if autoStealConnection then
+            autoStealConnection:Disconnect()
+        end
+    end
+end)
+
 -- ========== OTHER FEATURES ==========
 
 -- Float System
@@ -1010,6 +1081,7 @@ player.CharacterAdded:Connect(function()
     isInvisible = false
     infJumpActive = false
     speedActive = false
+    autoStealActive = false
     espActive = false
     fullbrightActive = false
     
@@ -1032,6 +1104,9 @@ player.CharacterAdded:Connect(function()
     playerContent[3].Text = "SPEED BOOSTER: OFF"
     playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
+    playerContent[4].Text = "AUTO STEAL: OFF"
+    playerContent[4].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    
     visualsContent[1].Text = "PLAYER ESP: OFF"
     visualsContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
@@ -1047,6 +1122,7 @@ player.CharacterAdded:Connect(function()
     if floatBodyVelocity then floatBodyVelocity:Destroy() end
     if infJumpConnection then infJumpConnection:Disconnect() end
     if speedConn then speedConn:Disconnect() end
+    if autoStealConnection then autoStealConnection:Disconnect() end
     
     -- Clean up semi-invisible
     for _, conn in ipairs(connections.SemiInvisible) do
@@ -1072,7 +1148,7 @@ player.CharacterAdded:Connect(function()
     statusLabel.Text = "Character respawned - Ready"
 end)
 
-print("Krypton Hub v5.0 - Complete Edition Loaded!")
-print("Features: Your exact flight, semi-invisible, jump, and speed systems")
+print("Krypton Hub v6.0 - Complete Edition Loaded!")
+print("Features: Your exact flight system, Auto Steal, Godmode, and more!")
 print("Controls: F key to toggle semi-invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
