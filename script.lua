@@ -520,8 +520,7 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
-
--- ========== OPTIMIZED INVISIBLE SYSTEM (Offset 0.25) ==========
+-- ========== COMPLETELY INVISIBLE SYSTEM ==========
 local connections = {
     FullInvisible = {}
 }
@@ -530,8 +529,8 @@ local isInvisible = false
 local connection, characterConnection
 
 local function fullInvisibleFunction()
-    local OPTIMAL_OFFSET = 0.25  -- Should hide feet completely
-    local NO_INDICATOR = true    -- No indicator for maximum stealth
+    local COMPLETE_HIDING_OFFSET = 10  -- Far enough to be completely invisible
+    local NO_INDICATOR = true
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -674,8 +673,9 @@ local function fullInvisibleFunction()
                     local oldRoot = Workspace.CurrentCamera:FindFirstChild("HumanoidRootPart")
                     
                     if root and oldRoot then  
-                        -- Hide real character 0.25 studs underground with flip
-                        local undergroundPos = root.Position - Vector3.new(0, OPTIMAL_OFFSET, 0)
+                        -- Hide real character FAR underground (completely invisible)
+                        -- But keep it synced with clone position to avoid lag back
+                        local undergroundPos = Vector3.new(root.Position.X, root.Position.Y - COMPLETE_HIDING_OFFSET, root.Position.Z)
                         oldRoot.CFrame = CFrame.new(undergroundPos) * CFrame.Angles(math.rad(180), 0, 0)
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
@@ -718,14 +718,14 @@ local function fullInvisibleFunction()
             isInvisible = true
             playerContent[1].Text = "FULL INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Stealth Invisible enabled (F key to toggle)"
+            statusLabel.Text = "COMPLETELY INVISIBLE enabled (F key to toggle)"
         end
     else
         disableInvisibility()
         isInvisible = false
         playerContent[1].Text = "FULL INVISIBLE: OFF"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Stealth Invisible disabled"
+        statusLabel.Text = "Invisible disabled"
         
         for _, conn in ipairs(connections.FullInvisible) do  
             if conn then conn:Disconnect() end  
@@ -743,6 +743,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         fullInvisibleFunction()
     end
 end)
+
 -- ========== INFINITE JUMP (From your file) ==========
 local infJumpActive = false
 local infJumpConnection
