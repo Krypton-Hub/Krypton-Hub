@@ -520,7 +520,7 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== ENHANCED FULL INVISIBLE SYSTEM WITH LOWER TORSO CLONE ==========
+-- ========== MOBILE-OPTIMIZED FULL INVISIBLE SYSTEM WITH LOWER TORSO CLONE AND UPSIDE-DOWN HRP ==========
 local connections = {
     SemiInvisible = {}
 }
@@ -699,12 +699,19 @@ local function semiInvisibleFunction()
                     if root then
                         local groundY = getGroundHeight(root.CFrame.Position)
                         local targetPos = Vector3.new(root.CFrame.X, groundY + UNDERGROUND_OFFSET, root.CFrame.Z)
-                        oldRoot.CFrame = CFrame.new(targetPos)  -- Keep HRP underground
+                        -- Set HRP underground, upside down
+                        oldRoot.CFrame = CFrame.new(targetPos) * CFrame.Angles(math.rad(180), 0, 0)
+                        -- Preserve velocity for smooth movement
                         oldRoot.Velocity = root.Velocity
                         oldRoot.CanCollide = false
+                        -- Ensure Humanoid controls movement
+                        if humanoid.MoveDirection.Magnitude > 0 then
+                            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                        end
                     end
                 end
             end)
+            task.wait(0.02)  -- Slight delay for mobile performance
         end)
         table.insert(connections.SemiInvisible, connection)
 
@@ -748,7 +755,7 @@ local function semiInvisibleFunction()
                 isInvisible = true
                 playerContent[1].Text = "FULL INVISIBLE: ON"
                 playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-                statusLabel.Text = "Full Invisible enabled (F key to toggle)"
+                statusLabel.Text = "Full Invisible enabled (Toggle via GUI or F key)"
             else
                 statusLabel.Text = "Failed to enable invisibility"
             end
@@ -767,7 +774,7 @@ playerContent[1].MouseButton1Click:Connect(function()
     semiInvisibleFunction()
 end)
 
--- F key toggle for semi-invisible
+-- F key toggle for semi-invisible (optional for mobile, GUI preferred)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
         semiInvisibleFunction()
