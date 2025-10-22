@@ -520,16 +520,16 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FIXED FULL INVISIBLE SYSTEM (SHALLOW UNDERGROUND + NO LAG BACK) ==========
+-- ========== FIXED FULL INVISIBLE SYSTEM (YOU MOVE UNDERGROUND + NO BLUE BOX) ==========
 local connections = {
     FullInvisible = {}
 }
 
 local isInvisible = false
-local clone, oldRoot, hip, animTrack, connection, characterConnection, torsoBox
+local connection, characterConnection
 
 local function fullInvisibleFunction()
-    local SHALLOW_DEPTH_OFFSET = 10  -- Only about 2 characters underground (was 50)
+    local SHALLOW_DEPTH_OFFSET = 10  -- Only about 2 characters underground
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -556,63 +556,6 @@ local function fullInvisibleFunction()
         table.insert(connections.FullInvisible, childAddedConn)  
     end  
 
-    local function doClone()  
-        if character and humanoid and humanoid.Health > 0 then  
-            hip = humanoid.HipHeight  
-            oldRoot = hrp
-            if not oldRoot or not oldRoot.Parent then  
-                return false  
-            end  
-
-            local tempParent = Instance.new("Model")  
-            tempParent.Parent = game  
-            character.Parent = tempParent  
-
-            clone = oldRoot:Clone()  
-            clone.Parent = character  
-            oldRoot.Parent = Workspace.CurrentCamera  
-            clone.CFrame = oldRoot.CFrame  
-
-            character.PrimaryPart = clone  
-            character.Parent = Workspace  
-
-            for _, v in pairs(character:GetDescendants()) do  
-                if v:IsA("Weld") or v:IsA("Motor6D") then  
-                    if v.Part0 == oldRoot then  
-                        v.Part0 = clone  
-                    end  
-                    if v.Part1 == oldRoot then  
-                        v.Part1 = clone  
-                    end  
-                end  
-            end  
-
-            tempParent:Destroy()  
-            return true  
-        end  
-        return false  
-    end  
-
-    local function createTorsoBox()
-        if not clone then return end
-        
-        torsoBox = Instance.new("Part")
-        torsoBox.Name = "TorsoIndicator"
-        torsoBox.Size = Vector3.new(2, 3, 1)
-        torsoBox.BrickColor = BrickColor.new("Bright blue")
-        torsoBox.Material = Enum.Material.Neon
-        torsoBox.Transparency = 0.3
-        torsoBox.Anchored = false
-        torsoBox.CanCollide = false
-        torsoBox.Parent = Workspace
-        
-        local weld = Instance.new("Weld")
-        weld.Part0 = clone
-        weld.Part1 = torsoBox
-        weld.C0 = CFrame.new(0, 0, 0)
-        weld.Parent = torsoBox
-    end
-
     local function makeCharacterTransparent()
         if character then
             for _, part in ipairs(character:GetDescendants()) do
@@ -633,57 +576,12 @@ local function fullInvisibleFunction()
         end
     end
 
-    local function revertClone()  
-        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
-            return false  
-        end  
-
-        -- FIRST: Move the real character to the clone's position (prevents lag back)
-        local currentClonePosition = clone.Position
-        local currentCloneCFrame = clone.CFrame
-        
-        local tempParent = Instance.new("Model")  
-        tempParent.Parent = game  
-        character.Parent = tempParent  
-
-        oldRoot.Parent = character  
-        character.PrimaryPart = oldRoot  
-        character.Parent = Workspace  
-        
-        -- Set the real character to the clone's position to prevent lag back
-        oldRoot.CFrame = currentCloneCFrame
-        oldRoot.CanCollide = true  
-
-        for _, v in pairs(character:GetDescendants()) do  
-            if v:IsA("Weld") or v:IsA("Motor6D") then  
-                if v.Part0 == clone then  
-                    v.Part0 = oldRoot  
-                end  
-                if v.Part1 == clone then  
-                    v.Part1 = oldRoot  
-                end  
-            end  
-        end  
-
-        if clone then  
-            clone:Destroy()  
-            clone = nil  
-        end  
-
-        oldRoot = nil  
-        if character and humanoid then  
-            humanoid.HipHeight = hip  
-        end  
-
-        tempParent:Destroy()  
-    end  
-
     local function animationTrickery()  
         if character and humanoid and humanoid.Health > 0 then  
             local anim = Instance.new("Animation")  
             anim.AnimationId = "http://www.roblox.com/asset/?id=18537363391"  
             local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
-            animTrack = animator:LoadAnimation(anim)  
+            local animTrack = animator:LoadAnimation(anim)  
             animTrack.Priority = Enum.AnimationPriority.Action4  
             animTrack:Play(0, 1, 0)  
             anim:Destroy()  
@@ -710,71 +608,67 @@ local function fullInvisibleFunction()
         end  
 
         removeFolders()  
-        local success = doClone()  
-        if success then  
-            task.wait(0.1)  
-            animationTrickery()  
-            
-            -- Make character transparent
-            makeCharacterTransparent()
-            
-            -- Create torso box
-            createTorsoBox()
-            
-            connection = RunService.PreSimulation:Connect(function(dt)  
-                if character and humanoid and humanoid.Health > 0 and oldRoot then  
-                    local root = character.PrimaryPart or hrp
-                    if root then  
-                        -- Move real character only 10 studs underground (shallow)
-                        local cf = root.CFrame - Vector3.new(0, SHALLOW_DEPTH_OFFSET, 0)  
-                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
-                        oldRoot.Velocity = root.Velocity  
-                        oldRoot.CanCollide = false  
-                    end  
-                end  
-            end)  
-            table.insert(connections.FullInvisible, connection)  
+        
+        task.wait(0.1)  
+        animationTrickery()  
+        
+        -- Make character transparent
+        makeCharacterTransparent()
+        
+        connection = RunService.PreSimulation:Connect(function(dt)  
+            if character and humanoid and humanoid.Health > 0 and hrp then  
+                -- Move character underground and upside down
+                local currentPos = hrp.Position
+                local undergroundPos = Vector3.new(
+                    currentPos.X,
+                    currentPos.Y - SHALLOW_DEPTH_OFFSET,  -- Move underground
+                    currentPos.Z
+                )
+                
+                -- Keep character upside down and underground
+                hrp.CFrame = CFrame.new(undergroundPos) * CFrame.Angles(math.rad(180), 0, 0)
+                hrp.CanCollide = false
+            end  
+        end)  
+        table.insert(connections.FullInvisible, connection)  
 
-            characterConnection = player.CharacterAdded:Connect(function(newChar)
-                if isInvisible then
-                    if animTrack then  
-                        animTrack:Stop()  
-                        animTrack:Destroy()  
-                        animTrack = nil  
-                    end  
-                    if connection then connection:Disconnect() end  
-                    if torsoBox then torsoBox:Destroy() end
-                    revertClone()
-                    removeFolders()
-                    isInvisible = false
-                    
-                    for _, conn in ipairs(connections.FullInvisible) do  
-                        if conn then conn:Disconnect() end  
-                    end  
-                    connections.FullInvisible = {}
-                end
-            end)
-            table.insert(connections.FullInvisible, characterConnection)
-            
-            return true
-        end  
-        return false
+        characterConnection = player.CharacterAdded:Connect(function(newChar)
+            if isInvisible then
+                if connection then connection:Disconnect() end
+                revertCharacterTransparency()
+                removeFolders()
+                isInvisible = false
+                
+                for _, conn in ipairs(connections.FullInvisible) do  
+                    if conn then conn:Disconnect() end  
+                end  
+                connections.FullInvisible = {}
+            end
+        end)
+        table.insert(connections.FullInvisible, characterConnection)
+        
+        return true
     end  
 
     local function disableInvisibility()  
-        if animTrack then  
-            animTrack:Stop()  
-            animTrack:Destroy()  
-            animTrack = nil  
-        end  
         if connection then connection:Disconnect() end  
         if characterConnection then characterConnection:Disconnect() end  
-        if torsoBox then torsoBox:Destroy() end
         
-        -- Revert transparency BEFORE reverting clone
+        -- Revert transparency and position
         revertCharacterTransparency()
         
-        revertClone()  
+        -- Move back to surface position
+        if hrp then
+            local currentPos = hrp.Position
+            local surfacePos = Vector3.new(
+                currentPos.X,
+                currentPos.Y + SHALLOW_DEPTH_OFFSET,  -- Move back to surface
+                currentPos.Z
+            )
+            hrp.CFrame = CFrame.new(surfacePos)
+            hrp.CanCollide = true
+        end
+        
         removeFolders()  
     end
 
@@ -785,7 +679,7 @@ local function fullInvisibleFunction()
             isInvisible = true
             playerContent[1].Text = "FULL INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Full Invisible enabled - Shallow underground (F key to toggle)"
+            statusLabel.Text = "Full Invisible enabled - Underground & Hidden"
         end
     else
         disableInvisibility()
