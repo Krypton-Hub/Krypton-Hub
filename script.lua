@@ -1,4 +1,4 @@
--- Krypton Hub - Complete Edition
+-- Krypton Hub
 -- Made by agent_duke13
 
 local Players = game:GetService("Players")
@@ -11,68 +11,12 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local character, hrp, humanoid
 
--- Global Godmode Protection
-local function setupGodmode()
-    local mt = getrawmetatable(game)
-    local oldNC = mt.__namecall
-    local oldNI = mt.__newindex
-    
-    setreadonly(mt, false)
-    
-    mt.__namecall = newcclosure(function(self, ...)
-        local m = getnamecallmethod()
-        if self == humanoid then
-            if m == "ChangeState" and select(1, ...) == Enum.HumanoidStateType.Dead then
-                return
-            end
-            if m == "SetStateEnabled" then
-                local st, en = ...
-                if st == Enum.HumanoidStateType.Dead and en == true then
-                    return
-                end
-            end
-            if m == "Destroy" then
-                return
-            end
-        end
-        
-        if self == character and m == "BreakJoints" then
-            return
-        end
-        
-        return oldNC(self, ...)
-    end)
-    
-    mt.__newindex = newcclosure(function(self, k, v)
-        if self == humanoid then
-            if k == "Health" and type(v) == "number" and v <= 0 then
-                return
-            end
-            if k == "MaxHealth" and type(v) == "number" and v < humanoid.MaxHealth then
-                return
-            end
-            if k == "BreakJointsOnDeath" and v == true then
-                return
-            end
-            if k == "Parent" and v == nil then
-                return
-            end
-        end
-        return oldNI(self, k, v)
-    end)
-    
-    setreadonly(mt, true)
-end
-
 -- Safe character reference system
 local function updateCharacterReferences()
     character = player.Character
     if character then
         hrp = character:FindFirstChild("HumanoidRootPart")
         humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            setupGodmode()
-        end
     else
         hrp = nil
         humanoid = nil
@@ -86,7 +30,6 @@ player.CharacterAdded:Connect(function(c)
     task.wait(0.5)
     hrp = character:WaitForChild("HumanoidRootPart")
     humanoid = character:WaitForChild("Humanoid")
-    setupGodmode()
 end)
 
 -- Circle toggle button
@@ -289,7 +232,7 @@ table.insert(mainContent, createToggle("SLOW FLIGHT: OFF", 2))
 table.insert(mainContent, createToggle("FLOAT: OFF", 3))
 
 -- PLAYER TAB
-table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
+table.insert(playerContent, createToggle("FULL INVISIBLE: OFF", 1))
 table.insert(playerContent, createToggle("INFINITE JUMP: OFF", 2))
 table.insert(playerContent, createToggle("SPEED BOOSTER: OFF", 3))
 
@@ -366,170 +309,16 @@ contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     contentScrolling.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y)
 end)
 
--- ========== FIXED TWEEN THAT STAYS ON GROUND ==========
-local tweenActive = false
-local currentTween
-
-local function getBasePosition()
-    local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return nil end
-    for _, plot in ipairs(plots:GetChildren()) do
-        local sign = plot:FindFirstChild("PlotSign")
-        local base = plot:FindFirstChild("DeliveryHitbox")
-        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
-            return base.Position
-        end
-    end
-    return nil
-end
-
-local function getGroundHeight(position)
-    -- Raycast down to find ground height
-    local rayOrigin = Vector3.new(position.X, position.Y + 10, position.Z)
-    local rayDirection = Vector3.new(0, -50, 0)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {character}
-    
-    local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-    if raycastResult then
-        return raycastResult.Position.Y + 3 -- Stay slightly above ground
-    end
-    return position.Y -- Fallback to current Y
-end
-
-mainContent[1].MouseButton1Click:Connect(function()
-    if tweenActive then
-        tweenActive = false
-        if currentTween then currentTween:Cancel() end
-        mainContent[1].Text = "▶ TWEEN TO BASE"
-        mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Tween stopped"
-    else
-        local basePos = getBasePosition()
-        if basePos then
-            tweenActive = true
-            mainContent[1].Text = "■ STOP TWEEN"
-            mainContent[1].BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-            statusLabel.Text = "Tweening to base..."
-            
-            spawn(function()
-                updateCharacterReferences()
-                if not hrp or not humanoid then 
-                    statusLabel.Text = "No character found"
-                    tweenActive = false
-                    mainContent[1].Text = "▶ TWEEN TO BASE"
-                    mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-                    return 
-                end
-                
-                -- Enable godmode during tween
-                setupGodmode()
-                
-                -- Get current ground height and base ground height
-                local currentGroundY = getGroundHeight(hrp.Position)
-                local baseGroundY = getGroundHeight(basePos)
-                
-                -- Use the lower of the two heights to stay on ground
-                local targetY = math.min(currentGroundY, baseGroundY)
-                
-                local startPos = Vector3.new(hrp.Position.X, currentGroundY, hrp.Position.Z)
-                local targetPos = Vector3.new(basePos.X, targetY, basePos.Z)
-                
-                local distance = (targetPos - startPos).Magnitude
-                local duration = math.max(3, distance / 15) -- Slow speed to avoid lag back
-                
-                statusLabel.Text = "Tweening (slow to avoid lag)..."
-                
-                local startTime = tick()
-                
-                while tweenActive and tick() - startTime < duration do
-                    if not hrp then break end
-                    
-                    local elapsed = tick() - startTime
-                    local progress = elapsed / duration
-                    
-                    -- Very smooth easing to prevent lag back
-                    local easedProgress = progress * progress * (3 - 2 * progress) -- Smoothstep
-                    
-                    local newPos = startPos + (targetPos - startPos) * easedProgress
-                    
-                    -- Keep character at ground level during tween
-                    local currentGround = getGroundHeight(newPos)
-                    newPos = Vector3.new(newPos.X, currentGround, newPos.Z)
-                    
-                    hrp.CFrame = CFrame.new(newPos)
-                    
-                    -- Keep character alive and in running state
-                    if humanoid then
-                        humanoid.Health = humanoid.MaxHealth
-                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
-                    end
-                    
-                    task.wait(0.05) -- Even slower updates for stability
-                end
-                
-                if tweenActive and hrp then
-                    -- Final position adjustment to ground
-                    local finalGroundY = getGroundHeight(targetPos)
-                    hrp.CFrame = CFrame.new(targetPos.X, finalGroundY, targetPos.Z)
-                    statusLabel.Text = "Reached base safely!"
-                end
-                
-                tweenActive = false
-                mainContent[1].Text = "▶ TWEEN TO BASE"
-                mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-            end)
-        else
-            statusLabel.Text = "Base not found!"
-        end
-    end
-end)
-
--- ========== YOUR EXACT FLIGHT SYSTEM ==========
-local flyActive = false
-local flyConnection
-
-mainContent[2].MouseButton1Click:Connect(function()
-    flyActive = not flyActive
-    
-    if flyActive then
-        mainContent[2].Text = "SLOW FLIGHT: ON"
-        mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Slow Flight enabled - Use camera direction"
-        
-        flyConnection = RunService.RenderStepped:Connect(function()
-            updateCharacterReferences()
-            if flyActive and hrp then
-                hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
-            end
-        end)
-    else
-        mainContent[2].Text = "SLOW FLIGHT: OFF"
-        mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Slow Flight disabled"
-        
-        if flyConnection then
-            flyConnection:Disconnect()
-            flyConnection = nil
-        end
-        
-        if humanoid then
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-    end
-end)
-
--- ========== YOUR EXACT SEMI-INVISIBLE SYSTEM ==========
+-- ========== YOUR FULL INVISIBLE SYSTEM ==========
 local connections = {
-    SemiInvisible = {}
+    FullInvisible = {}
 }
 
 local isInvisible = false
-local clone, oldRoot, hip, animTrack, connection, characterConnection
+local clone, oldRoot, hip, animTrack, connection, characterConnection, torsoBox
 
-local function semiInvisibleFunction()
-    local DEPTH_OFFSET = 0.25  
+local function fullInvisibleFunction()
+    local DEEP_DEPTH_OFFSET = 0.25  -- Much deeper underground
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -553,7 +342,7 @@ local function semiInvisibleFunction()
                 child:Destroy()  
             end  
         end)  
-        table.insert(connections.SemiInvisible, childAddedConn)  
+        table.insert(connections.FullInvisible, childAddedConn)  
     end  
 
     local function doClone()  
@@ -593,11 +382,55 @@ local function semiInvisibleFunction()
         return false  
     end  
 
+    local function createTorsoBox()
+        if not clone then return end
+        
+        torsoBox = Instance.new("Part")
+        torsoBox.Name = "TorsoIndicator"
+        torsoBox.Size = Vector3.new(2, 3, 1)
+        torsoBox.BrickColor = BrickColor.new("Bright blue")
+        torsoBox.Material = Enum.Material.Neon
+        torsoBox.Transparency = 0.3
+        torsoBox.Anchored = false
+        torsoBox.CanCollide = false
+        torsoBox.Parent = Workspace
+        
+        local weld = Instance.new("Weld")
+        weld.Part0 = clone
+        weld.Part1 = torsoBox
+        weld.C0 = CFrame.new(0, 0, 0)
+        weld.Parent = torsoBox
+    end
+
+    local function makeCharacterTransparent()
+        if character then
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1  -- Fully transparent
+                end
+            end
+        end
+    end
+
+    local function revertCharacterTransparency()
+        if character then
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 0  -- Back to normal
+                end
+            end
+        end
+    end
+
     local function revertClone()  
         if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
             return false  
         end  
 
+        -- FIRST: Move the real character to the clone's position (prevents lag back)
+        local currentClonePosition = clone.Position
+        local currentCloneCFrame = clone.CFrame
+        
         local tempParent = Instance.new("Model")  
         tempParent.Parent = game  
         character.Parent = tempParent  
@@ -605,6 +438,9 @@ local function semiInvisibleFunction()
         oldRoot.Parent = character  
         character.PrimaryPart = oldRoot  
         character.Parent = Workspace  
+        
+        -- Set the real character to the clone's position to prevent lag back
+        oldRoot.CFrame = currentCloneCFrame
         oldRoot.CanCollide = true  
 
         for _, v in pairs(character:GetDescendants()) do  
@@ -619,16 +455,16 @@ local function semiInvisibleFunction()
         end  
 
         if clone then  
-            local oldPos = clone.CFrame  
             clone:Destroy()  
             clone = nil  
-            oldRoot.CFrame = oldPos  
         end  
 
         oldRoot = nil  
         if character and humanoid then  
             humanoid.HipHeight = hip  
         end  
+
+        tempParent:Destroy()  
     end  
 
     local function animationTrickery()  
@@ -646,7 +482,7 @@ local function semiInvisibleFunction()
                     animationTrickery()  
                 end  
             end)  
-            table.insert(connections.SemiInvisible, animStoppedConn)  
+            table.insert(connections.FullInvisible, animStoppedConn)  
 
             task.delay(0, function()  
                 animTrack.TimePosition = 0.7  
@@ -667,18 +503,26 @@ local function semiInvisibleFunction()
         if success then  
             task.wait(0.1)  
             animationTrickery()  
+            
+            -- Make character transparent
+            makeCharacterTransparent()
+            
+            -- Create torso box
+            createTorsoBox()
+            
             connection = RunService.PreSimulation:Connect(function(dt)  
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or hrp
                     if root then  
-                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)  
+                        -- Move real character DEEP underground but keep clone at surface for interaction
+                        local cf = root.CFrame - Vector3.new(0, DEEP_DEPTH_OFFSET, 0)  
                         oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
                     end  
                 end  
             end)  
-            table.insert(connections.SemiInvisible, connection)  
+            table.insert(connections.FullInvisible, connection)  
 
             characterConnection = player.CharacterAdded:Connect(function(newChar)
                 if isInvisible then
@@ -688,17 +532,18 @@ local function semiInvisibleFunction()
                         animTrack = nil  
                     end  
                     if connection then connection:Disconnect() end  
+                    if torsoBox then torsoBox:Destroy() end
                     revertClone()
                     removeFolders()
                     isInvisible = false
                     
-                    for _, conn in ipairs(connections.SemiInvisible) do  
+                    for _, conn in ipairs(connections.FullInvisible) do  
                         if conn then conn:Disconnect() end  
                     end  
-                    connections.SemiInvisible = {}
+                    connections.FullInvisible = {}
                 end
             end)
-            table.insert(connections.SemiInvisible, characterConnection)
+            table.insert(connections.FullInvisible, characterConnection)
             
             return true
         end  
@@ -713,142 +558,137 @@ local function semiInvisibleFunction()
         end  
         if connection then connection:Disconnect() end  
         if characterConnection then characterConnection:Disconnect() end  
+        if torsoBox then torsoBox:Destroy() end
+        
+        -- Revert transparency BEFORE reverting clone
+        revertCharacterTransparency()
+        
         revertClone()  
         removeFolders()  
     end
 
     if not isInvisible then
         removeFolders()  
-        setupGodmode()  
         if enableInvisibility() then
             isInvisible = true
-            playerContent[1].Text = "SEMI INVISIBLE: ON"
+            playerContent[1].Text = "FULL INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Semi-Invisible enabled (F key to toggle)"
+            statusLabel.Text = "Full Invisible enabled - Deep underground (F key to toggle)"
         end
     else
         disableInvisibility()
         isInvisible = false
-        playerContent[1].Text = "SEMI INVISIBLE: OFF"
+        playerContent[1].Text = "FULL INVISIBLE: OFF"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Semi-Invisible disabled"
+        statusLabel.Text = "Full Invisible disabled"
         
         pcall(function()  
             local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")  
             if oldGui then oldGui:Destroy() end  
         end)  
-        for _, conn in ipairs(connections.SemiInvisible) do  
+        for _, conn in ipairs(connections.FullInvisible) do  
             if conn then conn:Disconnect() end  
         end  
-        connections.SemiInvisible = {}  
+        connections.FullInvisible = {}  
     end
 end
 
--- Connect semi-invisible to button
-playerContent[1].MouseButton1Click:Connect(semiInvisibleFunction)
+-- Connect full-invisible to button
+playerContent[1].MouseButton1Click:Connect(fullInvisibleFunction)
 
--- F key toggle for semi-invisible
+-- F key toggle for full-invisible
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
-        semiInvisibleFunction()
-    end
-end)
-
--- ========== INFINITE JUMP (From your file) ==========
-local infJumpActive = false
-local infJumpConnection
-
-playerContent[2].MouseButton1Click:Connect(function()
-    infJumpActive = not infJumpActive
-    
-    if infJumpActive then
-        playerContent[2].Text = "INFINITE JUMP: ON"
-        playerContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Infinite Jump enabled"
-        
-        infJumpConnection = UserInputService.JumpRequest:Connect(function()
-            if infJumpActive and humanoid and humanoid.Health > 0 then
-                setupGodmode()
-                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                if hrp then
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-                end
-            end
-        end)
-    else
-        playerContent[2].Text = "INFINITE JUMP: OFF"
-        playerContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Infinite Jump disabled"
-        
-        if infJumpConnection then
-            infJumpConnection:Disconnect()
-        end
-    end
-end)
-
--- ========== SPEED BOOSTER (From your file) ==========
-local speedActive = false
-local speedConn
-local baseSpeed = 27
-
-playerContent[3].MouseButton1Click:Connect(function()
-    speedActive = not speedActive
-    
-    if speedActive then
-        playerContent[3].Text = "SPEED BOOSTER: ON"
-        playerContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Speed Booster enabled"
-        
-        local function GetCharacter()
-            local Char = player.Character or player.CharacterAdded:Wait()
-            local HRP = Char:WaitForChild("HumanoidRootPart")
-            local Hum = Char:FindFirstChildOfClass("Humanoid")
-            return Char, HRP, Hum
-        end
-        
-        local function getMovementInput()
-            local Char, HRP, Hum = GetCharacter()
-            if not Char or not HRP or not Hum then return Vector3.new(0,0,0) end
-            local moveVector = Hum.MoveDirection
-            if moveVector.Magnitude > 0.1 then
-                return Vector3.new(moveVector.X, 0, moveVector.Z).Unit
-            end
-            return Vector3.new(0,0,0)
-        end
-        
-        speedConn = RunService.Heartbeat:Connect(function()
-            local Char, HRP, Hum = GetCharacter()
-            if not Char or not HRP or not Hum then return end
-            local inputDirection = getMovementInput()
-            if inputDirection.Magnitude > 0 then
-                HRP.AssemblyLinearVelocity = Vector3.new(
-                    inputDirection.X * baseSpeed,
-                    HRP.AssemblyLinearVelocity.Y,
-                    inputDirection.Z * baseSpeed
-                )
-            else
-                HRP.AssemblyLinearVelocity = Vector3.new(0, HRP.AssemblyLinearVelocity.Y, 0)
-            end
-        end)
-    else
-        playerContent[3].Text = "SPEED BOOSTER: OFF"
-        playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Speed Booster disabled"
-        
-        if speedConn then 
-            speedConn:Disconnect() 
-            speedConn = nil 
-        end
-        
-        -- Stop movement when disabled
-        updateCharacterReferences()
-        if hrp then
-            hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
-        end
+        fullInvisibleFunction()
     end
 end)
 
 -- ========== OTHER FEATURES ==========
+
+-- Tween to Base
+local tweenActive = false
+local currentTween
+
+local function getBasePosition()
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        local base = plot:FindFirstChild("DeliveryHitbox")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+            return base.Position
+        end
+    end
+    return nil
+end
+
+mainContent[1].MouseButton1Click:Connect(function()
+    if tweenActive then
+        tweenActive = false
+        if currentTween then currentTween:Cancel() end
+        mainContent[1].Text = "▶ TWEEN TO BASE"
+        mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Tween stopped"
+    else
+        local basePos = getBasePosition()
+        if basePos then
+            tweenActive = true
+            mainContent[1].Text = "■ STOP TWEEN"
+            mainContent[1].BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            statusLabel.Text = "Tweening to base..."
+            
+            spawn(function()
+                updateCharacterReferences()
+                if not hrp then return end
+                
+                local targetPos = Vector3.new(basePos.X, basePos.Y + 3, basePos.Z)
+                local distance = (targetPos - hrp.Position).Magnitude
+                local duration = distance / 20
+                
+                currentTween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
+                currentTween:Play()
+                currentTween.Completed:Wait()
+                
+                tweenActive = false
+                mainContent[1].Text = "▶ TWEEN TO BASE"
+                mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+                statusLabel.Text = "Reached base!"
+            end)
+        else
+            statusLabel.Text = "Base not found!"
+        end
+    end
+end)
+
+-- Flight System
+local flyActive = false
+local flyConnection
+
+mainContent[2].MouseButton1Click:Connect(function()
+    flyActive = not flyActive
+    
+    if flyActive then
+        mainContent[2].Text = "SLOW FLIGHT: ON"
+        mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Slow Flight enabled"
+        
+        flyConnection = RunService.RenderStepped:Connect(function()
+            updateCharacterReferences()
+            if flyActive and hrp then
+                hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
+            end
+        end)
+    else
+        mainContent[2].Text = "SLOW FLIGHT: OFF"
+        mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Slow Flight disabled"
+        
+        if flyConnection then
+            flyConnection:Disconnect()
+            flyConnection = nil
+        end
+    end
+end)
 
 -- Float System
 local floatActive = false
@@ -864,7 +704,6 @@ mainContent[3].MouseButton1Click:Connect(function()
         
         updateCharacterReferences()
         if hrp then
-            setupGodmode()
             floatBodyVelocity = Instance.new("BodyVelocity")
             floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
             floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
@@ -877,6 +716,65 @@ mainContent[3].MouseButton1Click:Connect(function()
         
         if floatBodyVelocity then
             floatBodyVelocity:Destroy()
+        end
+    end
+end)
+
+-- Infinite Jump
+local infJumpActive = false
+local infJumpConnection
+
+playerContent[2].MouseButton1Click:Connect(function()
+    infJumpActive = not infJumpActive
+    
+    if infJumpActive then
+        playerContent[2].Text = "INFINITE JUMP: ON"
+        playerContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Infinite Jump enabled"
+        
+        infJumpConnection = UserInputService.JumpRequest:Connect(function()
+            if infJumpActive and humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        playerContent[2].Text = "INFINITE JUMP: OFF"
+        playerContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Infinite Jump disabled"
+        
+        if infJumpConnection then
+            infJumpConnection:Disconnect()
+        end
+    end
+end)
+
+-- Speed Booster
+local speedActive = false
+local speedConn
+
+playerContent[3].MouseButton1Click:Connect(function()
+    speedActive = not speedActive
+    
+    if speedActive then
+        playerContent[3].Text = "SPEED BOOSTER: ON"
+        playerContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Speed Booster enabled"
+        
+        speedConn = RunService.Heartbeat:Connect(function()
+            if speedActive and humanoid then
+                humanoid.WalkSpeed = 50
+            end
+        end)
+    else
+        playerContent[3].Text = "SPEED BOOSTER: OFF"
+        playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Speed Booster disabled"
+        
+        if speedConn then
+            speedConn:Disconnect()
+        end
+        if humanoid then
+            humanoid.WalkSpeed = 16
         end
     end
 end)
@@ -1016,7 +914,7 @@ player.CharacterAdded:Connect(function()
     mainContent[3].Text = "FLOAT: OFF"
     mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
-    playerContent[1].Text = "SEMI INVISIBLE: OFF"
+    playerContent[1].Text = "FULL INVISIBLE: OFF"
     playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
     playerContent[2].Text = "INFINITE JUMP: OFF"
@@ -1041,11 +939,11 @@ player.CharacterAdded:Connect(function()
     if infJumpConnection then infJumpConnection:Disconnect() end
     if speedConn then speedConn:Disconnect() end
     
-    -- Clean up semi-invisible
-    for _, conn in ipairs(connections.SemiInvisible) do
+    -- Clean up full-invisible
+    for _, conn in ipairs(connections.FullInvisible) do
         if conn then conn:Disconnect() end
     end
-    connections.SemiInvisible = {}
+    connections.FullInvisible = {}
     
     -- Reset ESP
     for _, folder in pairs(espFolders) do
@@ -1065,7 +963,7 @@ player.CharacterAdded:Connect(function()
     statusLabel.Text = "Character respawned - Ready"
 end)
 
-print("Krypton Hub v5.0 - Complete Edition Loaded!")
-print("Features: Your exact flight, semi-invisible, jump, and speed systems")
-print("Controls: F key to toggle semi-invisible, Circle button to open GUI")
+print("Krypton Hub v5.0 - Full Invisible Edition Loaded!")
+print("Features: Full invisible (deep underground + transparent + torso box + no lag back)")
+print("Controls: F key to toggle full invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
