@@ -1,4 +1,4 @@
--- Krypton Hub
+-- Krypton Hub - Complete Edition
 -- Made by agent_duke13
 
 local Players = game:GetService("Players")
@@ -289,7 +289,7 @@ table.insert(mainContent, createToggle("SLOW FLIGHT: OFF", 2))
 table.insert(mainContent, createToggle("FLOAT: OFF", 3))
 
 -- PLAYER TAB
-table.insert(playerContent, createToggle("FULL INVISIBLE: OFF", 1))
+table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
 table.insert(playerContent, createToggle("INFINITE JUMP: OFF", 2))
 table.insert(playerContent, createToggle("SPEED BOOSTER: OFF", 3))
 
@@ -520,16 +520,16 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FULL INVISIBLE SYSTEM (DEEP UNDERGROUND + TRANSPARENT + TORSO BOX + NO LAG BACK) ==========
+-- ========== YOUR EXACT SEMI-INVISIBLE SYSTEM ==========
 local connections = {
-    FullInvisible = {}
+    SemiInvisible = {}
 }
 
 local isInvisible = false
-local clone, oldRoot, hip, animTrack, connection, characterConnection, torsoBox
+local clone, oldRoot, hip, animTrack, connection, characterConnection
 
-local function fullInvisibleFunction()
-    local DEEP_DEPTH_OFFSET = 50  -- Much deeper underground
+local function semiInvisibleFunction()
+    local DEPTH_OFFSET = 0.09  
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -553,7 +553,7 @@ local function fullInvisibleFunction()
                 child:Destroy()  
             end  
         end)  
-        table.insert(connections.FullInvisible, childAddedConn)  
+        table.insert(connections.SemiInvisible, childAddedConn)  
     end  
 
     local function doClone()  
@@ -593,55 +593,11 @@ local function fullInvisibleFunction()
         return false  
     end  
 
-    local function createTorsoBox()
-        if not clone then return end
-        
-        torsoBox = Instance.new("Part")
-        torsoBox.Name = "TorsoIndicator"
-        torsoBox.Size = Vector3.new(2, 3, 1)
-        torsoBox.BrickColor = BrickColor.new("Bright blue")
-        torsoBox.Material = Enum.Material.Neon
-        torsoBox.Transparency = 0.3
-        torsoBox.Anchored = false
-        torsoBox.CanCollide = false
-        torsoBox.Parent = Workspace
-        
-        local weld = Instance.new("Weld")
-        weld.Part0 = clone
-        weld.Part1 = torsoBox
-        weld.C0 = CFrame.new(0, 0, 0)
-        weld.Parent = torsoBox
-    end
-
-    local function makeCharacterTransparent()
-        if character then
-            for _, part in ipairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Transparency = 1  -- Fully transparent
-                end
-            end
-        end
-    end
-
-    local function revertCharacterTransparency()
-        if character then
-            for _, part in ipairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Transparency = 0  -- Back to normal
-                end
-            end
-        end
-    end
-
     local function revertClone()  
         if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
             return false  
         end  
 
-        -- FIRST: Move the real character to the clone's position (prevents lag back)
-        local currentClonePosition = clone.Position
-        local currentCloneCFrame = clone.CFrame
-        
         local tempParent = Instance.new("Model")  
         tempParent.Parent = game  
         character.Parent = tempParent  
@@ -649,9 +605,6 @@ local function fullInvisibleFunction()
         oldRoot.Parent = character  
         character.PrimaryPart = oldRoot  
         character.Parent = Workspace  
-        
-        -- Set the real character to the clone's position to prevent lag back
-        oldRoot.CFrame = currentCloneCFrame
         oldRoot.CanCollide = true  
 
         for _, v in pairs(character:GetDescendants()) do  
@@ -666,16 +619,16 @@ local function fullInvisibleFunction()
         end  
 
         if clone then  
+            local oldPos = clone.CFrame  
             clone:Destroy()  
             clone = nil  
+            oldRoot.CFrame = oldPos  
         end  
 
         oldRoot = nil  
         if character and humanoid then  
             humanoid.HipHeight = hip  
         end  
-
-        tempParent:Destroy()  
     end  
 
     local function animationTrickery()  
@@ -693,7 +646,7 @@ local function fullInvisibleFunction()
                     animationTrickery()  
                 end  
             end)  
-            table.insert(connections.FullInvisible, animStoppedConn)  
+            table.insert(connections.SemiInvisible, animStoppedConn)  
 
             task.delay(0, function()  
                 animTrack.TimePosition = 0.7  
@@ -714,26 +667,18 @@ local function fullInvisibleFunction()
         if success then  
             task.wait(0.1)  
             animationTrickery()  
-            
-            -- Make character transparent
-            makeCharacterTransparent()
-            
-            -- Create torso box
-            createTorsoBox()
-            
             connection = RunService.PreSimulation:Connect(function(dt)  
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or hrp
                     if root then  
-                        -- Move real character DEEP underground but keep clone at surface for interaction
-                        local cf = root.CFrame - Vector3.new(0, DEEP_DEPTH_OFFSET, 0)  
+                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)  
                         oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
                     end  
                 end  
             end)  
-            table.insert(connections.FullInvisible, connection)  
+            table.insert(connections.SemiInvisible, connection)  
 
             characterConnection = player.CharacterAdded:Connect(function(newChar)
                 if isInvisible then
@@ -743,18 +688,17 @@ local function fullInvisibleFunction()
                         animTrack = nil  
                     end  
                     if connection then connection:Disconnect() end  
-                    if torsoBox then torsoBox:Destroy() end
                     revertClone()
                     removeFolders()
                     isInvisible = false
                     
-                    for _, conn in ipairs(connections.FullInvisible) do  
+                    for _, conn in ipairs(connections.SemiInvisible) do  
                         if conn then conn:Disconnect() end  
                     end  
-                    connections.FullInvisible = {}
+                    connections.SemiInvisible = {}
                 end
             end)
-            table.insert(connections.FullInvisible, characterConnection)
+            table.insert(connections.SemiInvisible, characterConnection)
             
             return true
         end  
@@ -769,11 +713,6 @@ local function fullInvisibleFunction()
         end  
         if connection then connection:Disconnect() end  
         if characterConnection then characterConnection:Disconnect() end  
-        if torsoBox then torsoBox:Destroy() end
-        
-        -- Revert transparency BEFORE reverting clone
-        revertCharacterTransparency()
-        
         revertClone()  
         removeFolders()  
     end
@@ -783,39 +722,39 @@ local function fullInvisibleFunction()
         setupGodmode()  
         if enableInvisibility() then
             isInvisible = true
-            playerContent[1].Text = "FULL INVISIBLE: ON"
+            playerContent[1].Text = "SEMI INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Full Invisible enabled - Deep underground (F key to toggle)"
+            statusLabel.Text = "Semi-Invisible enabled (F key to toggle)"
         end
     else
         disableInvisibility()
         isInvisible = false
-        playerContent[1].Text = "FULL INVISIBLE: OFF"
+        playerContent[1].Text = "SEMI INVISIBLE: OFF"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Full Invisible disabled"
+        statusLabel.Text = "Semi-Invisible disabled"
         
         pcall(function()  
             local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")  
             if oldGui then oldGui:Destroy() end  
         end)  
-        for _, conn in ipairs(connections.FullInvisible) do  
+        for _, conn in ipairs(connections.SemiInvisible) do  
             if conn then conn:Disconnect() end  
         end  
-        connections.FullInvisible = {}  
+        connections.SemiInvisible = {}  
     end
 end
 
--- Connect full-invisible to button
-playerContent[1].MouseButton1Click:Connect(fullInvisibleFunction)
+-- Connect semi-invisible to button
+playerContent[1].MouseButton1Click:Connect(semiInvisibleFunction)
 
--- F key toggle for full-invisible
+-- F key toggle for semi-invisible
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
-        fullInvisibleFunction()
+        semiInvisibleFunction()
     end
 end)
 
--- ========== INFINITE JUMP ==========
+-- ========== INFINITE JUMP (From your file) ==========
 local infJumpActive = false
 local infJumpConnection
 
@@ -847,7 +786,7 @@ playerContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== SPEED BOOSTER ==========
+-- ========== SPEED BOOSTER (From your file) ==========
 local speedActive = false
 local speedConn
 local baseSpeed = 27
@@ -1077,7 +1016,7 @@ player.CharacterAdded:Connect(function()
     mainContent[3].Text = "FLOAT: OFF"
     mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
-    playerContent[1].Text = "FULL INVISIBLE: OFF"
+    playerContent[1].Text = "SEMI INVISIBLE: OFF"
     playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     
     playerContent[2].Text = "INFINITE JUMP: OFF"
@@ -1102,11 +1041,11 @@ player.CharacterAdded:Connect(function()
     if infJumpConnection then infJumpConnection:Disconnect() end
     if speedConn then speedConn:Disconnect() end
     
-    -- Clean up full-invisible
-    for _, conn in ipairs(connections.FullInvisible) do
+    -- Clean up semi-invisible
+    for _, conn in ipairs(connections.SemiInvisible) do
         if conn then conn:Disconnect() end
     end
-    connections.FullInvisible = {}
+    connections.SemiInvisible = {}
     
     -- Reset ESP
     for _, folder in pairs(espFolders) do
@@ -1126,7 +1065,7 @@ player.CharacterAdded:Connect(function()
     statusLabel.Text = "Character respawned - Ready"
 end)
 
-print("Krypton Hub v5.0 - Full Invisible Edition Loaded!")
-print("Features: Full invisible (deep underground + transparent + torso box + no lag back)")
-print("Controls: F key to toggle full invisible, Circle button to open GUI")
+print("Krypton Hub v5.0 - Complete Edition Loaded!")
+print("Features: Your exact flight, semi-invisible, jump, and speed systems")
+print("Controls: F key to toggle semi-invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
