@@ -520,7 +520,7 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FULL INVISIBLE SYSTEM (DEEP UNDERGROUND + TRANSPARENT + TORSO BOX + NO LAG BACK) ==========
+-- ========== FIXED FULL INVISIBLE SYSTEM (SHALLOW UNDERGROUND + NO LAG BACK) ==========
 local connections = {
     FullInvisible = {}
 }
@@ -529,7 +529,7 @@ local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection, torsoBox
 
 local function fullInvisibleFunction()
-    local DEEP_DEPTH_OFFSET = 50  -- Much deeper underground
+    local SHALLOW_DEPTH_OFFSET = 10  -- Only about 2 characters underground (was 50)
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -725,8 +725,8 @@ local function fullInvisibleFunction()
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or hrp
                     if root then  
-                        -- Move real character DEEP underground but keep clone at surface for interaction
-                        local cf = root.CFrame - Vector3.new(0, DEEP_DEPTH_OFFSET, 0)  
+                        -- Move real character only 10 studs underground (shallow)
+                        local cf = root.CFrame - Vector3.new(0, SHALLOW_DEPTH_OFFSET, 0)  
                         oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
@@ -785,7 +785,7 @@ local function fullInvisibleFunction()
             isInvisible = true
             playerContent[1].Text = "FULL INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Full Invisible enabled - Deep underground (F key to toggle)"
+            statusLabel.Text = "Full Invisible enabled - Shallow underground (F key to toggle)"
         end
     else
         disableInvisibility()
@@ -804,17 +804,6 @@ local function fullInvisibleFunction()
         connections.FullInvisible = {}  
     end
 end
-
--- Connect full-invisible to button
-playerContent[1].MouseButton1Click:Connect(fullInvisibleFunction)
-
--- F key toggle for full-invisible
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
-        fullInvisibleFunction()
-    end
-end)
-
 -- ========== INFINITE JUMP ==========
 local infJumpActive = false
 local infJumpConnection
