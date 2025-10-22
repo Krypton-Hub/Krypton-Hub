@@ -309,9 +309,9 @@ contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     contentScrolling.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y)
 end)
 
--- ========== IMPROVED FULL INVISIBLE SYSTEM ==========
+-- ========== PROPER FULL INVISIBLE SYSTEM ==========
 local isInvisible = false
-local undergroundConnection
+local invisConnection
 local torsoBox
 local originalTransparency = {}
 
@@ -321,20 +321,20 @@ local function fullInvisibleFunction()
         isInvisible = true
         playerContent[1].Text = "FULL INVISIBLE: ON"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Full Invisible enabled - Deep underground"
+        statusLabel.Text = "Full Invisible enabled - Camera above ground"
         
         updateCharacterReferences()
         if not hrp or not character then return end
         
-        -- Store original transparency and make character invisible
+        -- Make character fully invisible
         for _, part in ipairs(character:GetDescendants()) do
             if part:IsA("BasePart") then
                 originalTransparency[part] = part.Transparency
-                part.Transparency = 1  -- Make fully invisible
+                part.Transparency = 1
             end
         end
         
-        -- Create visual torso box
+        -- Create torso box where character should be
         torsoBox = Instance.new("Part")
         torsoBox.Name = "TorsoIndicator"
         torsoBox.Size = Vector3.new(2, 3, 1)
@@ -345,23 +345,24 @@ local function fullInvisibleFunction()
         torsoBox.CanCollide = false
         torsoBox.Parent = Workspace
         
-        -- Weld torso box to character
+        -- Weld torso box to character (follows your movement)
         local weld = Instance.new("Weld")
         weld.Part0 = hrp
         weld.Part1 = torsoBox
         weld.C0 = CFrame.new(0, 0, 0)
         weld.Parent = torsoBox
         
-        -- Move character deep underground and upside down
-        local undergroundPosition = hrp.Position - Vector3.new(0, 50, 0)
-        hrp.CFrame = CFrame.new(undergroundPosition) * CFrame.Angles(math.rad(180), 0, 0)
+        -- Move character underground (but keep camera above ground)
+        local undergroundPos = hrp.Position - Vector3.new(0, 10, 0)
+        hrp.CFrame = CFrame.new(undergroundPos) * CFrame.Angles(math.rad(180), 0, 0)
         
-        -- Keep character underground (prevents lag back)
-        undergroundConnection = RunService.Heartbeat:Connect(function()
+        -- Keep character underground while allowing normal movement
+        invisConnection = RunService.Heartbeat:Connect(function()
             if isInvisible and hrp then
                 local currentPos = hrp.Position
-                if currentPos.Y > -40 then -- If not deep enough
-                    local undergroundPos = Vector3.new(currentPos.X, -50, currentPos.Z)
+                -- Keep character upside down and underground
+                if currentPos.Y > -8 then
+                    local undergroundPos = Vector3.new(currentPos.X, -10, currentPos.Z)
                     hrp.CFrame = CFrame.new(undergroundPos) * CFrame.Angles(math.rad(180), 0, 0)
                 end
             end
@@ -374,19 +375,18 @@ local function fullInvisibleFunction()
         playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
         statusLabel.Text = "Full Invisible disabled"
         
-        -- Clean up connections
-        if undergroundConnection then
-            undergroundConnection:Disconnect()
-            undergroundConnection = nil
+        -- Clean up
+        if invisConnection then
+            invisConnection:Disconnect()
+            invisConnection = nil
         end
         
-        -- Remove torso box
         if torsoBox then
             torsoBox:Destroy()
             torsoBox = nil
         end
         
-        -- Restore character transparency
+        -- Restore character visibility
         updateCharacterReferences()
         if character then
             for part, transparency in pairs(originalTransparency) do
@@ -400,7 +400,7 @@ local function fullInvisibleFunction()
         -- Move character back above ground
         if hrp then
             local currentPos = hrp.Position
-            local aboveGroundPos = Vector3.new(currentPos.X, currentPos.Y + 50, currentPos.Z)
+            local aboveGroundPos = Vector3.new(currentPos.X, currentPos.Y + 10, currentPos.Z)
             hrp.CFrame = CFrame.new(aboveGroundPos)
         end
     end
@@ -415,7 +415,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         fullInvisibleFunction()
     end
 end)
-
 -- ========== OTHER FEATURES ==========
 
 -- Tween to Base
