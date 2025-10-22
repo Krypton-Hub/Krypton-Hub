@@ -485,7 +485,42 @@ mainContent[1].MouseButton1Click:Connect(function()
         end
     end
 end)
--- ========== OPTIMAL HIDDEN INVISIBLE SYSTEM ==========
+
+-- ========== YOUR EXACT FLIGHT SYSTEM ==========
+local flyActive = false
+local flyConnection
+
+mainContent[2].MouseButton1Click:Connect(function()
+    flyActive = not flyActive
+    
+    if flyActive then
+        mainContent[2].Text = "SLOW FLIGHT: ON"
+        mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        statusLabel.Text = "Slow Flight enabled - Use camera direction"
+        
+        flyConnection = RunService.RenderStepped:Connect(function()
+            updateCharacterReferences()
+            if flyActive and hrp then
+                hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
+            end
+        end)
+    else
+        mainContent[2].Text = "SLOW FLIGHT: OFF"
+        mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        statusLabel.Text = "Slow Flight disabled"
+        
+        if flyConnection then
+            flyConnection:Disconnect()
+            flyConnection = nil
+        end
+        
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end
+end)
+
+-- ========== FIXED HIDDEN INVISIBLE SYSTEM (NO LAG BACK) ==========
 local connections = {
     FullInvisible = {}
 }
@@ -497,23 +532,22 @@ local indicatorBox
 local function createMinimalIndicator()
     if indicatorBox then indicatorBox:Destroy() end
     
-    -- Create a very minimal, almost invisible indicator
     indicatorBox = Instance.new("Part")
     indicatorBox.Name = "InvisibleIndicator"
-    indicatorBox.Size = Vector3.new(0.3, 0.3, 0.3) -- Very small
+    indicatorBox.Size = Vector3.new(0.3, 0.3, 0.3)
     indicatorBox.Anchored = true
     indicatorBox.CanCollide = false
     indicatorBox.Material = Enum.Material.Neon
-    indicatorBox.BrickColor = BrickColor.new("Really black") -- Dark color
-    indicatorBox.Transparency = 0.9 -- Almost transparent
+    indicatorBox.BrickColor = BrickColor.new("Really black")
+    indicatorBox.Transparency = 0.9
     indicatorBox.Parent = Workspace
     
     return indicatorBox
 end
 
 local function fullInvisibleFunction()
-    local OPTIMAL_OFFSET = 5  -- Perfect balance: hidden but no lag back
-    local NO_INDICATOR = true  -- Remove indicator for maximum stealth
+    local OPTIMAL_OFFSET = 3  -- Reduced slightly for better sync
+    local NO_INDICATOR = true
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -555,7 +589,10 @@ local function fullInvisibleFunction()
             clone = oldRoot:Clone()  
             clone.Parent = character  
             oldRoot.Parent = Workspace.CurrentCamera  
-            clone.CFrame = oldRoot.CFrame  
+            
+            -- Store the original position for reference
+            local originalPosition = oldRoot.Position
+            clone.CFrame = oldRoot.CFrame
 
             character.PrimaryPart = clone  
             character.Parent = Workspace  
@@ -603,10 +640,14 @@ local function fullInvisibleFunction()
         end  
 
         if clone then  
-            local oldPos = clone.CFrame  
+            -- CRITICAL FIX: Move real character to clone's current position before destroying
+            local currentClonePosition = clone.Position
+            local currentCloneCFrame = clone.CFrame
             clone:Destroy()  
             clone = nil  
-            oldRoot.CFrame = oldPos  
+            
+            -- Place real character exactly where clone was (no lag back!)
+            oldRoot.CFrame = currentCloneCFrame
         end  
 
         oldRoot = nil  
@@ -649,8 +690,6 @@ local function fullInvisibleFunction()
         removeFolders()  
         local success = doClone()  
         if success then  
-            -- No indicator for maximum stealth (NO_INDICATOR = true)
-            -- If you want an indicator, set NO_INDICATOR = false above
             if not NO_INDICATOR then
                 indicatorBox = createMinimalIndicator()
             end
@@ -661,13 +700,12 @@ local function fullInvisibleFunction()
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or hrp
                     if root then  
-                        -- Hide real character 5 studs underground (optimal hiding)
-                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + OPTIMAL_OFFSET, 0)  
-                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
+                        -- Keep real character synced with clone but underground
+                        local undergroundPos = root.Position - Vector3.new(0, OPTIMAL_OFFSET, 0)
+                        oldRoot.CFrame = CFrame.new(undergroundPos) * CFrame.Angles(math.rad(180), 0, 0)
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
                         
-                        -- Update indicator position if it exists
                         if indicatorBox and root then
                             indicatorBox.CFrame = CFrame.new(root.Position + Vector3.new(0, 2, 0))
                         end
@@ -751,41 +789,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         fullInvisibleFunction()
     end
 end)
--- ========== YOUR EXACT FLIGHT SYSTEM ==========
-local flyActive = false
-local flyConnection
-
-mainContent[2].MouseButton1Click:Connect(function()
-    flyActive = not flyActive
-    
-    if flyActive then
-        mainContent[2].Text = "SLOW FLIGHT: ON"
-        mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Slow Flight enabled - Use camera direction"
-        
-        flyConnection = RunService.RenderStepped:Connect(function()
-            updateCharacterReferences()
-            if flyActive and hrp then
-                hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
-            end
-        end)
-    else
-        mainContent[2].Text = "SLOW FLIGHT: OFF"
-        mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Slow Flight disabled"
-        
-        if flyConnection then
-            flyConnection:Disconnect()
-            flyConnection = nil
-        end
-        
-        if humanoid then
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-    end
-end)
-
-
 
 -- ========== INFINITE JUMP (From your file) ==========
 local infJumpActive = false
