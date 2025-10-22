@@ -804,6 +804,17 @@ local function fullInvisibleFunction()
         connections.FullInvisible = {}  
     end
 end
+
+-- Connect full-invisible to button
+playerContent[1].MouseButton1Click:Connect(fullInvisibleFunction)
+
+-- F key toggle for full-invisible
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
+        fullInvisibleFunction()
+    end
+end)
+
 -- ========== INFINITE JUMP ==========
 local infJumpActive = false
 local infJumpConnection
@@ -1116,6 +1127,6 @@ player.CharacterAdded:Connect(function()
 end)
 
 print("Krypton Hub v5.0 - Full Invisible Edition Loaded!")
-print("Features: Full invisible (deep underground + transparent + torso box + no lag back)")
+print("Features: Full invisible (shallow underground + transparent + torso box + no lag back)")
 print("Controls: F key to toggle full invisible, Circle button to open GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
