@@ -520,34 +520,18 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FIXED HIDDEN INVISIBLE SYSTEM (NO LAG BACK) ==========
+
+-- ========== OPTIMIZED INVISIBLE SYSTEM (Offset 0.25) ==========
 local connections = {
     FullInvisible = {}
 }
 
 local isInvisible = false
-local clone, oldRoot, hip, animTrack, connection, characterConnection
-local indicatorBox
-
-local function createMinimalIndicator()
-    if indicatorBox then indicatorBox:Destroy() end
-    
-    indicatorBox = Instance.new("Part")
-    indicatorBox.Name = "InvisibleIndicator"
-    indicatorBox.Size = Vector3.new(0.3, 0.3, 0.3)
-    indicatorBox.Anchored = true
-    indicatorBox.CanCollide = false
-    indicatorBox.Material = Enum.Material.Neon
-    indicatorBox.BrickColor = BrickColor.new("Really black")
-    indicatorBox.Transparency = 0.9
-    indicatorBox.Parent = Workspace
-    
-    return indicatorBox
-end
+local connection, characterConnection
 
 local function fullInvisibleFunction()
-    local OPTIMAL_OFFSET = 3  -- Reduced slightly for better sync
-    local NO_INDICATOR = true
+    local OPTIMAL_OFFSET = 0.25  -- Should hide feet completely
+    local NO_INDICATOR = true    -- No indicator for maximum stealth
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -576,8 +560,8 @@ local function fullInvisibleFunction()
 
     local function doClone()  
         if character and humanoid and humanoid.Health > 0 then  
-            hip = humanoid.HipHeight  
-            oldRoot = hrp
+            local hip = humanoid.HipHeight  
+            local oldRoot = hrp
             if not oldRoot or not oldRoot.Parent then  
                 return false  
             end  
@@ -586,13 +570,10 @@ local function fullInvisibleFunction()
             tempParent.Parent = game  
             character.Parent = tempParent  
 
-            clone = oldRoot:Clone()  
+            local clone = oldRoot:Clone()  
             clone.Parent = character  
             oldRoot.Parent = Workspace.CurrentCamera  
-            
-            -- Store the original position for reference
-            local originalPosition = oldRoot.Position
-            clone.CFrame = oldRoot.CFrame
+            clone.CFrame = oldRoot.CFrame  
 
             character.PrimaryPart = clone  
             character.Parent = Workspace  
@@ -615,7 +596,7 @@ local function fullInvisibleFunction()
     end  
 
     local function revertClone()  
-        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
+        if not character or not humanoid or humanoid.Health <= 0 then  
             return false  
         end  
 
@@ -623,37 +604,32 @@ local function fullInvisibleFunction()
         tempParent.Parent = game  
         character.Parent = tempParent  
 
+        -- Find the real HRP in camera
+        local oldRoot = Workspace.CurrentCamera:FindFirstChild("HumanoidRootPart")
+        if not oldRoot then
+            tempParent:Destroy()
+            return false
+        end
+
         oldRoot.Parent = character  
         character.PrimaryPart = oldRoot  
         character.Parent = Workspace  
         oldRoot.CanCollide = true  
 
-        for _, v in pairs(character:GetDescendants()) do  
-            if v:IsA("Weld") or v:IsA("Motor6D") then  
-                if v.Part0 == clone then  
-                    v.Part0 = oldRoot  
-                end  
-                if v.Part1 == clone then  
-                    v.Part1 = oldRoot  
-                end  
-            end  
-        end  
+        -- Find and destroy the clone
+        local clone = character:FindFirstChild("HumanoidRootPart")
+        if clone and clone:IsA("Part") then
+            local currentPosition = clone.Position
+            clone:Destroy()
+            -- Place real character exactly where clone was
+            oldRoot.CFrame = CFrame.new(currentPosition)
+        end
 
-        if clone then  
-            -- CRITICAL FIX: Move real character to clone's current position before destroying
-            local currentClonePosition = clone.Position
-            local currentCloneCFrame = clone.CFrame
-            clone:Destroy()  
-            clone = nil  
-            
-            -- Place real character exactly where clone was (no lag back!)
-            oldRoot.CFrame = currentCloneCFrame
-        end  
-
-        oldRoot = nil  
         if character and humanoid then  
             humanoid.HipHeight = hip  
         end  
+        
+        tempParent:Destroy()
     end  
 
     local function animationTrickery()  
@@ -661,7 +637,7 @@ local function fullInvisibleFunction()
             local anim = Instance.new("Animation")  
             anim.AnimationId = "http://www.roblox.com/asset/?id=18537363391"  
             local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
-            animTrack = animator:LoadAnimation(anim)  
+            local animTrack = animator:LoadAnimation(anim)  
             animTrack.Priority = Enum.AnimationPriority.Action4  
             animTrack:Play(0, 1, 0)  
             anim:Destroy()  
@@ -690,25 +666,19 @@ local function fullInvisibleFunction()
         removeFolders()  
         local success = doClone()  
         if success then  
-            if not NO_INDICATOR then
-                indicatorBox = createMinimalIndicator()
-            end
-            
             task.wait(0.1)  
             animationTrickery()  
             connection = RunService.PreSimulation:Connect(function(dt)  
-                if character and humanoid and humanoid.Health > 0 and oldRoot then  
+                if character and humanoid and humanoid.Health > 0 then  
                     local root = character.PrimaryPart or hrp
-                    if root then  
-                        -- Keep real character synced with clone but underground
+                    local oldRoot = Workspace.CurrentCamera:FindFirstChild("HumanoidRootPart")
+                    
+                    if root and oldRoot then  
+                        -- Hide real character 0.25 studs underground with flip
                         local undergroundPos = root.Position - Vector3.new(0, OPTIMAL_OFFSET, 0)
                         oldRoot.CFrame = CFrame.new(undergroundPos) * CFrame.Angles(math.rad(180), 0, 0)
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
-                        
-                        if indicatorBox and root then
-                            indicatorBox.CFrame = CFrame.new(root.Position + Vector3.new(0, 2, 0))
-                        end
                     end  
                 end  
             end)  
@@ -716,13 +686,7 @@ local function fullInvisibleFunction()
 
             characterConnection = player.CharacterAdded:Connect(function(newChar)
                 if isInvisible then
-                    if animTrack then  
-                        animTrack:Stop()  
-                        animTrack:Destroy()  
-                        animTrack = nil  
-                    end  
-                    if connection then connection:Disconnect() end  
-                    if indicatorBox then indicatorBox:Destroy() end
+                    if connection then connection:Disconnect() end
                     revertClone()
                     removeFolders()
                     isInvisible = false
@@ -741,14 +705,8 @@ local function fullInvisibleFunction()
     end  
 
     local function disableInvisibility()  
-        if animTrack then  
-            animTrack:Stop()  
-            animTrack:Destroy()  
-            animTrack = nil  
-        end  
         if connection then connection:Disconnect() end  
         if characterConnection then characterConnection:Disconnect() end  
-        if indicatorBox then indicatorBox:Destroy() end
         revertClone()  
         removeFolders()  
     end
@@ -760,19 +718,15 @@ local function fullInvisibleFunction()
             isInvisible = true
             playerContent[1].Text = "FULL INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Ultra Hidden Invisible enabled (F key to toggle)"
+            statusLabel.Text = "Stealth Invisible enabled (F key to toggle)"
         end
     else
         disableInvisibility()
         isInvisible = false
         playerContent[1].Text = "FULL INVISIBLE: OFF"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Ultra Hidden Invisible disabled"
+        statusLabel.Text = "Stealth Invisible disabled"
         
-        pcall(function()  
-            local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")  
-            if oldGui then oldGui:Destroy() end  
-        end)  
         for _, conn in ipairs(connections.FullInvisible) do  
             if conn then conn:Disconnect() end  
         end  
@@ -789,7 +743,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         fullInvisibleFunction()
     end
 end)
-
 -- ========== INFINITE JUMP (From your file) ==========
 local infJumpActive = false
 local infJumpConnection
