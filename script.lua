@@ -530,7 +530,7 @@ local clone, oldRoot, hip, animTrack, connection, characterConnection
 local indicatorBox
 
 local function fullInvisibleFunction()
-    local DEPTH_OFFSET = 0.25  
+    local DEPTH_OFFSET = 0.35  
 
     local function removeFolders()  
         local playerName = player.Name  
