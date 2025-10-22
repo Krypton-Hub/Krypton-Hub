@@ -529,7 +529,7 @@ local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection
 
 local function semiInvisibleFunction()
-    local DEPTH_OFFSET = 5.0  
+    local DEPTH_OFFSET = 1.0  
 
     local function removeFolders()  
         local playerName = player.Name  
