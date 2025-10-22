@@ -520,7 +520,7 @@ mainContent[2].MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== FULL INVISIBLE SYSTEM (Modified from Semi-Invisible) ==========
+-- ========== OPTIMAL HIDDEN INVISIBLE SYSTEM ==========
 local connections = {
     FullInvisible = {}
 }
@@ -530,7 +530,8 @@ local clone, oldRoot, hip, animTrack, connection, characterConnection
 local indicatorBox
 
 local function fullInvisibleFunction()
-    local DEPTH_OFFSET = 0.35  
+    local OPTIMAL_OFFSET = 5  -- Perfect balance: hidden but no lag back
+    local NO_INDICATOR = true  -- Remove indicator for maximum stealth
 
     local function removeFolders()  
         local playerName = player.Name  
@@ -632,22 +633,6 @@ local function fullInvisibleFunction()
         end  
     end  
 
-    local function createIndicatorBox()
-        if indicatorBox then indicatorBox:Destroy() end
-        
-        indicatorBox = Instance.new("Part")
-        indicatorBox.Name = "InvisibleIndicator"
-        indicatorBox.Size = Vector3.new(2, 3, 1)
-        indicatorBox.Anchored = true
-        indicatorBox.CanCollide = false
-        indicatorBox.Material = Enum.Material.Neon
-        indicatorBox.BrickColor = BrickColor.new("Bright blue")
-        indicatorBox.Transparency = 0.7
-        indicatorBox.Parent = Workspace
-        
-        return indicatorBox
-    end
-
     local function animationTrickery()  
         if character and humanoid and humanoid.Health > 0 then  
             local anim = Instance.new("Animation")  
@@ -682,8 +667,10 @@ local function fullInvisibleFunction()
         removeFolders()  
         local success = doClone()  
         if success then  
-            -- Create indicator box
-            indicatorBox = createIndicatorBox()
+            -- No indicator for maximum stealth
+            if not NO_INDICATOR then
+                indicatorBox = createMinimalIndicator()
+            end
             
             task.wait(0.1)  
             animationTrickery()  
@@ -691,17 +678,11 @@ local function fullInvisibleFunction()
                 if character and humanoid and humanoid.Health > 0 and oldRoot then  
                     local root = character.PrimaryPart or hrp
                     if root then  
-                        -- Hide real character underground
-                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)  
+                        -- Hide real character 5 studs underground (optimal hiding)
+                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + OPTIMAL_OFFSET, 0)  
                         oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
                         oldRoot.Velocity = root.Velocity  
                         oldRoot.CanCollide = false  
-                        
-                        -- Update indicator box position (torso level)
-                        if indicatorBox then
-                            local torsoPos = root.Position + Vector3.new(0, 2, 0) -- Adjust for torso height
-                            indicatorBox.CFrame = CFrame.new(torsoPos)
-                        end
                     end  
                 end  
             end)  
@@ -753,14 +734,14 @@ local function fullInvisibleFunction()
             isInvisible = true
             playerContent[1].Text = "FULL INVISIBLE: ON"
             playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Full Invisible enabled (F key to toggle)"
+            statusLabel.Text = "Ultra Hidden Invisible enabled (F key to toggle)"
         end
     else
         disableInvisibility()
         isInvisible = false
         playerContent[1].Text = "FULL INVISIBLE: OFF"
         playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Full Invisible disabled"
+        statusLabel.Text = "Ultra Hidden Invisible disabled"
         
         pcall(function()  
             local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")  
@@ -772,17 +753,8 @@ local function fullInvisibleFunction()
         connections.FullInvisible = {}  
     end
 end
-
--- Connect full-invisible to button
-playerContent[1].MouseButton1Click:Connect(fullInvisibleFunction)
-
--- F key toggle for full-invisible
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
-        fullInvisibleFunction()
-    end
-end)
-
+              
+  
 -- ========== INFINITE JUMP (From your file) ==========
 local infJumpActive = false
 local infJumpConnection
