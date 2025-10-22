@@ -318,7 +318,7 @@ local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection, torsoBox
 
 local function fullInvisibleFunction()
-    local DEEP_DEPTH_OFFSET = 1.0  -- Much deeper underground
+    local DEEP_DEPTH_OFFSET = 0.5  -- Much deeper underground
 
     local function removeFolders()  
         local playerName = player.Name  
