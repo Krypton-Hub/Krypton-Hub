@@ -526,7 +526,7 @@ local connections = {
 }
 
 local isInvisible = false
-local clone, oldRoot, hip, connection, characterConnection
+local clone, oldRoot, hip, connection, characterConnection, bodyVelocity
 local originalProperties = {}  -- Store original part properties
 
 local function semiInvisibleFunction()
@@ -604,18 +604,27 @@ local function semiInvisibleFunction()
         if not character then return nil end
         -- Try R15 LowerTorso first, then R6 Torso, then fallback to HRP
         local torso = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso") or hrp
+        if not torso then
+            print("Debug: No LowerTorso or Torso found, using HRP")
+        else
+            print("Debug: Using " .. torso.Name .. " as clone")
+        end
         return torso
     end
 
     local function doClone()
         if not character or not humanoid or humanoid.Health <= 0 or not hrp then
+            print("Debug: Failed to clone - missing character, humanoid, or HRP")
             return false
         end
 
         hip = humanoid.HipHeight
         oldRoot = hrp
         local torso = getTorsoPart()
-        if not oldRoot or not oldRoot.Parent or not torso then return false end
+        if not oldRoot or not oldRoot.Parent or not torso then
+            print("Debug: Failed to clone - missing oldRoot or torso")
+            return false
+        end
 
         local tempParent = Instance.new("Model")
         tempParent.Parent = game
@@ -642,11 +651,13 @@ local function semiInvisibleFunction()
         end
 
         tempParent:Destroy()
+        print("Debug: Clone created successfully")
         return true
     end
 
     local function revertClone()
         if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then
+            print("Debug: Failed to revert clone - missing oldRoot or character")
             return false
         end
 
@@ -676,21 +687,38 @@ local function semiInvisibleFunction()
         oldRoot = nil
         if character and humanoid then
             humanoid.HipHeight = hip
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)  -- Restore ragdoll state
         end
+        print("Debug: Clone reverted successfully")
         return true
     end
 
     local function enableInvisibility()
         if not character or humanoid.Health <= 0 then
+            print("Debug: Failed to enable invisibility - missing character or dead")
             return false
         end
 
         removeFolders()
         setupGodmode()
         local success = doClone()
-        if not success then return false end
+        if not success then
+            statusLabel.Text = "Failed to enable invisibility"
+            return false
+        end
 
         makeTransparent()
+
+        -- Prevent ragdoll and ensure walking state
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        humanoid.PlatformStand = false
+
+        -- Use BodyVelocity to keep HRP underground and upside down
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bodyVelocity.Parent = oldRoot
 
         connection = RunService.Heartbeat:Connect(function()
             pcall(function()
@@ -699,10 +727,9 @@ local function semiInvisibleFunction()
                     if root then
                         local groundY = getGroundHeight(root.CFrame.Position)
                         local targetPos = Vector3.new(root.CFrame.X, groundY + UNDERGROUND_OFFSET, root.CFrame.Z)
-                        -- Set HRP underground, upside down
-                        oldRoot.CFrame = CFrame.new(targetPos) * CFrame.Angles(math.rad(180), 0, 0)
-                        -- Preserve velocity for smooth movement
-                        oldRoot.Velocity = root.Velocity
+                        -- Set BodyVelocity to maintain underground position and upside-down orientation
+                        bodyVelocity.Velocity = (targetPos - oldRoot.Position) * 50  -- Smoothly move to target
+                        oldRoot.CFrame = CFrame.new(oldRoot.Position) * CFrame.Angles(math.rad(180), 0, 0)
                         oldRoot.CanCollide = false
                         -- Ensure Humanoid controls movement
                         if humanoid.MoveDirection.Magnitude > 0 then
@@ -711,7 +738,7 @@ local function semiInvisibleFunction()
                     end
                 end
             end)
-            task.wait(0.02)  -- Slight delay for mobile performance
+            task.wait(0.03)  -- Mobile-friendly delay
         end)
         table.insert(connections.SemiInvisible, connection)
 
@@ -730,15 +757,25 @@ local function semiInvisibleFunction()
         end)
         table.insert(connections.SemiInvisible, characterConnection)
 
+        print("Debug: Invisibility enabled successfully")
         return true
     end
 
     local function disableInvisibility()
+        if bodyVelocity then
+            bodyVelocity:Destroy()
+            bodyVelocity = nil
+        end
         if connection then connection:Disconnect() end
         if characterConnection then characterConnection:Disconnect() end
         restoreTransparency()
         revertClone()
         removeFolders()
+        if humanoid then
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        end
         for _, conn in ipairs(connections.SemiInvisible) do
             if conn then conn:Disconnect() end
         end
@@ -747,6 +784,7 @@ local function semiInvisibleFunction()
             local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")
             if oldGui then oldGui:Destroy() end
         end)
+        print("Debug: Invisibility disabled successfully")
     end
 
     pcall(function()
