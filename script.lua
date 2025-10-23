@@ -764,4 +764,3 @@ print("Krypton Hub v5.0 - DrRay UI Edition Loaded!")
 print("Features: Your exact flight, semi-invisible, jump, and speed systems")
 print("Controls: F key to toggle semi-invisible, Right Shift to toggle GUI")
 print("Discord: https://discord.gg/YSwFZsGk9j")
-```
