@@ -1,6 +1,6 @@
--- Krypton Hub - Vape Edition
--- Made by agent_duke13 | Uses Vape V4 UI Library
--- Loadstring: https://github.com/7GrandDadPGN/VapeV4ForRoblox
+-- Krypton Hub - DrRay Edition
+-- Made by agent_duke13 | Uses DrRay UI Library
+-- Loadstring: https://github.com/AZYsGithub/DrRay-UI-Library
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -12,8 +12,8 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local character, hrp, humanoid
 
--- Load Vape V4 Library
-local vape = loadstring(game:HttpGet("https://raw.githubusercontent.com/7GrandDadPGN/VapeV4ForRoblox/main/NewMainScript.lua", true))()
+-- Load DrRay Library
+local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
 
 -- Godmode Protection
 local function setupGodmode()
@@ -73,11 +73,11 @@ player.CharacterAdded:Connect(function(c)
     setupGodmode()
 end)
 
--- Create Vape Window
-local window = vape.new("Krypton Hub v5.0 by agent_duke13")
+-- Create DrRay Window
+local Window = DrRayLibrary.newWindow("Krypton Hub v5.0 by agent_duke13", "rbxassetid://4483345998")  -- Title & optional icon ID
 
 -- Main Tab
-local mainTab = window.newTab("Main")
+local MainTab = Window.newTab("Main", "rbxassetid://4483345998")  -- Tab name & optional icon
 
 -- Tween to Base Toggle
 local tweenActive = false
@@ -108,16 +108,16 @@ local function getGroundHeight(position)
     return position.Y
 end
 
-mainTab.newToggle("Tween to Base", false, function(state)
+MainTab.newToggle("Tween to Base", false, function(state)
     if state then
         local basePos = getBasePosition()
         if basePos then
             tweenActive = true
-            vape:Notify("Tweening to base (slow for stability)...")
+            DrRayLibrary.notify("Tweening to base (slow for stability)...")
             spawn(function()
                 updateCharacterReferences()
                 if not hrp or not humanoid then 
-                    vape:Notify("No character found!")
+                    DrRayLibrary.notify("No character found!")
                     tweenActive = false
                     return 
                 end
@@ -160,17 +160,17 @@ mainTab.newToggle("Tween to Base", false, function(state)
                 if tweenActive and hrp then
                     local finalGroundY = getGroundHeight(targetPos)
                     hrp.CFrame = CFrame.new(targetPos.X, finalGroundY, targetPos.Z)
-                    vape:Notify("Reached base safely!")
+                    DrRayLibrary.notify("Reached base safely!")
                 end
                 
                 tweenActive = false
             end)
         else
-            vape:Notify("Base not found!")
+            DrRayLibrary.notify("Base not found!")
         end
     else
         tweenActive = false
-        vape:Notify("Tween stopped")
+        DrRayLibrary.notify("Tween stopped")
     end
 end)
 
@@ -178,13 +178,13 @@ end)
 local flyActive = false
 local flyConnection
 local flySpeed = 25
-mainTab.newSlider("Fly Speed", 10, 100, function(value)
+MainTab.newSlider("Fly Speed", 10, 100, function(value)
     flySpeed = value
 end)
-mainTab.newToggle("Slow Flight", false, function(state)
+MainTab.newToggle("Slow Flight", false, function(state)
     flyActive = state
     if state then
-        vape:Notify("Slow Flight enabled - Use camera direction")
+        DrRayLibrary.notify("Slow Flight enabled - Use camera direction")
         flyConnection = RunService.RenderStepped:Connect(function()
             updateCharacterReferences()
             if flyActive and hrp then
@@ -192,7 +192,7 @@ mainTab.newToggle("Slow Flight", false, function(state)
             end
         end)
     else
-        vape:Notify("Slow Flight disabled")
+        DrRayLibrary.notify("Slow Flight disabled")
         if flyConnection then
             flyConnection:Disconnect()
             flyConnection = nil
@@ -206,10 +206,10 @@ end)
 -- Float Toggle
 local floatActive = false
 local floatBodyVelocity
-mainTab.newToggle("Float", false, function(state)
+MainTab.newToggle("Float", false, function(state)
     floatActive = state
     if state then
-        vape:Notify("Float enabled")
+        DrRayLibrary.notify("Float enabled")
         updateCharacterReferences()
         if hrp then
             setupGodmode()
@@ -219,7 +219,7 @@ mainTab.newToggle("Float", false, function(state)
             floatBodyVelocity.Parent = hrp
         end
     else
-        vape:Notify("Float disabled")
+        DrRayLibrary.notify("Float disabled")
         if floatBodyVelocity then
             floatBodyVelocity:Destroy()
         end
@@ -227,9 +227,9 @@ mainTab.newToggle("Float", false, function(state)
 end)
 
 -- Player Tab
-local playerTab = window.newTab("Player")
+local PlayerTab = Window.newTab("Player", "rbxassetid://4483345998")
 
--- Semi-Invisible Function (Integrated from Original)
+-- Semi-Invisible Function (Full from Original)
 local connections = {SemiInvisible = {}}
 local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection
@@ -428,14 +428,14 @@ local function semiInvisibleFunction()
         setupGodmode()  
         if enableInvisibility() then
             isInvisible = true
-            vape:Notify("Semi-Invisible enabled (F key to toggle)")
+            DrRayLibrary.notify("Semi-Invisible enabled (F key to toggle)")
         else
-            vape:Notify("Failed to enable Semi-Invisible")
+            DrRayLibrary.notify("Failed to enable Semi-Invisible")
         end
     else
         disableInvisibility()
         isInvisible = false
-        vape:Notify("Semi-Invisible disabled")
+        DrRayLibrary.notify("Semi-Invisible disabled")
         pcall(function()  
             local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")  
             if oldGui then oldGui:Destroy() end  
@@ -447,16 +447,16 @@ local function semiInvisibleFunction()
     end
 end
 
-playerTab.newToggle("Semi Invisible", false, semiInvisibleFunction)
-playerTab.newKeybind("Semi Invisible Bind", "F", semiInvisibleFunction)
+PlayerTab.newToggle("Semi Invisible", false, semiInvisibleFunction)
+PlayerTab.newKeybind("Semi Invisible Bind", Enum.KeyCode.F, semiInvisibleFunction)
 
 -- Infinite Jump Toggle
 local infJumpActive = false
 local infJumpConnection
-playerTab.newToggle("Infinite Jump", false, function(state)
+PlayerTab.newToggle("Infinite Jump", false, function(state)
     infJumpActive = state
     if state then
-        vape:Notify("Infinite Jump enabled")
+        DrRayLibrary.notify("Infinite Jump enabled")
         infJumpConnection = UserInputService.JumpRequest:Connect(function()
             if infJumpActive and humanoid and humanoid.Health > 0 then
                 setupGodmode()
@@ -467,7 +467,7 @@ playerTab.newToggle("Infinite Jump", false, function(state)
             end
         end)
     else
-        vape:Notify("Infinite Jump disabled")
+        DrRayLibrary.notify("Infinite Jump disabled")
         if infJumpConnection then
             infJumpConnection:Disconnect()
         end
@@ -478,13 +478,13 @@ end)
 local speedActive = false
 local speedConn
 local baseSpeed = 27
-playerTab.newSlider("Speed Value", 16, 100, function(value)
+PlayerTab.newSlider("Speed Value", 16, 100, function(value)
     baseSpeed = value
 end)
-playerTab.newToggle("Speed Booster", false, function(state)
+PlayerTab.newToggle("Speed Booster", false, function(state)
     speedActive = state
     if state then
-        vape:Notify("Speed Booster enabled")
+        DrRayLibrary.notify("Speed Booster enabled")
         local function GetCharacter()
             local Char = player.Character or player.CharacterAdded:Wait()
             local HRP = Char:WaitForChild("HumanoidRootPart")
@@ -517,7 +517,7 @@ playerTab.newToggle("Speed Booster", false, function(state)
             end
         end)
     else
-        vape:Notify("Speed Booster disabled")
+        DrRayLibrary.notify("Speed Booster disabled")
         if speedConn then 
             speedConn:Disconnect() 
             speedConn = nil 
@@ -530,15 +530,15 @@ playerTab.newToggle("Speed Booster", false, function(state)
 end)
 
 -- Visuals Tab
-local visualsTab = window.newTab("Visuals")
+local VisualsTab = Window.newTab("Visuals", "rbxassetid://4483345998")
 
 -- ESP Toggle
 local espActive = false
 local espFolders = {}
-visualsTab.newToggle("Player ESP", false, function(state)
+VisualsTab.newToggle("Player ESP", false, function(state)
     espActive = state
     if state then
-        vape:Notify("ESP enabled")
+        DrRayLibrary.notify("ESP enabled")
         local function createESP(character, folder)
             if character and folder then
                 local highlight = Instance.new("Highlight")
@@ -568,7 +568,7 @@ visualsTab.newToggle("Player ESP", false, function(state)
             end
         end
     else
-        vape:Notify("ESP disabled")
+        DrRayLibrary.notify("ESP disabled")
         for _, folder in pairs(espFolders) do
             if folder then
                 folder:Destroy()
@@ -582,10 +582,10 @@ end)
 local fullbrightActive = false
 local originalBrightness
 local originalClockTime
-visualsTab.newToggle("Fullbright", false, function(state)
+VisualsTab.newToggle("Fullbright", false, function(state)
     fullbrightActive = state
     if state then
-        vape:Notify("Fullbright enabled")
+        DrRayLibrary.notify("Fullbright enabled")
         originalBrightness = Lighting.Brightness
         originalClockTime = Lighting.ClockTime
         Lighting.Brightness = 2
@@ -593,7 +593,7 @@ visualsTab.newToggle("Fullbright", false, function(state)
         Lighting.GlobalShadows = false
         Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
     else
-        vape:Notify("Fullbright disabled")
+        DrRayLibrary.notify("Fullbright disabled")
         if originalBrightness then
             Lighting.Brightness = originalBrightness
         end
@@ -605,12 +605,12 @@ visualsTab.newToggle("Fullbright", false, function(state)
 end)
 
 -- Discord Button
-visualsTab.newButton("Copy Discord Invite", function()
+VisualsTab.newButton("Copy Discord Invite", "Copy to clipboard", function()
     if setclipboard then
         setclipboard("https://discord.gg/YSwFZsGk9j")
-        vape:Notify("Discord link copied!")
+        DrRayLibrary.notify("Discord link copied!")
     else
-        vape:Notify("Clipboard not supported")
+        DrRayLibrary.notify("Clipboard not supported")
     end
 end)
 
@@ -648,9 +648,9 @@ player.CharacterAdded:Connect(function()
     end
     Lighting.GlobalShadows = true
     
-    vape:Notify("Character respawned - All features reset")
+    DrRayLibrary.notify("Character respawned - All features reset")
 end)
 
-print("Krypton Hub Vape Edition Loaded! Open with RightShift (default).")
+print("Krypton Hub DrRay Edition Loaded! Drag to move, X to close.")
 print("Features: Tween to Base, Slow Flight, Float, Semi-Invisible (F key), Infinite Jump, Speed Booster, ESP, Fullbright, Discord Invite")
 print("Discord: https://discord.gg/YSwFZsGk9j")
