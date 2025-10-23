@@ -1,6 +1,5 @@
--- Krypton Hub - DrRay Edition
--- Made by agent_duke13 | Uses DrRay UI Library
--- Loadstring: https://github.com/AZYsGithub/DrRay-UI-Library
+-- Krypton Hub - Custom DrRay Clone (1:1 Similar)
+-- Made by agent_duke13 | Standalone UI Library like DrRay
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -12,8 +11,375 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local character, hrp, humanoid
 
--- Load DrRay Library
-local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
+-- Custom DrRay-Like UI Library (1:1 API Match)
+local DrRayLibrary = {}
+local windows = {}
+
+local function createNotification(text)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 250, 0, 50)
+    frame.Position = UDim2.new(1, -260, 0, 20)
+    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.Parent = frame
+
+    local tweenIn = TweenService:Create(frame, TweenInfo.new(0.3), {Position = UDim2.new(1, -260, 0, 20)})
+    tweenIn:Play()
+
+    task.wait(3)
+    local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3), {Position = UDim2.new(1, 0, 0, 20)})
+    tweenOut:Play()
+    tweenOut.Completed:Connect(function() screenGui:Destroy() end)
+end
+
+function DrRayLibrary.newWindow(title, icon)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "DrRayWindow"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 500, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 12)
+    mainCorner.Parent = mainFrame
+
+    -- Title Bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 40)
+    titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 12)
+    titleCorner.Parent = titleBar
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -40, 1, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 16
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = titleBar
+
+    -- Close Button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -35, 0, 5)
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    closeButton.Text = "X"
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.TextSize = 14
+    closeButton.Parent = titleBar
+
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeButton
+
+    closeButton.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+    end)
+
+    -- Tab Container
+    local tabContainer = Instance.new("Frame")
+    tabContainer.Size = UDim2.new(1, 0, 0, 40)
+    tabContainer.Position = UDim2.new(0, 0, 0, 40)
+    tabContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    tabContainer.BorderSizePixel = 0
+    tabContainer.Parent = mainFrame
+
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.Padding = UDim.new(0, 5)
+    tabLayout.Parent = tabContainer
+
+    local contentContainer = Instance.new("Frame")
+    contentContainer.Size = UDim2.new(1, 0, 1, -80)
+    contentContainer.Position = UDim2.new(0, 0, 0, 80)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.Parent = mainFrame
+
+    local tabs = {}
+    local currentTab = nil
+
+    function tabs.newTab(name, iconId)
+        local tabButton = Instance.new("TextButton")
+        tabButton.Size = UDim2.new(0, 100, 1, 0)
+        tabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        tabButton.Text = name
+        tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+        tabButton.Font = Enum.Font.GothamSemibold
+        tabButton.TextSize = 14
+        tabButton.Parent = tabContainer
+
+        local tabCorner = Instance.new("UICorner")
+        tabCorner.CornerRadius = UDim.new(0, 8)
+        tabCorner.Parent = tabButton
+
+        local tabContent = Instance.new("ScrollingFrame")
+        tabContent.Size = UDim2.new(1, 0, 1, 0)
+        tabContent.BackgroundTransparency = 1
+        tabContent.BorderSizePixel = 0
+        tabContent.ScrollBarThickness = 6
+        tabContent.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 80)
+        tabContent.Visible = false
+        tabContent.Parent = contentContainer
+
+        local contentLayout = Instance.new("UIListLayout")
+        contentLayout.Padding = UDim.new(0, 5)
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        contentLayout.Parent = tabContent
+
+        tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            tabContent.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 10)
+        end)
+
+        tabButton.MouseButton1Click:Connect(function()
+            if currentTab then currentTab.Visible = false end
+            tabContent.Visible = true
+            currentTab = tabContent
+            for _, btn in pairs(tabContainer:GetChildren()) do
+                if btn:IsA("TextButton") then
+                    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                end
+            end
+            tabButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+            tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end)
+
+        function tabContent.newToggle(label, default, callback)
+            local toggleFrame = Instance.new("Frame")
+            toggleFrame.Size = UDim2.new(1, -20, 0, 30)
+            toggleFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+            toggleFrame.LayoutOrder = #tabContent:GetChildren()
+            toggleFrame.Parent = tabContent
+
+            local toggleCorner = Instance.new("UICorner")
+            toggleCorner.CornerRadius = UDim.new(0, 6)
+            toggleCorner.Parent = toggleFrame
+
+            local toggleLabel = Instance.new("TextLabel")
+            toggleLabel.Size = UDim2.new(1, -50, 1, 0)
+            toggleLabel.Position = UDim2.new(0, 10, 0, 0)
+            toggleLabel.BackgroundTransparency = 1
+            toggleLabel.Text = label .. ": OFF"
+            toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            toggleLabel.Font = Enum.Font.GothamSemibold
+            toggleLabel.TextSize = 12
+            toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            toggleLabel.Parent = toggleFrame
+
+            local toggleButton = Instance.new("TextButton")
+            toggleButton.Size = UDim2.new(0, 40, 0, 20)
+            toggleButton.Position = UDim2.new(1, -50, 0.5, -10)
+            toggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            toggleButton.Text = ""
+            toggleButton.Parent = toggleFrame
+
+            local buttonCorner = Instance.new("UICorner")
+            buttonCorner.CornerRadius = UDim.new(0, 10)
+            buttonCorner.Parent = toggleButton
+
+            local state = default
+            local function updateState()
+                state = not state
+                toggleLabel.Text = label .. (state and ": ON" or ": OFF")
+                toggleButton.BackgroundColor3 = state and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(100, 100, 100)
+                callback(state)
+            end
+
+            toggleButton.MouseButton1Click:Connect(updateState)
+            if default then updateState() end
+        end
+
+        function tabContent.newSlider(label, min, max, callback)
+            local sliderFrame = Instance.new("Frame")
+            sliderFrame.Size = UDim2.new(1, -20, 0, 50)
+            sliderFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+            sliderFrame.LayoutOrder = #tabContent:GetChildren()
+            sliderFrame.Parent = tabContent
+
+            local sliderCorner = Instance.new("UICorner")
+            sliderCorner.CornerRadius = UDim.new(0, 6)
+            sliderCorner.Parent = sliderFrame
+
+            local sliderLabel = Instance.new("TextLabel")
+            sliderLabel.Size = UDim2.new(1, 0, 0, 20)
+            sliderLabel.Position = UDim2.new(0, 10, 0, 5)
+            sliderLabel.BackgroundTransparency = 1
+            sliderLabel.Text = label .. ": " .. min
+            sliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            sliderLabel.Font = Enum.Font.GothamSemibold
+            sliderLabel.TextSize = 12
+            sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+            sliderLabel.Parent = sliderFrame
+
+            local sliderBar = Instance.new("Frame")
+            sliderBar.Size = UDim2.new(1, -20, 0, 8)
+            sliderBar.Position = UDim2.new(0, 10, 0, 30)
+            sliderBar.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+            sliderBar.Parent = sliderFrame
+
+            local barCorner = Instance.new("UICorner")
+            barCorner.CornerRadius = UDim.new(0, 4)
+            barCorner.Parent = sliderBar
+
+            local sliderButton = Instance.new("TextButton")
+            sliderButton.Size = UDim2.new(0, 20, 1, 0)
+            sliderButton.Position = UDim2.new(0, 0, 0, 0)
+            sliderButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+            sliderButton.Text = ""
+            sliderButton.Parent = sliderBar
+
+            local buttonCorner = Instance.new("UICorner")
+            buttonCorner.CornerRadius = UDim.new(0, 4)
+            buttonCorner.Parent = sliderButton
+
+            local value = min
+            local dragging = false
+
+            sliderButton.MouseButton1Down:Connect(function()
+                dragging = true
+            end)
+
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                end
+            end)
+
+            RunService.RenderStepped:Connect(function()
+                if dragging then
+                    local mouse = UserInputService:GetMouseLocation()
+                    local relativeX = math.clamp((mouse.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+                    value = math.floor(min + (max - min) * relativeX)
+                    sliderButton.Position = UDim2.new(relativeX, -10, 0, 0)
+                    sliderLabel.Text = label .. ": " .. value
+                    callback(value)
+                end
+            end)
+        end
+
+        function tabContent.newButton(label, desc, callback)
+            local button = Instance.new("TextButton")
+            button.Size = UDim2.new(1, -20, 0, 40)
+            button.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+            button.Text = label
+            button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            button.Font = Enum.Font.GothamSemibold
+            button.TextSize = 12
+            button.LayoutOrder = #tabContent:GetChildren()
+            button.Parent = tabContent
+
+            local buttonCorner = Instance.new("UICorner")
+            buttonCorner.CornerRadius = UDim.new(0, 6)
+            buttonCorner.Parent = button
+
+            local descLabel = Instance.new("TextLabel")
+            descLabel.Size = UDim2.new(1, 0, 0, 15)
+            descLabel.Position = UDim2.new(0, 5, 1, -15)
+            descLabel.BackgroundTransparency = 1
+            descLabel.Text = desc
+            descLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+            descLabel.Font = Enum.Font.Gotham
+            descLabel.TextSize = 10
+            descLabel.TextXAlignment = Enum.TextXAlignment.Left
+            descLabel.Parent = button
+
+            button.MouseButton1Click:Connect(callback)
+        end
+
+        function tabContent.newKeybind(label, key, callback)
+            local keybindFrame = Instance.new("Frame")
+            keybindFrame.Size = UDim2.new(1, -20, 0, 30)
+            keybindFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+            keybindFrame.LayoutOrder = #tabContent:GetChildren()
+            keybindFrame.Parent = tabContent
+
+            local keybindCorner = Instance.new("UICorner")
+            keybindCorner.CornerRadius = UDim.new(0, 6)
+            keybindCorner.Parent = keybindFrame
+
+            local keybindLabel = Instance.new("TextLabel")
+            keybindLabel.Size = UDim2.new(1, -60, 1, 0)
+            keybindLabel.Position = UDim2.new(0, 10, 0, 0)
+            keybindLabel.BackgroundTransparency = 1
+            keybindLabel.Text = label .. ": [" .. key.Name .. "]"
+            keybindLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            keybindLabel.Font = Enum.Font.GothamSemibold
+            keybindLabel.TextSize = 12
+            keybindLabel.TextXAlignment = Enum.TextXAlignment.Left
+            keybindLabel.Parent = keybindFrame
+
+            local keybindButton = Instance.new("TextButton")
+            keybindButton.Size = UDim2.new(0, 50, 0, 20)
+            keybindButton.Position = UDim2.new(1, -60, 0.5, -10)
+            keybindButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            keybindButton.Text = key.Name
+            keybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            keybindButton.Font = Enum.Font.Gotham
+            keybindButton.TextSize = 10
+            keybindButton.Parent = keybindFrame
+
+            local kbCorner = Instance.new("UICorner")
+            kbCorner.CornerRadius = UDim.new(0, 4)
+            kbCorner.Parent = keybindButton
+
+            keybindButton.MouseButton1Click:Connect(function()
+                keybindButton.Text = "..."
+            end)
+
+            UserInputService.InputBegan:Connect(function(input)
+                if input.KeyCode ~= Enum.KeyCode.Unknown then
+                    local newKey = input.KeyCode
+                    keybindButton.Text = newKey.Name
+                    keybindLabel.Text = label .. ": [" .. newKey.Name .. "]"
+                    callback(newKey)
+                end
+            end)
+        end
+
+        return tabContent
+    end
+
+    windows[title] = {tabs = tabs, content = contentContainer}
+    return windows[title]
+end
+
+function DrRayLibrary.notify(text)
+    createNotification(text)
+end
 
 -- Godmode Protection
 local function setupGodmode()
@@ -73,11 +439,11 @@ player.CharacterAdded:Connect(function(c)
     setupGodmode()
 end)
 
--- Create DrRay Window
-local Window = DrRayLibrary.newWindow("Krypton Hub v5.0 by agent_duke13", "rbxassetid://4483345998")  -- Title & optional icon ID
+-- Create Window
+local Window = DrRayLibrary.newWindow("Krypton Hub v5.0 by agent_duke13")
 
 -- Main Tab
-local MainTab = Window.newTab("Main", "rbxassetid://4483345998")  -- Tab name & optional icon
+local MainTab = Window.tabs.newTab("Main")
 
 -- Tween to Base Toggle
 local tweenActive = false
@@ -113,7 +479,7 @@ MainTab.newToggle("Tween to Base", false, function(state)
         local basePos = getBasePosition()
         if basePos then
             tweenActive = true
-            DrRayLibrary.notify("Tweening to base (slow for stability)...")
+            DrRayLibrary.notify("Tweening to base...")
             spawn(function()
                 updateCharacterReferences()
                 if not hrp or not humanoid then 
@@ -227,9 +593,9 @@ MainTab.newToggle("Float", false, function(state)
 end)
 
 -- Player Tab
-local PlayerTab = Window.newTab("Player", "rbxassetid://4483345998")
+local PlayerTab = Window.tabs.newTab("Player")
 
--- Semi-Invisible Function (Full from Original)
+-- Semi-Invisible Function (Full)
 local connections = {SemiInvisible = {}}
 local isInvisible = false
 local clone, oldRoot, hip, animTrack, connection, characterConnection
@@ -448,7 +814,7 @@ local function semiInvisibleFunction()
 end
 
 PlayerTab.newToggle("Semi Invisible", false, semiInvisibleFunction)
-PlayerTab.newKeybind("Semi Invisible Bind", Enum.KeyCode.F, semiInvisibleFunction)
+PlayerTab.newKeybind("Semi Invisible", Enum.KeyCode.F, semiInvisibleFunction)
 
 -- Infinite Jump Toggle
 local infJumpActive = false
@@ -530,7 +896,7 @@ PlayerTab.newToggle("Speed Booster", false, function(state)
 end)
 
 -- Visuals Tab
-local VisualsTab = Window.newTab("Visuals", "rbxassetid://4483345998")
+local VisualsTab = Window.tabs.newTab("Visuals")
 
 -- ESP Toggle
 local espActive = false
@@ -605,7 +971,7 @@ VisualsTab.newToggle("Fullbright", false, function(state)
 end)
 
 -- Discord Button
-VisualsTab.newButton("Copy Discord Invite", "Copy to clipboard", function()
+VisualsTab.newButton("Copy Discord Invite", "Join for updates", function()
     if setclipboard then
         setclipboard("https://discord.gg/YSwFZsGk9j")
         DrRayLibrary.notify("Discord link copied!")
@@ -614,7 +980,7 @@ VisualsTab.newButton("Copy Discord Invite", "Copy to clipboard", function()
     end
 end)
 
--- Auto-cleanup on Character Respawn
+-- Auto-cleanup on Respawn
 player.CharacterAdded:Connect(function()
     tweenActive = false
     flyActive = false
@@ -648,9 +1014,7 @@ player.CharacterAdded:Connect(function()
     end
     Lighting.GlobalShadows = true
     
-    DrRayLibrary.notify("Character respawned - All features reset")
+    DrRayLibrary.notify("Respawned - Features reset")
 end)
 
-print("Krypton Hub DrRay Edition Loaded! Drag to move, X to close.")
-print("Features: Tween to Base, Slow Flight, Float, Semi-Invisible (F key), Infinite Jump, Speed Booster, ESP, Fullbright, Discord Invite")
-print("Discord: https://discord.gg/YSwFZsGk9j")
+print("Krypton Hub DrRay Clone Loaded! GUI should appear now.")
