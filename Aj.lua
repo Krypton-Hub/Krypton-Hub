@@ -38,7 +38,7 @@ local guiState = {
     position = {
         XScale = 0.5,
         XOffset = -125,
-        YScale = 0.6,
+        YScale = 0.5,
         YOffset = -150
     }
 }
@@ -150,7 +150,18 @@ local function loadAPIState()
 end
 
 local function showNotification(title, text)
-    _G.ShowInfoNotification(title, text, settings.notificationDuration or 4)
+    local duration = settings.notificationDuration or 4
+    local success, err = pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = duration
+        })
+    end)
+    if not success then
+        print("Notification failed:", err)
+        warn(string.format("%s: %s (Duration: %d)", title, text, duration))
+    end
 end
 
 local function playFoundSound()
@@ -230,7 +241,6 @@ local function getAllPodiums()
         local plot = plotChildren[i]
         
         if not isPlayerBase(plot) then
-            -- Original search method
             local animalPods = plot:FindFirstChild("AnimalPodiums")
             if animalPods then
                 local podChildren = animalPods:GetChildren()
@@ -257,7 +267,6 @@ local function getAllPodiums()
                 end
             end
             
-            -- Alternative search method
             if plot:IsA("Model") then
                 for _, model in pairs(plot:GetChildren()) do
                     if model:IsA("Model") then
@@ -265,7 +274,6 @@ local function getAllPodiums()
                             if obj:IsA("Attachment") and obj.Name == "OVERHEAD_ATTACHMENT" then
                                 local overhead = obj:FindFirstChild("AnimalOverhead")
                                 if overhead then
-                                    -- Find a suitable base, perhaps the parent model or something
                                     local base = model:FindFirstChild("Base") or model
                                     if base and (base:IsA("BasePart") or base:IsA("Model")) then
                                         table.insert(podiums, { 
@@ -314,7 +322,10 @@ local function getServersFromAPI(baseUrl, isMainAPI)
         if cursor ~= "" then url = url .. "&cursor=" .. cursor end
         
         local success, response = pcall(function() return game:HttpGet(url) end)
-        if not success then break end
+        if not success then
+            print("HTTP request failed:", response)
+            break
+        end
         
         local body = Http:JSONDecode(response)
         if not body.data then break end
@@ -565,6 +576,7 @@ local function tryTeleportWithRetries()
         if success then
             return
         else
+            print("Teleport failed:", err)
             if not isRunning then
                 return
             end
@@ -632,7 +644,6 @@ local function monitorFoundPodiums()
     end)
 end
 
-
 local function runServerCheck()
     if not isRunning then return end
     
@@ -675,7 +686,7 @@ end
 
 local function createTagList(parent, list, placeholder, onAdd, onRemove)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 22)
+    container.Size = UDim2.new(1, 0, 0, 28) -- Increased height
     container.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     container.BorderSizePixel = 0
     container.Parent = parent
@@ -690,11 +701,12 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     containerStroke.Parent = container
     
     local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, -50, 1, 0)
+    scrollFrame.Size = UDim2.new(1, -60, 1, 0)
     scrollFrame.Position = UDim2.new(0, 4, 0, 0)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 0
+    scrollFrame.ScrollBarThickness = 6 -- Thicker for touch
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.Parent = container
     
@@ -705,14 +717,14 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     layout.Parent = scrollFrame
     
     local textBox = Instance.new("TextBox")
-    textBox.Size = UDim2.new(0, 45, 1, 0)
-    textBox.Position = UDim2.new(1, -46, 0, 0)
+    textBox.Size = UDim2.new(0, 60, 1, 0) -- Larger for touch
+    textBox.Position = UDim2.new(1, -56, 0, 0)
     textBox.BackgroundTransparency = 1
     textBox.Text = ""
     textBox.PlaceholderText = placeholder
     textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
-    textBox.TextSize = 9
+    textBox.TextSize = 12 -- Larger text
     textBox.Font = Enum.Font.Gotham
     textBox.Parent = container
     
@@ -723,7 +735,7 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     
     local function createTag(text)
         local tag = Instance.new("Frame")
-        tag.Size = UDim2.new(0, 0, 0, 16)
+        tag.Size = UDim2.new(0, 0, 0, 20) -- Increased height
         tag.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
         tag.BorderSizePixel = 0
         tag.Parent = scrollFrame
@@ -738,30 +750,31 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
         tagLabel.BackgroundTransparency = 1
         tagLabel.Text = text
         tagLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        tagLabel.TextSize = 8
+        tagLabel.TextSize = 10 -- Larger text
         tagLabel.Font = Enum.Font.Gotham
         tagLabel.TextXAlignment = Enum.TextXAlignment.Left
         tagLabel.Parent = tag
         
         local removeButton = Instance.new("TextButton")
-        removeButton.Size = UDim2.new(0, 12, 0, 12)
-        removeButton.Position = UDim2.new(1, -13, 0.5, -5)
+        removeButton.Size = UDim2.new(0, 16, 0, 16) -- Larger button
+        removeButton.Position = UDim2.new(1, -17, 0.5, -7)
         removeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         removeButton.BorderSizePixel = 0
         removeButton.Text = "X"
         removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        removeButton.TextSize = 6
+        removeButton.TextSize = 8
         removeButton.Font = Enum.Font.GothamBold
         removeButton.Parent = tag
         
         local removeCorner = Instance.new("UICorner")
-        removeCorner.CornerRadius = UDim.new(0, 6)
+        removeCorner.CornerRadius = UDim.new(0, 8)
         removeCorner.Parent = removeButton
         
-        local textSize = TextService:GetTextSize(text, 8, Enum.Font.Gotham, Vector2.new(math.huge, 16))
-        tag.Size = UDim2.new(0, textSize.X + 18, 0, 16)
+        local textSize = TextService:GetTextSize(text, 10, Enum.Font.Gotham, Vector2.new(math.huge, 20))
+        tag.Size = UDim2.new(0, textSize.X + 22, 0, 20)
         
         removeButton.MouseButton1Click:Connect(function()
+            print("Remove tag tapped:", text)
             onRemove(text)
             tag:Destroy()
             updateCanvas()
@@ -783,8 +796,9 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
         end
     end
     
-    textBox.FocusLost:Connect(function()
-        if textBox.Text ~= "" then
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed and textBox.Text ~= "" then
+            print("Tag added via touch:", textBox.Text)
             onAdd(textBox.Text:gsub("^%s*(.-)%s*$", "%1"))
             textBox.Text = ""
             refreshTags()
@@ -792,6 +806,7 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     end)
     
     textBox.Focused:Connect(function()
+        print("Tag TextBox focused")
         TweenService:Create(containerStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 150, 255)}):Play()
     end)
     
@@ -808,10 +823,12 @@ local function createSettingsGUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "ServerHopperGUI"
     screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.ZIndex = 10 -- Ensure GUI is on top
     screenGui.Parent = playerGui
     
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 250, 0, 300)
+    mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0) -- Scale-based for mobile
     mainFrame.Position = UDim2.new(guiState.position.XScale, guiState.position.XOffset, guiState.position.YScale, guiState.position.YOffset)
     mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
     mainFrame.BorderSizePixel = 0
@@ -823,11 +840,11 @@ local function createSettingsGUI()
     
     local mainStroke = Instance.new("UIStroke")
     mainStroke.Thickness = 1
-    mainStroke.Color = Color3.fromRGB(50, 50, 60)
+    mainStroke.Color = Color3.fromRGB(50, 100, 60)
     mainStroke.Parent = mainFrame
     
     local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.Size = UDim2.new(1, 0, 0, 40) -- Larger title bar
     titleBar.Position = UDim2.new(0, 0, 0, 0)
     titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     titleBar.BorderSizePixel = 0
@@ -838,8 +855,8 @@ local function createSettingsGUI()
     titleCorner.Parent = titleBar
     
     local titleFix = Instance.new("Frame")
-    titleFix.Size = UDim2.new(1, 0, 0, 15)
-    titleFix.Position = UDim2.new(0, 0, 1, -15)
+    titleFix.Size = UDim2.new(1, 0, 0, 20)
+    titleFix.Position = UDim2.new(0, 0, 1, -20)
     titleFix.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     titleFix.BorderSizePixel = 0
     titleFix.Parent = titleBar
@@ -850,7 +867,7 @@ local function createSettingsGUI()
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = "Server Hopper"
     titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 12
+    titleLabel.TextSize = 14 -- Larger text
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = titleBar
@@ -859,13 +876,13 @@ local function createSettingsGUI()
     local originalSize = mainFrame.Size
     
     local minimizeButton = Instance.new("TextButton")
-    minimizeButton.Size = UDim2.new(0, 22, 0, 22)
-    minimizeButton.Position = UDim2.new(1, -54, 0, 4)
+    minimizeButton.Size = UDim2.new(0, 30, 0, 30) -- Larger button
+    minimizeButton.Position = UDim2.new(1, -64, 0, 5)
     minimizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     minimizeButton.BorderSizePixel = 0
     minimizeButton.Text = isMinimized and "+" or "-"
     minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minimizeButton.TextSize = 10
+    minimizeButton.TextSize = 12
     minimizeButton.Font = Enum.Font.GothamBold
     minimizeButton.Parent = titleBar
     
@@ -874,13 +891,13 @@ local function createSettingsGUI()
     minimizeCorner.Parent = minimizeButton
     
     local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 22, 0, 22)
-    closeButton.Position = UDim2.new(1, -28, 0, 4)
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -32, 0, 5)
     closeButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
     closeButton.BorderSizePixel = 0
     closeButton.Text = "X"
     closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.TextSize = 10
+    closeButton.TextSize = 12
     closeButton.Font = Enum.Font.GothamBold
     closeButton.Parent = titleBar
     
@@ -889,8 +906,8 @@ local function createSettingsGUI()
     closeCorner.Parent = closeButton
     
     local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1, 0, 1, -30)
-    contentFrame.Position = UDim2.new(0, 0, 0, 30)
+    contentFrame.Size = UDim2.new(1, 0, 1, -40)
+    contentFrame.Position = UDim2.new(0, 0, 0, 40)
     contentFrame.BackgroundTransparency = 1
     contentFrame.Visible = not isMinimized
     contentFrame.Parent = mainFrame
@@ -900,9 +917,9 @@ local function createSettingsGUI()
     scrollFrame.Position = UDim2.new(0, 5, 0, 5)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 4
-    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 90)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 350)
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 400)
     scrollFrame.Parent = contentFrame
     
     local layout = Instance.new("UIListLayout")
@@ -911,18 +928,19 @@ local function createSettingsGUI()
     layout.Parent = scrollFrame
     
     if isMinimized then
-        mainFrame.Size = UDim2.new(0, 250, 0, 30)
+        mainFrame.Size = UDim2.new(0.4, 0, 0, 40)
     else
-        mainFrame.Size = UDim2.new(0, 250, 0, 300)
+        mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
     end
     
     minimizeButton.MouseButton1Click:Connect(function()
+        print("Minimize button tapped")
         isMinimized = not isMinimized
         guiState.isMinimized = isMinimized
         saveGUIState()
         
         if isMinimized then
-            mainFrame.Size = UDim2.new(0, 250, 0, 30)
+            mainFrame.Size = UDim2.new(0.4, 0, 0, 40)
             minimizeButton.Text = "+"
             contentFrame.Visible = false
         else
@@ -934,25 +952,25 @@ local function createSettingsGUI()
     
     local function createInputField(name, placeholder, defaultValue, layoutOrder, settingKey, desc)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 35)
+        container.Size = UDim2.new(1, 0, 0, 40) -- Larger container
         container.BackgroundTransparency = 1
         container.LayoutOrder = layoutOrder
         container.Parent = scrollFrame
         
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 12)
+        label.Size = UDim2.new(1, 0, 0, 14)
         label.Position = UDim2.new(0, 0, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = name
         label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 9
+        label.TextSize = 11 -- Larger text
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
         local inputFrame = Instance.new("Frame")
-        inputFrame.Size = UDim2.new(1, -10, 0, 22)
-        inputFrame.Position = UDim2.new(0, 0, 0, 13)
+        inputFrame.Size = UDim2.new(1, -10, 0, 26)
+        inputFrame.Position = UDim2.new(0, 0, 0, 14)
         inputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
         inputFrame.BorderSizePixel = 0
         inputFrame.Parent = container
@@ -974,19 +992,20 @@ local function createSettingsGUI()
         textBox.PlaceholderText = placeholder
         textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
         textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
-        textBox.TextSize = 10
+        textBox.TextSize = 12
         textBox.Font = Enum.Font.Gotham
         textBox.Parent = inputFrame
         
         textBox.Focused:Connect(function()
+            print("TextBox focused:", settingKey)
             TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 150, 255)}):Play()
         end)
         
-        textBox.FocusLost:Connect(function()
+        textBox.FocusLost:Connect(function(enterPressed)
+            print("TextBox lost focus:", settingKey, "Enter:", enterPressed)
             TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(60, 60, 70)}):Play()
             
-            -- Save setting immediately when field loses focus
-            if settingKey then
+            if settingKey and enterPressed then
                 if settingKey == "minGeneration" or settingKey == "minPlayers" or settingKey == "notificationDuration" then
                     settings[settingKey] = tonumber(textBox.Text) or settings[settingKey]
                 else
@@ -1001,36 +1020,38 @@ local function createSettingsGUI()
     
     local function createTagInputField(name, list, placeholder, layoutOrder, descAdd, descRemove)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 35)
+        container.Size = UDim2.new(1, 0, 0, 40)
         container.BackgroundTransparency = 1
         container.LayoutOrder = layoutOrder
         container.Parent = scrollFrame
         
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 12)
+        label.Size = UDim2.new(1, 0, 0, 14)
         label.Position = UDim2.new(0, 0, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = name
         label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 9
+        label.TextSize = 11
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
         local tagContainer = Instance.new("Frame")
-        tagContainer.Size = UDim2.new(1, -10, 0, 22)
-        tagContainer.Position = UDim2.new(0, 0, 0, 13)
+        tagContainer.Size = UDim2.new(1, -10, 0, 26)
+        tagContainer.Position = UDim2.new(0, 0, 0, 14)
         tagContainer.BackgroundTransparency = 1
         tagContainer.Parent = container
         
         local refreshTags = createTagList(tagContainer, list, placeholder,
             function(text)
                 if text and text ~= "" and not table.find(list, text) then
+                    print("Tag added:", text)
                     table.insert(list, text)
                     saveSettings()
                 end
             end,
             function(text)
+                print("Tag removed:", text)
                 local index = table.find(list, text)
                 if index then
                     table.remove(list, index)
@@ -1044,30 +1065,30 @@ local function createSettingsGUI()
     
     local function createSortOrderToggle(name, defaultValue, layoutOrder, desc)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 35)
+        container.Size = UDim2.new(1, 0, 0, 40)
         container.BackgroundTransparency = 1
         container.LayoutOrder = layoutOrder
         container.Parent = scrollFrame
         
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 12)
+        label.Size = UDim2.new(1, 0, 0, 14)
         label.Position = UDim2.new(0, 0, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = name
         label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 9
+        label.TextSize = 11
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
         local toggleButton = Instance.new("TextButton")
-        toggleButton.Size = UDim2.new(1, -10, 0, 22)
-        toggleButton.Position = UDim2.new(0, 0, 0, 13)
+        toggleButton.Size = UDim2.new(1, -10, 0, 26)
+        toggleButton.Position = UDim2.new(0, 0, 0, 14)
         toggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
         toggleButton.BorderSizePixel = 0
         toggleButton.Text = defaultValue
         toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleButton.TextSize = 10
+        toggleButton.TextSize = 12
         toggleButton.Font = Enum.Font.Gotham
         toggleButton.TextXAlignment = Enum.TextXAlignment.Left
         toggleButton.Parent = container
@@ -1087,6 +1108,7 @@ local function createSettingsGUI()
         
         local currentValue = defaultValue
         toggleButton.MouseButton1Click:Connect(function()
+            print("Sort order toggled:", currentValue)
             if currentValue == "Asc" then
                 currentValue = "Desc"
             else
@@ -1102,7 +1124,7 @@ local function createSettingsGUI()
     
     local function createToggle(name, defaultValue, layoutOrder, settingKey, descOn, descOff)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 28)
+        container.Size = UDim2.new(1, 0, 0, 34)
         container.BackgroundTransparency = 1
         container.LayoutOrder = layoutOrder
         container.Parent = scrollFrame
@@ -1113,31 +1135,31 @@ local function createSettingsGUI()
         label.BackgroundTransparency = 1
         label.Text = name
         label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 10
+        label.TextSize = 11
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
         
         local toggleFrame = Instance.new("Frame")
-        toggleFrame.Size = UDim2.new(0, 36, 0, 18)
-        toggleFrame.Position = UDim2.new(1, -36, 0.5, -9)
+        toggleFrame.Size = UDim2.new(0, 40, 0, 20)
+        toggleFrame.Position = UDim2.new(1, -40, 0.5, -10)
         toggleFrame.BackgroundColor3 = defaultValue and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
         toggleFrame.BorderSizePixel = 0
         toggleFrame.Parent = container
         
         local toggleCorner = Instance.new("UICorner")
-        toggleCorner.CornerRadius = UDim.new(0, 9)
+        toggleCorner.CornerRadius = UDim.new(0, 10)
         toggleCorner.Parent = toggleFrame
         
         local toggleButton = Instance.new("Frame")
-        toggleButton.Size = UDim2.new(0, 14, 0, 14)
-        toggleButton.Position = defaultValue and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+        toggleButton.Size = UDim2.new(0, 16, 0, 16)
+        toggleButton.Position = defaultValue and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
         toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         toggleButton.BorderSizePixel = 0
         toggleButton.Parent = toggleFrame
         
         local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 7)
+        buttonCorner.CornerRadius = UDim.new(0, 8)
         buttonCorner.Parent = toggleButton
         
         local isEnabled = defaultValue
@@ -1149,9 +1171,10 @@ local function createSettingsGUI()
         clickDetector.Parent = toggleFrame
         
         clickDetector.MouseButton1Click:Connect(function()
+            print("Toggle tapped:", name, isEnabled)
             isEnabled = not isEnabled
             local frameColor = isEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
-            local buttonPos = isEnabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+            local buttonPos = isEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
             
             TweenService:Create(toggleFrame, TweenInfo.new(0.2), {BackgroundColor3 = frameColor}):Play()
             TweenService:Create(toggleButton, TweenInfo.new(0.2), {Position = buttonPos}):Play()
@@ -1165,7 +1188,6 @@ local function createSettingsGUI()
         return function() return isEnabled end
     end
     
-    -- Create input fields with proper settings saving
     local minGenInput = createInputField("Min. Generation", "1000000", tostring(settings.minGeneration), 1, "minGeneration", "Minimum generation for searching pets without specified target.")
     local refreshTargetTags = createTagInputField("Target (Add)", settings.targetNames, "Name", 2, "Added target for search regardless of generation:", "Removed target:")
     local refreshBlacklistTags = createTagInputField("Blacklist (Add)", settings.blacklistNames, "Name", 3, "Added to blacklist to ignore:", "Removed from blacklist:")
@@ -1180,25 +1202,25 @@ local function createSettingsGUI()
     
     local fixedBottomFrame = Instance.new("Frame")
     fixedBottomFrame.Name = "FixedBottomFrame"
-    fixedBottomFrame.Size = UDim2.new(1, 0, 0, 110)
-    fixedBottomFrame.Position = UDim2.new(0, 0, 1, -115)
+    fixedBottomFrame.Size = UDim2.new(1, 0, 0, 120)
+    fixedBottomFrame.Position = UDim2.new(0, 0, 1, -120)
     fixedBottomFrame.BackgroundTransparency = 1
     fixedBottomFrame.Parent = contentFrame
     
     local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(1, -10, 0, 55)
+    buttonContainer.Size = UDim2.new(1, -10, 0, 60)
     buttonContainer.Position = UDim2.new(0, 5, 0, 0)
     buttonContainer.BackgroundTransparency = 1
     buttonContainer.Parent = fixedBottomFrame
     
     local startButton = Instance.new("TextButton")
-    startButton.Size = UDim2.new(1, -5, 0, 26)
+    startButton.Size = UDim2.new(1, -5, 0, 32)
     startButton.Position = UDim2.new(0, 0, 0, 0)
     startButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
     startButton.BorderSizePixel = 0
     startButton.Text = "START"
     startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    startButton.TextSize = 11
+    startButton.TextSize = 14
     startButton.Font = Enum.Font.GothamBold
     startButton.Parent = buttonContainer
     
@@ -1207,13 +1229,13 @@ local function createSettingsGUI()
     startCorner.Parent = startButton
     
     local stopButton = Instance.new("TextButton")
-    stopButton.Size = UDim2.new(1, -5, 0, 26)
-    stopButton.Position = UDim2.new(0, 0, 0, 29)
+    stopButton.Size = UDim2.new(1, -5, 0, 32)
+    stopButton.Position = UDim2.new(0, 0, 0, 34)
     stopButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
     stopButton.BorderSizePixel = 0
     stopButton.Text = "STOP"
     stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    stopButton.TextSize = 11
+    stopButton.TextSize = 14
     stopButton.Font = Enum.Font.GothamBold
     stopButton.Parent = buttonContainer
     
@@ -1222,30 +1244,30 @@ local function createSettingsGUI()
     stopCorner.Parent = stopButton
     
     local statusContainer = Instance.new("Frame")
-    statusContainer.Size = UDim2.new(1, -10, 0, 45)
-    statusContainer.Position = UDim2.new(0, 5, 0, 60)
+    statusContainer.Size = UDim2.new(1, -10, 0, 50)
+    statusContainer.Position = UDim2.new(0, 5, 0, 65)
     statusContainer.BackgroundTransparency = 1
     statusContainer.Parent = fixedBottomFrame
     
     local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, 0, 0, 24)
+    statusLabel.Size = UDim2.new(1, 0, 0, 26)
     statusLabel.Position = UDim2.new(0, 0, 0, 0)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "Ready to search..."
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
-    statusLabel.TextSize = 9
+    statusLabel.TextSize = 10
     statusLabel.Font = Enum.Font.Gotham
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.TextWrapped = true
     statusLabel.Parent = statusContainer
     
     local apiStatusLabel = Instance.new("TextLabel")
-    apiStatusLabel.Size = UDim2.new(1, 0, 0, 21)
-    apiStatusLabel.Position = UDim2.new(0, 0, 0, 24)
+    apiStatusLabel.Size = UDim2.new(1, 0, 0, 24)
+    apiStatusLabel.Position = UDim2.new(0, 0, 0, 26)
     apiStatusLabel.BackgroundTransparency = 1
     apiStatusLabel.Text = string.format("API: %d/3 | Cache: %d", apiState.mainApiUses, #apiState.cachedServers)
     apiStatusLabel.TextColor3 = Color3.fromRGB(120, 120, 130)
-    apiStatusLabel.TextSize = 8
+    apiStatusLabel.TextSize = 9
     apiStatusLabel.Font = Enum.Font.Gotham
     apiStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
     apiStatusLabel.Parent = statusContainer
@@ -1282,15 +1304,21 @@ local function createSettingsGUI()
     local hopConnection = nil
     
     local function startHopping()
+        print("Start button tapped")
         if isRunning then
             statusLabel.Text = "Already running!"
             statusLabel.TextColor3 = Color3.fromRGB(255, 150, 100)
+            showNotification("Warning", "Search is already running!")
             return
         end
         
-        if not isfile("hopStarted.txt") then
+        local fileSuccess, _ = pcall(function()
+            if not isfile("hopStarted.txt") then
+                writefile("hopStarted.txt", "true")
+            end
+        end)
+        if fileSuccess then
             showNotification("Search started", "Looking for target pets...")
-            writefile("hopStarted.txt", "true")
         end
         
         isRunning = true
@@ -1312,6 +1340,7 @@ local function createSettingsGUI()
     startButton.MouseButton1Click:Connect(startHopping)
     
     stopButton.MouseButton1Click:Connect(function()
+        print("Stop button tapped")
         isRunning = false
         foundPodiumsData = {}
         autoHopping = false
@@ -1329,9 +1358,11 @@ local function createSettingsGUI()
         end
         statusLabel.Text = "Search stopped."
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        showNotification("Stopped", "Server hopping stopped.")
     end)
     
     closeButton.MouseButton1Click:Connect(function()
+        print("Close button tapped")
         isRunning = false
         foundPodiumsData = {}
         autoHopping = false
@@ -1357,6 +1388,7 @@ local function createSettingsGUI()
     
     titleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            print("Dragging started")
             dragging = true
             dragStart = input.Position
             startPos = mainFrame.Position
@@ -1381,6 +1413,7 @@ local function createSettingsGUI()
     
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            print("Dragging ended")
             dragging = false
         end
     end)
@@ -1410,6 +1443,22 @@ local function createSettingsGUI()
     end
 end
 
+-- Test file I/O and HTTP compatibility
+local function testExecutorCompatibility()
+    local fileSuccess, fileResult = pcall(function()
+        writefile("test.txt", "test")
+        return isfile("test.txt") and readfile("test.txt") == "test"
+    end)
+    print("File I/O test:", fileSuccess and "Success" or "Failed: " .. fileResult)
+    
+    local httpSuccess, httpResult = pcall(function()
+        return game:HttpGet("https://games.roblox.com/v1/games/109983668079237/servers/Public?limit=10")
+    end)
+    print("HTTP test:", httpSuccess and "Success" or "Failed: " .. httpResult)
+end
+
+testExecutorCompatibility()
+
 loadSettings()
 loadGUIState()
 loadAPIState()
@@ -1417,5 +1466,5 @@ loadAPIState()
 if game.PlaceId == ALLOWED_PLACE_ID then
     createSettingsGUI()
 else
-    
+    showNotification("Error", "This script only works in Place ID " .. ALLOWED_PLACE_ID)
 end
