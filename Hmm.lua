@@ -5,26 +5,7 @@ local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local MarketplaceService = game:GetService("MarketplaceService")
 local player = Players.LocalPlayer
-
--- Configuration
-local config = {
-    walkSpeed = 50,
-    flySpeed = 25,
-    floatVelocity = 25,
-    floatMaxForce = 50000,
-    animationId = "http://www.roblox.com/asset/?id=18537363391",
-    characterLoadTimeout = 30 -- seconds
-}
-
--- Error Logging
-local function logError(message)
-    warn("[Krypton Hub Error]: " .. message)
-    if lib then
-        lib:Notification("KRYPTON HUB", "Error: " .. message, 5)
-    end
-end
 
 -- Loading Screen
 local blur = Instance.new("BlurEffect", Lighting)
@@ -59,7 +40,6 @@ local function tweenOutAndDestroy()
     task.wait(0.6)
     screenGui:Destroy()
     blur:Destroy()
-    print("Loading screen completed")
 end
 
 for i = 1, #word do
@@ -95,27 +75,17 @@ task.wait(2)
 tweenOutAndDestroy()
 
 -- Wait for game and player to load
-local startTime = tick()
-repeat
-    task.wait()
-    if tick() - startTime > config.characterLoadTimeout then
-        logError("Timeout waiting for player or character to load")
-        break
-    end
-until player and player.Character
-print("Player loaded:", player)
-print("Character loaded:", player.Character)
+repeat task.wait() until player and player.Character
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
-print("Game loaded")
 
 -- Load UI Library and Config Manager
 local success, result = pcall(function()
     return game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/Lib")
 end)
 if not success then
-    logError("Failed to load UI library: " .. tostring(result))
+    warn("Failed to load UI library: " .. tostring(result))
     return
 end
 local lib = loadstring(result)()
@@ -124,7 +94,7 @@ success, result = pcall(function()
     return game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/ConfigManager")
 end)
 if not success then
-    logError("Failed to load Config Manager: " .. tostring(result))
+    warn("Failed to load Config Manager: " .. tostring(result))
     return
 end
 local FlagsManager = loadstring(result)()
@@ -147,23 +117,24 @@ local function RoleChecker()
     elseif string.find(LRM_UserNote, "Premium") then
         return "Premium Version"
     elseif string.find(LRM_UserNote, "Owner") then
-        return "Developer agent_duke13"
+        return "Developer x2zu"
     else
         return "No Role Assigned"
     end
-}
+end
 
 -- UI Setup
-local gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
 local main = lib:Load({
-    Title = gameName .. " 〢 discord.gg/jXSyQFnQCY 〢 " .. RoleChecker(),
-    ToggleButton = "rbxassetid://105059922903197",
+    Title = game:GetService("MarketplaceService"):GetProductInfo(109983668079237).Name .. ' 〢 discord.gg/jXSyQFnQCY 〢 ' .. RoleChecker(),
+    ToggleButton = "rbxassetid://95131705390407",
     BindGui = Enum.KeyCode.RightControl,
 })
 
 local tabs = {
     Information = main:AddTab("Information"),
     General = main:AddTab("General"),
+    Movement = main:AddTab("Movement"),
+    Visuals = main:AddTab("Visuals"),
     Config = main:AddTab("Config"),
 }
 main:SelectTab()
@@ -171,12 +142,27 @@ main:SelectTab()
 local Sections = {
     Welcome = tabs.Information:AddSection({Default = true, Locked = true}),
     Discord = tabs.Information:AddSection({Default = true, Locked = true}),
-    Main = tabs.General:AddSection({Title = "Main Features", Description = "", Default = false, Locked = false}),
+    Main = tabs.General:AddSection({Title = "Instant Proximity", Description = "", Default = false, Locked = false}),
     Teleport = tabs.General:AddSection({Title = "Teleport", Description = "", Default = false, Locked = false}),
-    Character = tabs.General:AddSection({Title = "Character", Description = "", Default = false, Locked = false}),
+    MiscTabs = tabs.General:AddSection({Title = "Character", Description = "", Default = false, Locked = false}),
     Shop = tabs.General:AddSection({Title = "Shop", Description = "", Default = false, Locked = false}),
-    Visuals = tabs.General:AddSection({Title = "Visuals", Description = "", Default = false, Locked = false}),
+    MovementMain = tabs.Movement:AddSection({Title = "Movement Features", Description = "", Default = false, Locked = false}),
+    Flight = tabs.Movement:AddSection({Title = "Flight", Description = "", Default = false, Locked = false}),
+    VisualTabs = tabs.Visuals:AddSection({Title = "ESP", Description = "", Default = false, Locked = false}),
+    Effects = tabs.Visuals:AddSection({Title = "Visual Effects", Description = "", Default = false, Locked = false}),
 }
+
+Sections.Discord:AddParagraph({
+    Title = "Found a bug?",
+    Description = "Please report by joining our Discord."
+})
+Sections.Discord:AddButton({
+    Title = "Copy Discord Invite",
+    Callback = function()
+        setclipboard("https://discord.gg/jXSyQFnQCY")
+        lib:Notification("Discord", "Copied invite to clipboard, just paste it.", 5)
+    end,
+})
 
 getgenv().WelcomeParagraph = Sections.Welcome:AddParagraph({
     Title = "Loading...",
@@ -188,297 +174,395 @@ getgenv().WelcomeParagraph:SetDesc([[
     We're always working on improvements and features.
     If you experience issues or have feedback, don't hesitate to join our Discord server.
     Recent Updates:
-    [+] Switched to new UI (thanks to x2zu)
-    [+] Added Shop, Visuals, Character features
+    [+] Added Semi-Invisible, Flight, Float, Speed Booster
+    [+] Enhanced movement features
     Join the Discord for help, suggestions, and the latest updates.
 ]])
 
-Sections.Discord:AddParagraph({
-    Title = "Found a bug?",
-    Description = "Please report by joining our Discord."
-})
-Sections.Discord:AddButton({
-    Title = "Copy Discord Invite",
-    Callback = function()
-        if setclipboard then
-            setclipboard("https://discord.gg/jXSyQFnQCY")
-            lib:Notification("KRYPTON HUB", "Copied Discord invite to clipboard!", 5)
-        else
-            lib:Notification("KRYPTON HUB", "Clipboard not supported on this device", 5)
-        end
-    end,
-})
-
--- Global Variables
+-- ========== ENHANCED GODMODE PROTECTION ==========
 local character, hrp, humanoid
-local connections = {
-    ProximityPrompts = {},
-    SemiInvisible = {},
-    GodModeToggle = {},
-    Fly = nil,
-    Float = nil,
-    Jump = nil,
-    Speed = nil,
-    ESP = nil,
-    Fullbright = nil
-}
-local espFolders = {}
-local tweenActive = false
-local flyActive = false
-local floatActive = false
-local isInvisible = false
-local infJumpActive = false
-local speedActive = false
-local espActive = false
-local fullbrightActive = false
-local godModeToggle = false
-local ipp = false
-local pp = {} -- Proximity prompts
-local originalBrightness, originalClockTime
 
--- Update Character References
 local function updateCharacterReferences()
     character = player.Character
     if character then
         hrp = character:FindFirstChild("HumanoidRootPart")
         humanoid = character:FindFirstChildOfClass("Humanoid")
-        print("Character updated - HRP:", hrp, "Humanoid:", humanoid)
     else
         hrp = nil
         humanoid = nil
-        print("No character found")
     end
 end
+
 updateCharacterReferences()
 
 player.CharacterAdded:Connect(function(c)
     character = c
     task.wait(0.5)
-    updateCharacterReferences()
+    hrp = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
 end)
 
--- Global Godmode Protection
-local function setupGlobalGodmode()
-    local mt = getrawmetatable(game)
-    if not mt then
-        logError("Failed to get game metatable")
-        return
-    end
-    local oldNC = mt.__namecall
-    local oldNI = mt.__newindex
-    
-    if not oldNC or not oldNI then
-        logError("Metatable methods not found")
-        return
-    end
+-- ========== ENHANCED TWEEN TO BASE (HEIGHT-PRESERVING) ==========
+local tweenActive = false
+local currentTween
 
-    setreadonly(mt, false)
-    
-    mt.__namecall = newcclosure(function(self, ...)
-        local m = getnamecallmethod()
-        if self == humanoid then
-            if m == "ChangeState" and select(1, ...) == Enum.HumanoidStateType.Dead then
-                return
-            end
-            if m == "SetStateEnabled" then
-                local st, en = ...
-                if st == Enum.HumanoidStateType.Dead and en == true then
-                    return
-                end
-            end
-            if m == "Destroy" then
-                return
-            end
-        end
-        if self == character and m == "BreakJoints" then
-            return
-        end
-        return oldNC(self, ...)
-    end)
-    
-    mt.__newindex = newcclosure(function(self, k, v)
-        if self == humanoid then
-            if k == "Health" and type(v) == "number" and v <= 0 then
-                return
-            end
-            if k == "MaxHealth" and type(v) == "number" and v < humanoid.MaxHealth then
-                return
-            end
-            if k == "BreakJointsOnDeath" and v == true then
-                return
-            end
-            if k == "Parent" and v == nil then
-                return
-            end
-        end
-        return oldNI(self, k, v)
-    end)
-    
-    setreadonly(mt, true)
-    print("Godmode setup completed")
-end
-if humanoid then
-    local success, err = pcall(setupGlobalGodmode)
-    if not success then
-        logError("Godmode setup failed: " .. err)
-    end
-end
-player.CharacterAdded:Connect(function()
-    updateCharacterReferences()
-    if humanoid then
-        local success, err = pcall(setupGlobalGodmode)
-        if not success then
-            logError("Godmode setup failed: " .. err)
+local function getBasePosition()
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        local base = plot:FindFirstChild("DeliveryHitbox")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+            return base.Position
         end
     end
-end)
-
--- Proximity Prompts
-local function cleanupProximityConnections()
-    for _, connection in pairs(connections.ProximityPrompts) do
-        connection:Disconnect()
-    end
-    connections.ProximityPrompts = {}
+    return nil
 end
 
-local function dop(p)
-    if p and p:FindFirstChild("Base") and p.Base:FindFirstChild("Spawn") and p.Base.Spawn:FindFirstChild("PromptAttachment") then
-        local promptAttachment = p.Base.Spawn.PromptAttachment
-        print("PromptAttachment found for", p.Name)
-        if promptAttachment:FindFirstChild("ProximityPrompt") then
-            local c = promptAttachment.ProximityPrompt
-            table.insert(pp, c)
-            if ipp then
-                c.HoldDuration = 0
-                table.insert(connections.ProximityPrompts, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
-                    if c.HoldDuration ~= 0 and ipp then
-                        c.HoldDuration = 0
-                    end
-                end))
-            end
-        end
-        table.insert(connections.ProximityPrompts, promptAttachment.ChildAdded:Connect(function(c)
-            if c:IsA("ProximityPrompt") then
-                table.insert(pp, c)
-                if ipp then
-                    c.HoldDuration = 0
-                end
-                table.insert(connections.ProximityPrompts, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
-                    if c.HoldDuration ~= 0 and ipp then
-                        c.HoldDuration = 0
-                    end
-                end))
-            end
-        end))
-    else
-        print("No PromptAttachment for", p and p.Name or "nil")
-    end
-end
-
-local plots = Workspace:FindFirstChild("Plots")
-if plots then
-    for _, plot in pairs(plots:GetChildren()) do
-        print("Checking plot:", plot.Name)
-        if plot:FindFirstChild("AnimalPodiums") then
-            for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
-                dop(podium)
-            end
-            table.insert(connections.ProximityPrompts, plot.AnimalPodiums.ChildAdded:Connect(dop))
-        end
-    end
-else
-    logError("Plots not found in Workspace")
-end
-
-Sections.Main:AddToggle("InstantProximityPrompt", {
-    Title = "Instant Proximity Prompts",
+Sections.Teleport:AddToggle("EnhancedTweenToBase", {
+    Title = "Enhanced Tween To Base",
+    Description = "Tween to base at your current height (no rubberband)",
     Default = false,
-    Callback = function(state)
-        print("Instant Proximity toggled")
-        ipp = state
-        if ipp then
-            for _, v in pairs(pp) do
-                v.HoldDuration = 0
-            end
-            lib:Notification("KRYPTON HUB", "Instant Proximity enabled", 3)
-        else
-            for _, v in pairs(pp) do
-                v.HoldDuration = 0.5
-            end
-            lib:Notification("KRYPTON HUB", "Instant Proximity disabled", 3)
-        end
-    end
-})
-
--- Teleport Features
-Sections.Teleport:AddToggle("TweenToBase", {
-    Title = "Tween to Base",
-    Description = "Smoothly teleports to your base",
-    Default = false,
-    Callback = function(state)
-        print("Tween to Base toggled")
-        if not state then
+    Callback = function(value)
+        if not value then 
             tweenActive = false
-            lib:Notification("KRYPTON HUB", "Tween stopped", 3)
-            return
+            if currentTween then currentTween:Cancel() end
+            return 
         end
-        local base = nil
-        for _, v in pairs(Workspace:WaitForChild("Plots"):GetChildren()) do
-            local yourBase = v:FindFirstChild("YourBase", true)
-            if yourBase and yourBase.Enabled then
-                base = v:FindFirstChild("DeliveryHitbox", true)
-                break
-            end
-        end
-        if base and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+        
+        local basePos = getBasePosition()
+        if basePos then
             tweenActive = true
-            lib:Notification("KRYPTON HUB", "Tweening to base...", 3)
-            local hrp = player.Character.HumanoidRootPart
-            local humanoid = player.Character.Humanoid
-            local plrpos = hrp.Position
-            local tppos = Vector3.new(base.Position.X, plrpos.Y, base.Position.Z)
-            local tweenInfo = TweenInfo.new(
-                (tppos - plrpos).Magnitude / humanoid.WalkSpeed,
-                Enum.EasingStyle.Linear,
-                Enum.EasingDirection.Out
-            )
-            local tween = TweenService:Create(hrp, tweenInfo, {
-                CFrame = CFrame.new(tppos) * (hrp.CFrame - plrpos),
-                Velocity = Vector3.new(0, 0, 0)
-            })
-            tween:Play()
-            tween.Completed:Connect(function()
+            lib:Notification("KRYPTON-HUB", "Tweening to base at current height...", 3)
+            
+            spawn(function()
+                updateCharacterReferences()
+                if not hrp or not humanoid then 
+                    lib:Notification("KRYPTON-HUB", "No character found", 3)
+                    tweenActive = false
+                    return 
+                end
+                
+                -- Get your current Y height and base XZ position
+                local currentHeight = hrp.Position.Y
+                local targetPos = Vector3.new(basePos.X, currentHeight, basePos.Z)
+                local startPos = hrp.Position
+                
+                local distance = (targetPos - startPos).Magnitude
+                local duration = math.max(2, distance / 25) -- Faster but still smooth
+                
+                local startTime = tick()
+                
+                while tweenActive and tick() - startTime < duration do
+                    if not hrp then break end
+                    
+                    local elapsed = tick() - startTime
+                    local progress = elapsed / duration
+                    
+                    -- Use cubic easing for smoother movement
+                    local easedProgress = progress * progress * (3 - 2 * progress)
+                    
+                    -- Calculate new position maintaining Y height
+                    local newPos = startPos + (targetPos - startPos) * easedProgress
+                    newPos = Vector3.new(newPos.X, currentHeight, newPos.Z)
+                    
+                    -- Use CFrame to preserve rotation and avoid velocity issues
+                    hrp.CFrame = CFrame.new(newPos)
+                    
+                    -- Keep character in running state to prevent ragdoll
+                    if humanoid then
+                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                    end
+                    
+                    task.wait(0.033) -- ~30 FPS for smooth movement
+                end
+                
+                if tweenActive and hrp then
+                    -- Final position with exact height preservation
+                    hrp.CFrame = CFrame.new(targetPos.X, currentHeight, targetPos.Z)
+                    lib:Notification("KRYPTON-HUB", "Arrived at base!", 3)
+                end
+                
                 tweenActive = false
-                lib:Notification("KRYPTON HUB", "Reached base", 3)
             end)
         else
-            logError("Base or character components not found")
+            lib:Notification("KRYPTON-HUB", "Base not found!", 3)
         end
     end
 })
 
--- Slow Flight
-Sections.Main:AddToggle("SlowFlight", {
-    Title = "Slow Flight",
-    Description = "Fly using camera direction",
+-- ========== SEMI-INVISIBLE SYSTEM ==========
+local isInvisible = false
+local semiInvisibleConnections = {}
+local clone, oldRoot, hip, animTrack
+
+local function semiInvisibleFunction()
+    local DEPTH_OFFSET = 0.15  
+
+    local function removeFolders()  
+        local playerName = player.Name  
+        local playerFolder = Workspace:FindFirstChild(playerName)  
+        if not playerFolder then  
+            return  
+        end  
+
+        local doubleRig = playerFolder:FindFirstChild("DoubleRig")  
+        if doubleRig then  
+            doubleRig:Destroy()  
+        end  
+
+        local constraints = playerFolder:FindFirstChild("Constraints")  
+        if constraints then  
+            constraints:Destroy()  
+        end  
+
+        local childAddedConn = playerFolder.ChildAdded:Connect(function(child)  
+            if child.Name == "DoubleRig" or child.Name == "Constraints" then  
+                child:Destroy()  
+            end  
+        end)  
+        table.insert(semiInvisibleConnections, childAddedConn)  
+    end  
+
+    local function doClone()  
+        updateCharacterReferences()
+        if character and humanoid and humanoid.Health > 0 then  
+            hip = humanoid.HipHeight  
+            oldRoot = hrp
+            if not oldRoot or not oldRoot.Parent then  
+                return false  
+            end  
+
+            local tempParent = Instance.new("Model")  
+            tempParent.Parent = game  
+            character.Parent = tempParent  
+
+            clone = oldRoot:Clone()  
+            clone.Parent = character  
+            oldRoot.Parent = Workspace.CurrentCamera  
+            clone.CFrame = oldRoot.CFrame  
+
+            character.PrimaryPart = clone  
+            character.Parent = Workspace  
+
+            for _, v in pairs(character:GetDescendants()) do  
+                if v:IsA("Weld") or v:IsA("Motor6D") then  
+                    if v.Part0 == oldRoot then  
+                        v.Part0 = clone  
+                    end  
+                    if v.Part1 == oldRoot then  
+                        v.Part1 = clone  
+                    end  
+                end  
+            end  
+
+            tempParent:Destroy()  
+            return true  
+        end  
+        return false  
+    end  
+
+    local function revertClone()  
+        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then  
+            return false  
+        end  
+
+        local tempParent = Instance.new("Model")  
+        tempParent.Parent = game  
+        character.Parent = tempParent  
+
+        oldRoot.Parent = character  
+        character.PrimaryPart = oldRoot  
+        character.Parent = Workspace  
+        oldRoot.CanCollide = true  
+
+        for _, v in pairs(character:GetDescendants()) do  
+            if v:IsA("Weld") or v:IsA("Motor6D") then  
+                if v.Part0 == clone then  
+                    v.Part0 = oldRoot  
+                end  
+                if v.Part1 == clone then  
+                    v.Part1 = oldRoot  
+                end  
+            end  
+        end  
+
+        if clone then  
+            local oldPos = clone.CFrame  
+            clone:Destroy()  
+            clone = nil  
+            oldRoot.CFrame = oldPos  
+        end  
+
+        oldRoot = nil  
+        if character and humanoid then  
+            humanoid.HipHeight = hip  
+        end  
+    end  
+
+    local function animationTrickery()  
+        if character and humanoid and humanoid.Health > 0 then  
+            local anim = Instance.new("Animation")  
+            anim.AnimationId = "http://www.roblox.com/asset/?id=18537363391"  
+            local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)  
+            animTrack = animator:LoadAnimation(anim)  
+            animTrack.Priority = Enum.AnimationPriority.Action4  
+            animTrack:Play(0, 1, 0)  
+            anim:Destroy()  
+
+            local animStoppedConn = animTrack.Stopped:Connect(function()  
+                if isInvisible then  
+                    animationTrickery()  
+                end  
+            end)  
+            table.insert(semiInvisibleConnections, animStoppedConn)  
+
+            task.delay(0, function()  
+                animTrack.TimePosition = 0.7  
+                task.delay(1, function()  
+                    animTrack:AdjustSpeed(math.huge)  
+                end)  
+            end)  
+        end  
+    end  
+
+    local function enableInvisibility()  
+        updateCharacterReferences()
+        if not character or humanoid.Health <= 0 then  
+            return false
+        end  
+
+        removeFolders()  
+        local success = doClone()  
+        if success then  
+            task.wait(0.1)  
+            animationTrickery()  
+            local connection = RunService.PreSimulation:Connect(function(dt)  
+                updateCharacterReferences()
+                if character and humanoid and humanoid.Health > 0 and oldRoot then  
+                    local root = character.PrimaryPart or hrp
+                    if root then  
+                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)  
+                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)  
+                        oldRoot.Velocity = root.Velocity  
+                        oldRoot.CanCollide = false  
+                    end  
+                end  
+            end)  
+            table.insert(semiInvisibleConnections, connection)  
+
+            local characterConnection = player.CharacterAdded:Connect(function(newChar)
+                if isInvisible then
+                    if animTrack then  
+                        animTrack:Stop()  
+                        animTrack:Destroy()  
+                        animTrack = nil  
+                    end  
+                    revertClone()
+                    removeFolders()
+                    isInvisible = false
+                    
+                    for _, conn in ipairs(semiInvisibleConnections) do  
+                        if conn then conn:Disconnect() end  
+                    end  
+                    semiInvisibleConnections = {}
+                    
+                    -- Reset toggle
+                    if semiInvisibleToggle then
+                        semiInvisibleToggle:SetValue(false)
+                    end
+                end
+            end)
+            table.insert(semiInvisibleConnections, characterConnection)
+            
+            return true
+        end  
+        return false
+    end  
+
+    local function disableInvisibility()  
+        if animTrack then  
+            animTrack:Stop()  
+            animTrack:Destroy()  
+            animTrack = nil  
+        end  
+        revertClone()  
+        removeFolders()  
+        
+        for _, conn in ipairs(semiInvisibleConnections) do  
+            if conn then conn:Disconnect() end  
+        end  
+        semiInvisibleConnections = {}  
+    end
+
+    if not isInvisible then
+        removeFolders()  
+        if enableInvisibility() then
+            isInvisible = true
+            lib:Notification("KRYPTON-HUB", "Semi-Invisible enabled (F key to toggle)", 3)
+        end
+    else
+        disableInvisibility()
+        isInvisible = false
+        lib:Notification("KRYPTON-HUB", "Semi-Invisible disabled", 3)
+    end
+end
+
+-- Semi-Invisible Toggle
+local semiInvisibleToggle = Sections.MiscTabs:AddToggle("SemiInvisible", {
+    Title = "Semi Invisible",
+    Description = "F key to toggle",
     Default = false,
-    Callback = function(state)
-        print("Slow Flight toggled")
-        flyActive = state
+    Callback = function(value)
+        if value then
+            semiInvisibleFunction()
+        else
+            if isInvisible then
+                semiInvisibleFunction()
+            end
+        end
+    end
+})
+
+-- F key toggle for semi-invisible
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
+        semiInvisibleFunction()
+        -- Update toggle state
+        if semiInvisibleToggle then
+            semiInvisibleToggle:SetValue(isInvisible)
+        end
+    end
+end)
+
+-- ========== FLIGHT SYSTEM ==========
+local flyActive = false
+local flyConnection
+
+local flightToggle = Sections.Flight:AddToggle("Flight", {
+    Title = "Slow Flight",
+    Description = "Use camera direction to fly",
+    Default = false,
+    Callback = function(value)
+        flyActive = value
+        
         if flyActive then
-            lib:Notification("KRYPTON HUB", "Slow Flight enabled - Use camera direction", 3)
-            connections.Fly = RunService.Stepped:Connect(function()
+            lib:Notification("KRYPTON-HUB", "Slow Flight enabled - Use camera direction", 3)
+            
+            flyConnection = RunService.RenderStepped:Connect(function()
                 updateCharacterReferences()
                 if flyActive and hrp then
-                    hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * config.flySpeed
+                    hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
                 end
             end)
         else
-            lib:Notification("KRYPTON HUB", "Slow Flight disabled", 3)
-            if connections.Fly then
-                connections.Fly:Disconnect()
-                connections.Fly = nil
+            lib:Notification("KRYPTON-HUB", "Slow Flight disabled", 3)
+            
+            if flyConnection then
+                flyConnection:Disconnect()
+                flyConnection = nil
             end
+            
             if humanoid then
                 humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
@@ -486,280 +570,60 @@ Sections.Main:AddToggle("SlowFlight", {
     end
 })
 
--- Float
-Sections.Main:AddToggle("Float", {
+-- ========== FLOAT SYSTEM ==========
+local floatActive = false
+local floatBodyVelocity
+
+local floatToggle = Sections.MovementMain:AddToggle("Float", {
     Title = "Float",
     Description = "Float in the air",
     Default = false,
-    Callback = function(state)
-        print("Float toggled")
-        floatActive = state
+    Callback = function(value)
+        floatActive = value
+        
         if floatActive then
-            lib:Notification("KRYPTON HUB", "Float enabled", 3)
+            lib:Notification("KRYPTON-HUB", "Float enabled", 3)
+            
             updateCharacterReferences()
             if hrp then
-                setupGlobalGodmode()
-                connections.Float = Instance.new("BodyVelocity")
-                connections.Float.Velocity = Vector3.new(0, config.floatVelocity, 0)
-                connections.Float.MaxForce = Vector3.new(0, config.floatMaxForce, 0)
-                connections.Float.Parent = hrp
-            else
-                logError("HumanoidRootPart not found for Float")
+                floatBodyVelocity = Instance.new("BodyVelocity")
+                floatBodyVelocity.Velocity = Vector3.new(0, 25, 0)
+                floatBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
+                floatBodyVelocity.Parent = hrp
             end
         else
-            lib:Notification("KRYPTON HUB", "Float disabled", 3)
-            if connections.Float then
-                connections.Float:Destroy()
-                connections.Float = nil
+            lib:Notification("KRYPTON-HUB", "Float disabled", 3)
+            
+            if floatBodyVelocity then
+                floatBodyVelocity:Destroy()
+                floatBodyVelocity = nil
             end
         end
     end
 })
 
--- Semi-Invisible
-local function semiInvisibleFunction()
-    print("Semi-Invisible toggled")
-    local DEPTH_OFFSET = 0.15
-    local clone, oldRoot, hip, animTrack, connection, characterConnection
+-- ========== SPEED BOOSTER ==========
+local speedActive = false
+local speedConn
+local baseSpeed = 27
 
-    local function removeFolders()
-        local playerName = player.Name
-        local playerFolder = Workspace:FindFirstChild(playerName)
-        if not playerFolder then return end
-        local doubleRig = playerFolder:FindFirstChild("DoubleRig")
-        if doubleRig then doubleRig:Destroy() end
-        local constraints = playerFolder:FindFirstChild("Constraints")
-        if constraints then constraints:Destroy() end
-        local childAddedConn = playerFolder.ChildAdded:Connect(function(child)
-            if child.Name == "DoubleRig" or child.Name == "Constraints" then
-                child:Destroy()
-            end
-        end)
-        table.insert(connections.SemiInvisible, childAddedConn)
-    end
-
-    local function doClone()
-        if character and humanoid and humanoid.Health > 0 then
-            hip = humanoid.HipHeight
-            oldRoot = hrp
-            if not oldRoot or not oldRoot.Parent then return false end
-            local tempParent = Instance.new("Model")
-            tempParent.Parent = game
-            character.Parent = tempParent
-            clone = oldRoot:Clone()
-            clone.Parent = character
-            oldRoot.Parent = Workspace.CurrentCamera
-            clone.CFrame = oldRoot.CFrame
-            character.PrimaryPart = clone
-            character.Parent = Workspace
-            for _, v in pairs(character:GetDescendants()) do
-                if v:IsA("Weld") or v:IsA("Motor6D") then
-                    if v.Part0 == oldRoot then v.Part0 = clone end
-                    if v.Part1 == oldRoot then v.Part1 = clone end
-                end
-            end
-            tempParent:Destroy()
-            return true
-        end
-        return false
-    end
-
-    local function revertClone()
-        if not oldRoot or not oldRoot:IsDescendantOf(Workspace) or not character or humanoid.Health <= 0 then
-            return false
-        end
-        local tempParent = Instance.new("Model")
-        tempParent.Parent = game
-        character.Parent = tempParent
-        oldRoot.Parent = character
-        character.PrimaryPart = oldRoot
-        character.Parent = Workspace
-        oldRoot.CanCollide = true
-        for _, v in pairs(character:GetDescendants()) do
-            if v:IsA("Weld") or v:IsA("Motor6D") then
-                if v.Part0 == clone then v.Part0 = oldRoot end
-                if v.Part1 == clone then v.Part1 = oldRoot end
-            end
-        end
-        if clone then
-            local oldPos = clone.CFrame
-            clone:Destroy()
-            clone = nil
-            oldRoot.CFrame = oldPos
-        end
-        oldRoot = nil
-        if character and humanoid then
-            humanoid.HipHeight = hip
-        end
-    end
-
-    local function animationTrickery()
-        if character and humanoid and humanoid.Health > 0 then
-            local anim = Instance.new("Animation")
-            anim.AnimationId = config.animationId
-            local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
-            local success, loadedAnimTrack = pcall(function()
-                return animator:LoadAnimation(anim)
-            end)
-            if success then
-                animTrack = loadedAnimTrack
-                animTrack.Priority = Enum.AnimationPriority.Action4
-                animTrack:Play(0, 1, 0)
-                anim:Destroy()
-                local animStoppedConn = animTrack.Stopped:Connect(function()
-                    if isInvisible then
-                        animationTrickery()
-                    end
-                end)
-                table.insert(connections.SemiInvisible, animStoppedConn)
-                task.delay(0, function()
-                    animTrack.TimePosition = 0.7
-                    task.delay(1, function()
-                        animTrack:AdjustSpeed(math.huge)
-                    end)
-                end)
-            else
-                logError("Failed to load animation for semi-invisible")
-            end
-        end
-    end
-
-    local function enableInvisibility()
-        if not character or humanoid.Health <= 0 then return false end
-        removeFolders()
-        local success = doClone()
-        if success then
-            task.wait(0.1)
-            animationTrickery()
-            connection = RunService.PreSimulation:Connect(function(dt)
-                if character and humanoid and humanoid.Health > 0 and oldRoot then
-                    local root = character.PrimaryPart or hrp
-                    if root then
-                        local cf = root.CFrame - Vector3.new(0, humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)
-                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)
-                        oldRoot.Velocity = root.Velocity
-                        oldRoot.CanCollide = false
-                    end
-                end
-            end)
-            table.insert(connections.SemiInvisible, connection)
-            characterConnection = player.CharacterAdded:Connect(function(newChar)
-                if isInvisible then
-                    if animTrack then
-                        animTrack:Stop()
-                        animTrack:Destroy()
-                        animTrack = nil
-                    end
-                    if connection then connection:Disconnect() end
-                    revertClone()
-                    removeFolders()
-                    isInvisible = false
-                    for _, conn in ipairs(connections.SemiInvisible) do
-                        if conn then conn:Disconnect() end
-                    end
-                    connections.SemiInvisible = {}
-                end
-            end)
-            table.insert(connections.SemiInvisible, characterConnection)
-            return true
-        end
-        return false
-    end
-
-    local function disableInvisibility()
-        if animTrack then
-            animTrack:Stop()
-            animTrack:Destroy()
-            animTrack = nil
-        end
-        if connection then connection:Disconnect() end
-        if characterConnection then characterConnection:Disconnect() end
-        revertClone()
-        removeFolders()
-    end
-
-    if not isInvisible then
-        removeFolders()
-        setupGlobalGodmode()
-        if enableInvisibility() then
-            isInvisible = true
-            lib:Notification("KRYPTON HUB", "Semi-Invisible enabled (F key to toggle)", 3)
-        end
-    else
-        disableInvisibility()
-        isInvisible = false
-        lib:Notification("KRYPTON HUB", "Semi-Invisible disabled", 3)
-        pcall(function()
-            local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")
-            if oldGui then oldGui:Destroy() end
-        end)
-        for _, conn in ipairs(connections.SemiInvisible) do
-            if conn then conn:Disconnect() end
-        end
-        connections.SemiInvisible = {}
-    end
-end
-
-Sections.Character:AddToggle("SemiInvisible", {
-    Title = "Semi Invisible",
-    Description = "Makes you partially invisible (F key to toggle)",
-    Default = false,
-    Callback = function(state)
-        print("Semi-Invisible button clicked")
-        semiInvisibleFunction()
-    end
-})
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
-        print("F key pressed for Semi-Invisible")
-        semiInvisibleFunction()
-    end
-end)
-
--- Infinite Jump
-Sections.Character:AddToggle("InfiniteJump", {
-    Title = "Infinite Jump",
-    Default = false,
-    Callback = function(state)
-        print("Infinite Jump toggled")
-        infJumpActive = state
-        if infJumpActive then
-            lib:Notification("KRYPTON HUB", "Infinite Jump enabled", 3)
-            connections.Jump = UserInputService.JumpRequest:Connect(function()
-                if infJumpActive and humanoid and humanoid.Health > 0 then
-                    setupGlobalGodmode()
-                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                    if hrp then
-                        hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-                    end
-                end
-            end)
-        else
-            lib:Notification("KRYPTON HUB", "Infinite Jump disabled", 3)
-            if connections.Jump then
-                connections.Jump:Disconnect()
-                connections.Jump = nil
-            end
-        end
-    end
-})
-
--- Speed Booster
-Sections.Character:AddToggle("SpeedBooster", {
+local speedToggle = Sections.MovementMain:AddToggle("SpeedBooster", {
     Title = "Speed Booster",
-    Description = "Increases movement speed",
+    Description = "Enhanced movement speed",
     Default = false,
-    Callback = function(state)
-        print("Speed Booster toggled")
-        speedActive = state
+    Callback = function(value)
+        speedActive = value
+        
         if speedActive then
-            lib:Notification("KRYPTON HUB", "Speed Booster enabled", 3)
+            lib:Notification("KRYPTON-HUB", "Speed Booster enabled", 3)
+            
             local function GetCharacter()
                 local Char = player.Character or player.CharacterAdded:Wait()
-                local HRP = Char and Char:WaitForChild("HumanoidRootPart")
-                local Hum = Char and Char:FindFirstChildOfClass("Humanoid")
+                local HRP = Char:WaitForChild("HumanoidRootPart")
+                local Hum = Char:FindFirstChildOfClass("Humanoid")
                 return Char, HRP, Hum
             end
+            
             local function getMovementInput()
                 local Char, HRP, Hum = GetCharacter()
                 if not Char or not HRP or not Hum then return Vector3.new(0,0,0) end
@@ -769,26 +633,30 @@ Sections.Character:AddToggle("SpeedBooster", {
                 end
                 return Vector3.new(0,0,0)
             end
-            connections.Speed = RunService.Stepped:Connect(function()
+            
+            speedConn = RunService.Heartbeat:Connect(function()
                 local Char, HRP, Hum = GetCharacter()
                 if not Char or not HRP or not Hum then return end
                 local inputDirection = getMovementInput()
                 if inputDirection.Magnitude > 0 then
                     HRP.AssemblyLinearVelocity = Vector3.new(
-                        inputDirection.X * config.walkSpeed,
+                        inputDirection.X * baseSpeed,
                         HRP.AssemblyLinearVelocity.Y,
-                        inputDirection.Z * config.walkSpeed
+                        inputDirection.Z * baseSpeed
                     )
                 else
                     HRP.AssemblyLinearVelocity = Vector3.new(0, HRP.AssemblyLinearVelocity.Y, 0)
                 end
             end)
         else
-            lib:Notification("KRYPTON HUB", "Speed Booster disabled", 3)
-            if connections.Speed then
-                connections.Speed:Disconnect()
-                connections.Speed = nil
+            lib:Notification("KRYPTON-HUB", "Speed Booster disabled", 3)
+            
+            if speedConn then 
+                speedConn:Disconnect() 
+                speedConn = nil 
             end
+            
+            -- Stop movement when disabled
             updateCharacterReferences()
             if hrp then
                 hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
@@ -797,75 +665,166 @@ Sections.Character:AddToggle("SpeedBooster", {
     end
 })
 
--- God Mode
-local function enableGodMode()
-    local function apply(character)
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if not humanoid then return end
-        humanoid.BreakJointsOnDeath = false
-        humanoid.RequiresNeck = false
-        for _, connection in ipairs(getconnections(humanoid.Died)) do
-            connection:Disable()
-            table.insert(connections.GodModeToggle, connection)
-        end
-        table.insert(connections.GodModeToggle, humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-            if humanoid.Health < humanoid.MaxHealth then
-                humanoid.Health = humanoid.MaxHealth
-            end
-        end))
-        connections.GodModeToggle.Heartbeat = RunService.Heartbeat:Connect(function()
-            if humanoid and humanoid.Health < humanoid.MaxHealth then
-                humanoid.Health = humanoid.MaxHealth
-            end
-        end)
-    end
-    apply(player.Character or player.CharacterAdded:Wait())
-    table.insert(connections.GodModeToggle, player.CharacterAdded:Connect(function(character)
-        task.wait(0.5)
-        apply(character)
-    end))
-end
+-- ========== FULLBRIGHT ==========
+local fullbrightActive = false
+local originalBrightness
+local originalClockTime
 
-local function disableGodMode()
-    for _, connection in ipairs(connections.GodModeToggle) do
-        if typeof(connection) == "RBXScriptConnection" then
-            connection:Disconnect()
-        end
-    end
-    connections.GodModeToggle = {}
-    if connections.GodModeToggle.Heartbeat then
-        connections.GodModeToggle.Heartbeat:Disconnect()
-        connections.GodModeToggle.Heartbeat = nil
-    end
-    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.BreakJointsOnDeath = true
-        humanoid.RequiresNeck = true
-    end
-end
-
-Sections.Character:AddToggle("GodMode", {
-    Title = "God Mode",
+local fullbrightToggle = Sections.Effects:AddToggle("Fullbright", {
+    Title = "Fullbright",
+    Description = "Brighten up the world",
     Default = false,
-    Callback = function(state)
-        print("God Mode toggled")
-        godModeToggle = state
-        if godModeToggle then
-            lib:Notification("KRYPTON HUB", "God Mode enabled", 3)
-            enableGodMode()
+    Callback = function(value)
+        fullbrightActive = value
+        
+        if fullbrightActive then
+            lib:Notification("KRYPTON-HUB", "Fullbright enabled", 3)
+            
+            originalBrightness = Lighting.Brightness
+            originalClockTime = Lighting.ClockTime
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            Lighting.GlobalShadows = false
+            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
         else
-            lib:Notification("KRYPTON HUB", "God Mode disabled", 3)
-            disableGodMode()
+            lib:Notification("KRYPTON-HUB", "Fullbright disabled", 3)
+            
+            if originalBrightness then
+                Lighting.Brightness = originalBrightness
+            end
+            if originalClockTime then
+                Lighting.ClockTime = originalClockTime
+            end
+            Lighting.GlobalShadows = true
         end
     end
 })
+
+-- ========== ENHANCED ESP ==========
+local espActive = false
+local espFolders = {}
+
+local espToggle = Sections.VisualTabs:AddToggle("EnhancedESP", {
+    Title = "Enhanced ESP",
+    Description = "Highlight all players",
+    Default = false,
+    Callback = function(value)
+        espActive = value
+        
+        if espActive then
+            lib:Notification("KRYPTON-HUB", "ESP enabled", 3)
+            
+            local function createESP(character, folder)
+                if character and folder then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Adornee = character
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = folder
+                end
+            end
+            
+            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                if otherPlayer ~= player then
+                    local espFolder = Instance.new("Folder")
+                    espFolder.Name = otherPlayer.Name .. "_ESP"
+                    espFolder.Parent = Workspace
+                    espFolders[otherPlayer] = espFolder
+                    
+                    if otherPlayer.Character then
+                        createESP(otherPlayer.Character, espFolder)
+                    end
+                    
+                    otherPlayer.CharacterAdded:Connect(function(char)
+                        createESP(char, espFolder)
+                    end)
+                end
+            end
+        else
+            lib:Notification("KRYPTON-HUB", "ESP disabled", 3)
+            
+            for _, folder in pairs(espFolders) do
+                if folder then
+                    folder:Destroy()
+                end
+            end
+            espFolders = {}
+        end
+    end
+})
+
+-- ========== PROXIMITY PROMPTS (Original Feature) ==========
+local ipp = false
+local pp = {}
+local tableofconnections = {}
+
+local function cleanupConnections()
+    for _, connection in pairs(tableofconnections) do
+        connection:Disconnect()
+    end
+    tableofconnections = {}
+end
+
+local function dop(p)
+    if p.Base.Spawn.PromptAttachment:FindFirstChild("ProximityPrompt") then
+        local c = p.Base.Spawn.PromptAttachment.ProximityPrompt
+        table.insert(pp, c)
+        if ipp then
+            c.HoldDuration = 0
+            table.insert(tableofconnections, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+                if c.HoldDuration ~= 0 and ipp then
+                    c.HoldDuration = 0
+                end
+            end))
+        end
+    end
+    table.insert(tableofconnections, p.Base.Spawn.PromptAttachment.ChildAdded:Connect(function(c)
+        if c:IsA("ProximityPrompt") then
+            table.insert(pp, c)
+            if ipp then
+                c.HoldDuration = 0
+            end
+            table.insert(tableofconnections, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+                if c.HoldDuration ~= 0 and ipp then
+                    c.HoldDuration = 0
+                end
+            end))
+        end
+    end))
+end
+
+for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
+    if plot:FindFirstChild("AnimalPodiums") then
+        for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
+            dop(podium)
+        end
+        table.insert(tableofconnections, plot.AnimalPodiums.ChildAdded:Connect(dop))
+    end
+end
+
+Sections.Main:AddToggle("InstantProximityPrompt", {
+    Title = "Instant Proximity Prompts",
+    Default = false,
+    Callback = function(state)
+        ipp = state
+        if ipp then
+            for _, v in pairs(pp) do
+                v.HoldDuration = 0
+            end
+        end
+    end
+})
+
+-- ========== ORIGINAL FEATURES ==========
 
 -- WalkSpeed
 local walkSpeedToggle = false
 local HumanModCons = {}
 local function setWalkSpeed(speed)
     if typeof(speed) == "number" then
-        local Char = player.Character or Workspace:FindFirstChild(player.Name)
+        local Char = player.Character or workspace:FindFirstChild(player.Name)
         local Human = Char and Char:FindFirstChildWhichIsA("Humanoid")
         local function WalkSpeedChange()
             if Char and Human then
@@ -890,17 +849,14 @@ local function setWalkSpeed(speed)
     end
 end
 
-Sections.Character:AddToggle("WalkSpeed", {
+Sections.MiscTabs:AddToggle("WalkSpeedToggle", {
     Title = "WalkSpeed (50)",
     Default = false,
-    Callback = function(state)
-        print("WalkSpeed toggled")
-        walkSpeedToggle = state
-        if walkSpeedToggle then
-            lib:Notification("KRYPTON HUB", "WalkSpeed enabled", 3)
-            setWalkSpeed(config.walkSpeed)
+    Callback = function(value)
+        walkSpeedToggle = value
+        if value then
+            setWalkSpeed(50)
         else
-            lib:Notification("KRYPTON HUB", "WalkSpeed disabled", 3)
             setWalkSpeed(16)
             if HumanModCons.wsLoop then
                 HumanModCons.wsLoop:Disconnect()
@@ -914,7 +870,93 @@ Sections.Character:AddToggle("WalkSpeed", {
     end
 })
 
--- Shop Dropdown
+-- Infinite Jump
+local infiniteJumpToggle = false
+local jumpConnection
+Sections.MiscTabs:AddToggle("InfiniteJumpToggle", {
+    Title = "Infinite Jump",
+    Default = false,
+    Callback = function(value)
+        infiniteJumpToggle = value
+        if value then
+            jumpConnection = UserInputService.JumpRequest:Connect(function()
+                if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                    player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+                end
+            end)
+        else
+            if jumpConnection then
+                jumpConnection:Disconnect()
+                jumpConnection = nil
+            end
+        end
+    end
+})
+
+-- God Mode
+local godModeToggle = false
+local godConnections = {}
+local godHeartbeat
+local function enableGodMode()
+    local function apply(character)
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+        humanoid.BreakJointsOnDeath = false
+        humanoid.RequiresNeck = false
+        for _, connection in ipairs(getconnections(humanoid.Died)) do
+            connection:Disable()
+            table.insert(godConnections, connection)
+        end
+        table.insert(godConnections, humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+            if humanoid.Health < humanoid.MaxHealth then
+                humanoid.Health = humanoid.MaxHealth
+            end
+        end))
+        godHeartbeat = RunService.Heartbeat:Connect(function()
+            if humanoid and humanoid.Health < humanoid.MaxHealth then
+                humanoid.Health = humanoid.MaxHealth
+            end
+        end)
+    end
+    apply(player.Character or player.CharacterAdded:Wait())
+    table.insert(godConnections, player.CharacterAdded:Connect(function(character)
+        task.wait(0.5)
+        apply(character)
+    end))
+end
+
+local function disableGodMode()
+    for _, connection in ipairs(godConnections) do
+        if typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+    end
+    godConnections = {}
+    if godHeartbeat then
+        godHeartbeat:Disconnect()
+        godHeartbeat = nil
+    end
+    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.BreakJointsOnDeath = true
+        humanoid.RequiresNeck = true
+    end
+end
+
+Sections.MiscTabs:AddToggle("GodModeToggle", {
+    Title = "God Mode",
+    Default = false,
+    Callback = function(value)
+        godModeToggle = value
+        if value then
+            enableGodMode()
+        else
+            disableGodMode()
+        end
+    end
+})
+
+-- Shop Tab Dropdown
 do
     local allItems = {
         {Name = "Slap", ID = "Basic Slap"},
@@ -957,7 +999,6 @@ do
         PlaceHolder = "Search Item...",
         Multiple = false,
         Callback = function(selected)
-            print("Shop option selected:", selected)
             for _, item in pairs(allItems) do
                 if selected == item.Name then
                     local success, err = pcall(function()
@@ -969,7 +1010,7 @@ do
                         end
                     end)
                     lib:Notification(
-                        "KRYPTON HUB",
+                        "KRYPTON-HUB",
                         success and ("Tried to buy: " .. item.Name) or ("Error: " .. tostring(err)),
                         3
                     )
@@ -980,85 +1021,44 @@ do
     })
 end
 
--- ESP
-Sections.Visuals:AddToggle("ESP", {
-    Title = "Player ESP",
-    Default = false,
-    Callback = function(state)
-        print("Player ESP toggled")
-        espActive = state
-        if espActive then
-            lib:Notification("KRYPTON HUB", "ESP enabled", 3)
-            local function createESP(character, folder)
-                if character and folder then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Adornee = character
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.FillTransparency = 0.5
-                    highlight.OutlineTransparency = 0
-                    highlight.Parent = folder
-                end
-            end
-            for _, otherPlayer in pairs(Players:GetPlayers()) do
-                if otherPlayer ~= player then
-                    local espFolder = Instance.new("Folder")
-                    espFolder.Name = otherPlayer.Name .. "_ESP"
-                    espFolder.Parent = Workspace
-                    espFolders[otherPlayer] = espFolder
-                    if otherPlayer.Character then
-                        createESP(otherPlayer.Character, espFolder)
-                    end
-                    otherPlayer.CharacterAdded:Connect(function(char)
-                        createESP(char, espFolder)
-                    end)
-                end
-            end
-        else
-            lib:Notification("KRYPTON HUB", "ESP disabled", 3)
-            for _, folder in pairs(espFolders) do
-                if folder then folder:Destroy() end
-            end
-            espFolders = {}
-        end
+-- Cleanup on character death
+player.CharacterAdded:Connect(function()
+    -- Reset all new features
+    isInvisible = false
+    flyActive = false
+    floatActive = false
+    speedActive = false
+    tweenActive = false
+    fullbrightActive = false
+    espActive = false
+    
+    -- Clean up connections
+    if flyConnection then flyConnection:Disconnect() end
+    if floatBodyVelocity then floatBodyVelocity:Destroy() end
+    if speedConn then speedConn:Disconnect() end
+    if currentTween then currentTween:Cancel() end
+    
+    -- Clean up semi-invisible
+    for _, conn in ipairs(semiInvisibleConnections) do
+        if conn then conn:Disconnect() end
     end
-})
-
-Players.PlayerRemoving:Connect(function(otherPlayer)
-    if espFolders[otherPlayer] then
-        espFolders[otherPlayer]:Destroy()
-        espFolders[otherPlayer] = nil
-        print("ESP folder removed for", otherPlayer.Name)
+    semiInvisibleConnections = {}
+    
+    -- Reset ESP
+    for _, folder in pairs(espFolders) do
+        if folder then folder:Destroy() end
     end
+    espFolders = {}
+    
+    -- Reset lighting
+    if originalBrightness then
+        Lighting.Brightness = originalBrightness
+    end
+    if originalClockTime then
+        Lighting.ClockTime = originalClockTime
+    end
+    Lighting.GlobalShadows = true
 end)
-
--- Fullbright
-Sections.Visuals:AddToggle("Fullbright", {
-    Title = "Fullbright",
-    Default = false,
-    Callback = function(state)
-        print("Fullbright toggled")
-        fullbrightActive = state
-        if fullbrightActive then
-            lib:Notification("KRYPTON HUB", "Fullbright enabled", 3)
-            originalBrightness = Lighting.Brightness
-            originalClockTime = Lighting.ClockTime
-            Lighting.Brightness = 2
-            Lighting.ClockTime = 14
-            Lighting.GlobalShadows = false
-            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-        else
-            lib:Notification("KRYPTON HUB", "Fullbright disabled", 3)
-            if originalBrightness then
-                Lighting.Brightness = originalBrightness
-            end
-            if originalClockTime then
-                Lighting.ClockTime = originalClockTime
-            end
-            Lighting.GlobalShadows = true
-        end
-    end
-})
 
 -- Config Setup
 FlagsManager:SetLibrary(lib)
@@ -1066,91 +1066,9 @@ FlagsManager:SetIgnoreIndexes({})
 FlagsManager:SetFolder("Config/KryptonHub")
 FlagsManager:InitSaveSystem(tabs.Config)
 
--- Auto-cleanup on character death
-player.CharacterAdded:Connect(function()
-    print("Character respawned")
-    tweenActive = false
-    flyActive = false
-    floatActive = false
-    isInvisible = false
-    infJumpActive = false
-    speedActive = false
-    espActive = false
-    fullbrightActive = false
-    godModeToggle = false
-    ipp = false
-
-    if connections.Fly then connections.Fly:Disconnect() end
-    if connections.Float then connections.Float:Destroy() end
-    if connections.Jump then connections.Jump:Disconnect() end
-    if connections.Speed then connections.Speed:Disconnect() end
-    for _, conn in ipairs(connections.SemiInvisible) do
-        if conn then conn:Disconnect() end
-    end
-    connections.SemiInvisible = {}
-    for _, conn in ipairs(connections.GodModeToggle) do
-        if typeof(conn) == "RBXScriptConnection" then conn:Disconnect() end
-    end
-    connections.GodModeToggle = {}
-    for _, folder in pairs(espFolders) do
-        if folder then folder:Destroy() end
-    end
-    espFolders = {}
-    if originalBrightness then
-        Lighting.Brightness = originalBrightness
-    end
-    if originalClockTime then
-        Lighting.ClockTime = originalClockTime
-    end
-    Lighting.GlobalShadows = true
-    for _, v in pairs(pp) do
-        v.HoldDuration = 0.5
-    end
-    lib:Notification("KRYPTON HUB", "Character respawned - Ready", 3)
-end)
-
 -- Cleanup on Script End
 game:BindToClose(function()
-    print("Cleaning up on script end")
-    for key, connection in pairs(connections) do
-        if typeof(connection) == "RBXScriptConnection" then
-            connection:Disconnect()
-        elseif typeof(connection) == "Instance" then
-            connection:Destroy()
-        elseif type(connection) == "table" then
-            for _, conn in ipairs(connection) do
-                if typeof(conn) == "RBXScriptConnection" then
-                    conn:Disconnect()
-                end
-            end
-        end
-    end
-    connections = {
-        ProximityPrompts = {},
-        SemiInvisible = {},
-        GodModeToggle = {},
-        Fly = nil,
-        Float = nil,
-        Jump = nil,
-        Speed = nil,
-        ESP = nil,
-        Fullbright = nil
-    }
-    for _, folder in pairs(espFolders) do
-        if folder then folder:Destroy() end
-    end
-    espFolders = {}
-    if originalBrightness then
-        Lighting.Brightness = originalBrightness
-    end
-    if originalClockTime then
-        Lighting.ClockTime = originalClockTime
-    end
-    Lighting.GlobalShadows = true
+    cleanupConnections()
 end)
 
-lib:Notification("KRYPTON HUB", "Krypton Hub Loaded! Press RightControl to toggle GUI.", 5)
-print("Krypton Hub - Complete Edition Loaded!")
-print("Features: Tween to Base, Slow Flight, Float, Semi-Invisible, Infinite Jump, Speed Booster, God Mode, WalkSpeed, ESP, Fullbright, Instant Proximity, Shop")
-print("Controls: RightControl to toggle GUI, F key to toggle semi-invisible")
-print("Discord: https://discord.gg/jXSyQFnQCY")
+lib:Notification('KRYPTON-HUB', 'Enhanced features loaded! Use F key for Semi-Invisible', 5)
