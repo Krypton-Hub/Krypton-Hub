@@ -13,7 +13,7 @@ local CoreGui = game:GetService("CoreGui")
 while not Players.LocalPlayer do task.wait() end
 local player = Players.LocalPlayer
 local ALLOWED_PLACE_ID = 109983668079237
-local RETRY_DELAY = 0.1
+local RETRY_DELAY = 0.5 -- Increased for mobile stability
 local SETTINGS_FILE = "ServerHopperSettings.json"
 local GUI_STATE_FILE = "ServerHopperGUIState.json"
 local API_STATE_FILE = "ServerHopperAPIState.json"
@@ -73,6 +73,93 @@ local cachedPlots = nil
 local cachedPodiums = nil
 local lastPodiumCheck = 0
 local PODIUM_CACHE_DURATION = 1
+
+-- Test if SetCore is supported
+local setCoreSupported = false
+local function testSetCore()
+    local success, _ = pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Test",
+            Text = "Testing SetCore",
+            Duration = 1
+        })
+    end)
+    return success
+end
+
+-- Fallback notification GUI for mobile
+local function createNotificationGui(title, text, duration)
+    local notificationGui = Instance.new("ScreenGui")
+    notificationGui.Name = "TempNotification"
+    notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    notificationGui.ZIndex = 100
+    notificationGui.Parent = player.PlayerGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.3, 0, 0.15, 0)
+    frame.Position = UDim2.new(0.35, 0, 0.05, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    frame.BorderSizePixel = 0
+    frame.Parent = notificationGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1
+    stroke.Color = Color3.fromRGB(100, 100, 110)
+    stroke.Parent = frame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -10, 0, 20)
+    titleLabel.Position = UDim2.new(0, 5, 0, 5)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 14
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = frame
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, -10, 0, 40)
+    textLabel.Position = UDim2.new(0, 5, 0, 25)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+    textLabel.TextSize = 12
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.TextWrapped = true
+    textLabel.Parent = frame
+
+    task.spawn(function()
+        task.wait(duration)
+        notificationGui:Destroy()
+    end)
+end
+
+-- Notification function with fallback
+local function showNotification(title, text)
+    local duration = settings.notificationDuration or 4
+    print(string.format("Notification: %s - %s (Duration: %d)", title, text, duration))
+    
+    if setCoreSupported then
+        local success, err = pcall(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = title,
+                Text = text,
+                Duration = duration
+            })
+        end)
+        if success then return end
+        print("SetCore failed:", err)
+    end
+    
+    -- Fallback to custom GUI
+    createNotificationGui(title, text, duration)
+end
 
 local function checkAPIAvailability()
     local mainAPI = "https://games.roblox.com/v1/games/" .. ALLOWED_PLACE_ID .. "/servers/Public?sortOrder=" .. settings.sortOrder .. "&limit=100&excludeFullGames=true"
@@ -146,21 +233,6 @@ local function loadAPIState()
                 apiState[key] = value
             end
         end
-    end
-end
-
-local function showNotification(title, text)
-    local duration = settings.notificationDuration or 4
-    local success, err = pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Duration = duration
-        })
-    end)
-    if not success then
-        print("Notification failed:", err)
-        warn(string.format("%s: %s (Duration: %d)", title, text, duration))
     end
 end
 
@@ -514,6 +586,7 @@ local function checkPodiumsForWebhooksAndFilters()
                 genLabel.Text, 
                 mutText, 
                 rarityLabel.Text)
+            print("Checking podium:", modelText) -- Debug rarity output
             
             local genValue = extractNumber(genLabel.Text)
             local displayName = displayNameLabel.Text
@@ -565,6 +638,7 @@ local function tryTeleportWithRetries()
     while attempts < maxAttempts and isRunning do
         local servers = getAvailableServers()
         if #servers == 0 then
+            print("No servers available, retrying...")
             task.wait(RETRY_DELAY)
             attempts = attempts + 1
             continue
@@ -574,6 +648,7 @@ local function tryTeleportWithRetries()
             TPS:TeleportToPlaceInstance(ALLOWED_PLACE_ID, randomServer)
         end)
         if success then
+            print("Teleport successful to server:", randomServer)
             return
         else
             print("Teleport failed:", err)
@@ -586,6 +661,7 @@ local function tryTeleportWithRetries()
     end
     if isRunning then
         isRunning = false
+        showNotification("Error", "Failed to teleport after retries.")
     end
 end
 
@@ -686,7 +762,7 @@ end
 
 local function createTagList(parent, list, placeholder, onAdd, onRemove)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 28) -- Increased height
+    container.Size = UDim2.new(1, 0, 0, 28)
     container.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     container.BorderSizePixel = 0
     container.Parent = parent
@@ -705,7 +781,7 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     scrollFrame.Position = UDim2.new(0, 4, 0, 0)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 6 -- Thicker for touch
+    scrollFrame.ScrollBarThickness = 6
     scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.Parent = container
@@ -717,14 +793,14 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     layout.Parent = scrollFrame
     
     local textBox = Instance.new("TextBox")
-    textBox.Size = UDim2.new(0, 60, 1, 0) -- Larger for touch
+    textBox.Size = UDim2.new(0, 60, 1, 0)
     textBox.Position = UDim2.new(1, -56, 0, 0)
     textBox.BackgroundTransparency = 1
     textBox.Text = ""
     textBox.PlaceholderText = placeholder
     textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
-    textBox.TextSize = 12 -- Larger text
+    textBox.TextSize = 12
     textBox.Font = Enum.Font.Gotham
     textBox.Parent = container
     
@@ -735,7 +811,7 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     
     local function createTag(text)
         local tag = Instance.new("Frame")
-        tag.Size = UDim2.new(0, 0, 0, 20) -- Increased height
+        tag.Size = UDim2.new(0, 0, 0, 20)
         tag.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
         tag.BorderSizePixel = 0
         tag.Parent = scrollFrame
@@ -750,13 +826,13 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
         tagLabel.BackgroundTransparency = 1
         tagLabel.Text = text
         tagLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        tagLabel.TextSize = 10 -- Larger text
+        tagLabel.TextSize = 10
         tagLabel.Font = Enum.Font.Gotham
         tagLabel.TextXAlignment = Enum.TextXAlignment.Left
         tagLabel.Parent = tag
         
         local removeButton = Instance.new("TextButton")
-        removeButton.Size = UDim2.new(0, 16, 0, 16) -- Larger button
+        removeButton.Size = UDim2.new(0, 16, 0, 16)
         removeButton.Position = UDim2.new(1, -17, 0.5, -7)
         removeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         removeButton.BorderSizePixel = 0
@@ -824,11 +900,11 @@ local function createSettingsGUI()
     screenGui.Name = "ServerHopperGUI"
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.ZIndex = 10 -- Ensure GUI is on top
+    screenGui.ZIndex = 10
     screenGui.Parent = playerGui
     
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0) -- Scale-based for mobile
+    mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
     mainFrame.Position = UDim2.new(guiState.position.XScale, guiState.position.XOffset, guiState.position.YScale, guiState.position.YOffset)
     mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
     mainFrame.BorderSizePixel = 0
@@ -844,7 +920,7 @@ local function createSettingsGUI()
     mainStroke.Parent = mainFrame
     
     local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 40) -- Larger title bar
+    titleBar.Size = UDim2.new(1, 0, 0, 40)
     titleBar.Position = UDim2.new(0, 0, 0, 0)
     titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     titleBar.BorderSizePixel = 0
@@ -867,7 +943,7 @@ local function createSettingsGUI()
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = "Server Hopper"
     titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 14 -- Larger text
+    titleLabel.TextSize = 14
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = titleBar
@@ -876,7 +952,7 @@ local function createSettingsGUI()
     local originalSize = mainFrame.Size
     
     local minimizeButton = Instance.new("TextButton")
-    minimizeButton.Size = UDim2.new(0, 30, 0, 30) -- Larger button
+    minimizeButton.Size = UDim2.new(0, 30, 0, 30)
     minimizeButton.Position = UDim2.new(1, -64, 0, 5)
     minimizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     minimizeButton.BorderSizePixel = 0
@@ -952,7 +1028,7 @@ local function createSettingsGUI()
     
     local function createInputField(name, placeholder, defaultValue, layoutOrder, settingKey, desc)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 40) -- Larger container
+        container.Size = UDim2.new(1, 0, 0, 40)
         container.BackgroundTransparency = 1
         container.LayoutOrder = layoutOrder
         container.Parent = scrollFrame
@@ -963,7 +1039,7 @@ local function createSettingsGUI()
         label.BackgroundTransparency = 1
         label.Text = name
         label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 11 -- Larger text
+        label.TextSize = 11
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Parent = container
@@ -1319,6 +1395,9 @@ local function createSettingsGUI()
         end)
         if fileSuccess then
             showNotification("Search started", "Looking for target pets...")
+        else
+            print("File I/O failed, continuing without writing hopStarted.txt")
+            showNotification("Search started", "Looking for target pets...")
         end
         
         isRunning = true
@@ -1327,7 +1406,11 @@ local function createSettingsGUI()
         
         hopConnection = task.spawn(function()
             while isRunning do
-                runServerCheck()
+                local success, err = pcall(runServerCheck)
+                if not success then
+                    print("Error in runServerCheck:", err)
+                    showNotification("Error", "Server check failed: " .. tostring(err))
+                end
                 if #foundPodiumsData > 0 then
                     break
                 end
@@ -1337,7 +1420,14 @@ local function createSettingsGUI()
         end)
     end
     
-    startButton.MouseButton1Click:Connect(startHopping)
+    startButton.MouseButton1Click:Connect(function()
+        print("Start button clicked/tapped")
+        local success, err = pcall(startHopping)
+        if not success then
+            print("Error in startHopping:", err)
+            showNotification("Error", "Failed to start hopping: " .. tostring(err))
+        end
+    end)
     
     stopButton.MouseButton1Click:Connect(function()
         print("Stop button tapped")
@@ -1443,7 +1533,7 @@ local function createSettingsGUI()
     end
 end
 
--- Test file I/O and HTTP compatibility
+-- Test executor compatibility
 local function testExecutorCompatibility()
     local fileSuccess, fileResult = pcall(function()
         writefile("test.txt", "test")
@@ -1455,16 +1545,22 @@ local function testExecutorCompatibility()
         return game:HttpGet("https://games.roblox.com/v1/games/109983668079237/servers/Public?limit=10")
     end)
     print("HTTP test:", httpSuccess and "Success" or "Failed: " .. httpResult)
+    
+    setCoreSupported = testSetCore()
+    print("SetCore test:", setCoreSupported and "Success" or "Failed")
 end
 
 testExecutorCompatibility()
-
 loadSettings()
 loadGUIState()
 loadAPIState()
 
 if game.PlaceId == ALLOWED_PLACE_ID then
-    createSettingsGUI()
+    local success, err = pcall(createSettingsGUI)
+    if not success then
+        print("Error creating GUI:", err)
+        showNotification("Error", "Failed to create GUI: " .. tostring(err))
+    end
 else
     showNotification("Error", "This script only works in Place ID " .. ALLOWED_PLACE_ID)
 end
