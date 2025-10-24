@@ -5,6 +5,7 @@ local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local MarketplaceService = game:GetService("MarketplaceService")
 local player = Players.LocalPlayer
 
 -- Configuration
@@ -20,83 +21,78 @@ local config = {
 -- Error Logging
 local function logError(message)
     warn("[Krypton Hub Error]: " .. message)
-    if statusLabel then
-        statusLabel.Text = "Error: " .. message
+    if lib then
+        lib:Notification("KRYPTON HUB", "Error: " .. message, 5)
     end
 end
 
--- Simplified Loading Screen (for debugging)
-local function showLoadingScreen()
-    print("Starting loading screen")
-    local blur = Instance.new("BlurEffect", Lighting)
-    blur.Size = 0
-    TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
+-- Loading Screen
+local blur = Instance.new("BlurEffect", Lighting)
+blur.Size = 0
+TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
 
-    local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-    screenGui.Name = "KryptonLoader"
-    screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "KryptonLoader"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
 
-    local frame = Instance.new("Frame", screenGui)
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundTransparency = 1
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundTransparency = 1
 
-    local bg = Instance.new("Frame", frame)
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-    bg.BackgroundTransparency = 1
-    bg.ZIndex = 0
-    TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
+local bg = Instance.new("Frame", frame)
+bg.Size = UDim2.new(1, 0, 1, 0)
+bg.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+bg.BackgroundTransparency = 1
+bg.ZIndex = 0
+TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
 
-    local word = "KRYPTON"
-    local letters = {}
+local word = "KRYPTON"
+local letters = {}
 
-    local function tweenOutAndDestroy()
-        for _, label in ipairs(letters) do
-            TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 1, TextSize = 20}):Play()
-        end
-        TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play()
-        task.wait(0.6)
-        screenGui:Destroy()
-        blur:Destroy()
-        print("Loading screen completed")
+local function tweenOutAndDestroy()
+    for _, label in ipairs(letters) do
+        TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 1, TextSize = 20}):Play()
     end
-
-    for i = 1, #word do
-        local char = word:sub(i, i)
-        local label = Instance.new("TextLabel")
-        label.Text = char
-        label.Font = Enum.Font.GothamBlack
-        label.TextColor3 = Color3.new(1, 1, 1)
-        label.TextStrokeTransparency = 1
-        label.TextTransparency = 1
-        label.TextScaled = false
-        label.TextSize = 30
-        label.Size = UDim2.new(0, 60, 0, 60)
-        label.AnchorPoint = Vector2.new(0.5, 0.5)
-        label.Position = UDim2.new(0.5, (i - (#word / 2 + 0.5)) * 65, 0.5, 0)
-        label.BackgroundTransparency = 1
-        label.Parent = frame
-
-        local gradient = Instance.new("UIGradient")
-        gradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 170, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 100, 160))
-        })
-        gradient.Rotation = 90
-        gradient.Parent = label
-
-        local tweenIn = TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 0, TextSize = 60})
-        tweenIn:Play()
-        table.insert(letters, label)
-        task.wait(0.25)
-    end
-    task.wait(2)
-    tweenOutAndDestroy()
+    TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play()
+    task.wait(0.6)
+    screenGui:Destroy()
+    blur:Destroy()
+    print("Loading screen completed")
 end
 
-showLoadingScreen()
+for i = 1, #word do
+    local char = word:sub(i, i)
+    local label = Instance.new("TextLabel")
+    label.Text = char
+    label.Font = Enum.Font.GothamBlack
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextStrokeTransparency = 1
+    label.TextTransparency = 1
+    label.TextScaled = false
+    label.TextSize = 30
+    label.Size = UDim2.new(0, 60, 0, 60)
+    label.AnchorPoint = Vector2.new(0.5, 0.5)
+    label.Position = UDim2.new(0.5, (i - (#word / 2 + 0.5)) * 65, 0.5, 0)
+    label.BackgroundTransparency = 1
+    label.Parent = frame
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 170, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 100, 160))
+    })
+    gradient.Rotation = 90
+    gradient.Parent = label
+
+    local tweenIn = TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 0, TextSize = 60})
+    tweenIn:Play()
+    table.insert(letters, label)
+    task.wait(0.25)
+end
+task.wait(2)
+tweenOutAndDestroy()
 
 -- Wait for game and player to load
 local startTime = tick()
@@ -113,6 +109,105 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 print("Game loaded")
+
+-- Load UI Library and Config Manager
+local success, result = pcall(function()
+    return game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/Lib")
+end)
+if not success then
+    logError("Failed to load UI library: " .. tostring(result))
+    return
+end
+local lib = loadstring(result)()
+
+success, result = pcall(function()
+    return game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/ConfigManager")
+end)
+if not success then
+    logError("Failed to load Config Manager: " .. tostring(result))
+    return
+end
+local FlagsManager = loadstring(result)()
+
+-- Service Wrapper
+local GetService, cloneref = game.GetService, cloneref or function(r) return r end
+local services = setmetatable({}, {
+    __index = function(self, service)
+        local r = cloneref(GetService(game, service))
+        self[service] = r
+        return r
+    end
+})
+
+-- Role Checker
+local LRM_UserNote = "Owner"
+local function RoleChecker()
+    if string.find(LRM_UserNote, "Ad Reward") then
+        return "Free Version"
+    elseif string.find(LRM_UserNote, "Premium") then
+        return "Premium Version"
+    elseif string.find(LRM_UserNote, "Owner") then
+        return "Developer agent_duke13"
+    else
+        return "No Role Assigned"
+    end
+}
+
+-- UI Setup
+local gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+local main = lib:Load({
+    Title = gameName .. " 〢 discord.gg/jXSyQFnQCY 〢 " .. RoleChecker(),
+    ToggleButton = "rbxassetid://105059922903197",
+    BindGui = Enum.KeyCode.RightControl,
+})
+
+local tabs = {
+    Information = main:AddTab("Information"),
+    General = main:AddTab("General"),
+    Config = main:AddTab("Config"),
+}
+main:SelectTab()
+
+local Sections = {
+    Welcome = tabs.Information:AddSection({Default = true, Locked = true}),
+    Discord = tabs.Information:AddSection({Default = true, Locked = true}),
+    Main = tabs.General:AddSection({Title = "Main Features", Description = "", Default = false, Locked = false}),
+    Teleport = tabs.General:AddSection({Title = "Teleport", Description = "", Default = false, Locked = false}),
+    Character = tabs.General:AddSection({Title = "Character", Description = "", Default = false, Locked = false}),
+    Shop = tabs.General:AddSection({Title = "Shop", Description = "", Default = false, Locked = false}),
+    Visuals = tabs.General:AddSection({Title = "Visuals", Description = "", Default = false, Locked = false}),
+}
+
+getgenv().WelcomeParagraph = Sections.Welcome:AddParagraph({
+    Title = "Loading...",
+    Description = "Please wait.. If you've been stuck on this for a long time please join our discord and report it."
+})
+getgenv().WelcomeParagraph:SetTitle("Information")
+getgenv().WelcomeParagraph:SetDesc([[
+    Welcome to Krypton Hub! Thank you for choosing Krypton Hub.
+    We're always working on improvements and features.
+    If you experience issues or have feedback, don't hesitate to join our Discord server.
+    Recent Updates:
+    [+] Switched to new UI (thanks to x2zu)
+    [+] Added Shop, Visuals, Character features
+    Join the Discord for help, suggestions, and the latest updates.
+]])
+
+Sections.Discord:AddParagraph({
+    Title = "Found a bug?",
+    Description = "Please report by joining our Discord."
+})
+Sections.Discord:AddButton({
+    Title = "Copy Discord Invite",
+    Callback = function()
+        if setclipboard then
+            setclipboard("https://discord.gg/jXSyQFnQCY")
+            lib:Notification("KRYPTON HUB", "Copied Discord invite to clipboard!", 5)
+        else
+            lib:Notification("KRYPTON HUB", "Clipboard not supported on this device", 5)
+        end
+    end,
+})
 
 -- Global Variables
 local character, hrp, humanoid
@@ -140,7 +235,6 @@ local godModeToggle = false
 local ipp = false
 local pp = {} -- Proximity prompts
 local originalBrightness, originalClockTime
-local statusLabel -- Will be set later
 
 -- Update Character References
 local function updateCharacterReferences()
@@ -239,312 +333,6 @@ player.CharacterAdded:Connect(function()
     end
 end)
 
--- Toggle Button
-local toggleGui = Instance.new("ScreenGui")
-toggleGui.Name = "KryptonToggle"
-toggleGui.ResetOnSpawn = false
-toggleGui.Parent = player:WaitForChild("PlayerGui")
-print("Toggle GUI created:", toggleGui)
-
-local toggleButton = Instance.new("ImageButton") -- Changed to ImageButton
-toggleButton.Size = UDim2.new(0, 60, 0, 60)
-toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
-toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-toggleButton.BackgroundTransparency = 0.3
-toggleButton.Image = "rbxassetid://95131705390407" -- Set image here
-toggleButton.Active = true
-toggleButton.Draggable = true
-toggleButton.Parent = toggleGui
-print("Toggle button created:", toggleButton)
-
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(1, 0)
-uiCorner.Parent = toggleButton
-
--- Main GUI
-local gui = Instance.new("ScreenGui")
-gui.Name = "KryptonHubGui"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-gui.Enabled = true -- Set to true for debugging
-print("Main GUI created:", gui)
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 320)
-mainFrame.Position = UDim2.new(0.5, -140, 0.5, -160)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.Parent = gui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0.05, 0)
-UICorner.Parent = mainFrame
-
--- Header
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 40)
-header.Position = UDim2.new(0, 0, 0, 0)
-header.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-header.BorderSizePixel = 0
-header.Parent = mainFrame
-
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0.05, 0)
-headerCorner.Parent = header
-
-local title = Instance.new("TextLabel")
-title.Text = "KRYPTON HUB"
-title.Size = UDim2.new(1, 0, 1, 0)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-title.Parent = header
-
-local subtitle = Instance.new("TextLabel")
-subtitle.Text = "by agent_duke13"
-subtitle.Size = UDim2.new(1, 0, 0, 15)
-subtitle.Position = UDim2.new(0, 0, 1, -15)
-subtitle.BackgroundTransparency = 1
-subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
-subtitle.Font = Enum.Font.Gotham
-subtitle.TextSize = 10
-subtitle.Parent = header
-
--- Tabs
-local tabs = {"Main", "Player", "Shop", "Visuals"}
-local currentTab = "Main"
-
-local tabContainer = Instance.new("Frame")
-tabContainer.Size = UDim2.new(1, -20, 0, 30)
-tabContainer.Position = UDim2.new(0, 10, 0, 45)
-tabContainer.BackgroundTransparency = 1
-tabContainer.Parent = mainFrame
-
-local tabButtons = {}
-for i, tabName in ipairs(tabs) do
-    local tabButton = Instance.new("TextButton")
-    tabButton.Text = tabName
-    tabButton.Size = UDim2.new(1/#tabs, -5, 1, 0)
-    tabButton.Position = UDim2.new((i-1)/#tabs, 0, 0, 0)
-    tabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-    tabButton.Font = Enum.Font.GothamSemibold
-    tabButton.TextSize = 12
-    tabButton.Parent = tabContainer
-    
-    local tabCorner = Instance.new("UICorner")
-    tabCorner.CornerRadius = UDim.new(0.05, 0)
-    tabCorner.Parent = tabButton
-    
-    tabButtons[tabName] = tabButton
-end
-
--- Content Area
-local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, -20, 1, -110)
-contentFrame.Position = UDim2.new(0, 10, 0, 80)
-contentFrame.BackgroundTransparency = 1
-contentFrame.Parent = mainFrame
-
-local contentScrolling = Instance.new("ScrollingFrame")
-contentScrolling.Size = UDim2.new(1, 0, 1, 0)
-contentScrolling.Position = UDim2.new(0, 0, 0, 0)
-contentScrolling.BackgroundTransparency = 1
-contentScrolling.BorderSizePixel = 0
-contentScrolling.ScrollBarThickness = 4
-contentScrolling.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
-contentScrolling.Parent = contentFrame
-
-local contentLayout = Instance.new("UIListLayout")
-contentLayout.Padding = UDim.new(0, 6)
-contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-contentLayout.Parent = contentScrolling
-
--- Status Bar
-local statusBar = Instance.new("Frame")
-statusBar.Size = UDim2.new(1, -20, 0, 25)
-statusBar.Position = UDim2.new(0, 10, 1, -30)
-statusBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-statusBar.Parent = mainFrame
-
-local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0.05, 0)
-statusCorner.Parent = statusBar
-
-statusLabel = Instance.new("TextLabel")
-statusLabel.Text = "Status: Ready"
-statusLabel.Size = UDim2.new(1, -10, 1, 0)
-statusLabel.Position = UDim2.new(0, 5, 0, 0)
-statusLabel.BackgroundTransparency = 1
-statusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextSize = 11
-statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = statusBar
-
--- Create Toggle Function
-local function createToggle(text, layoutOrder)
-    local toggle = Instance.new("TextButton")
-    toggle.Text = text
-    toggle.Size = UDim2.new(1, 0, 0, 32)
-    toggle.Position = UDim2.new(0, 0, 0, 0)
-    toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggle.Font = Enum.Font.GothamSemibold
-    toggle.TextSize = 12
-    toggle.AutoButtonColor = true
-    toggle.LayoutOrder = layoutOrder
-    toggle.Parent = contentScrolling
-    
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0.08, 0)
-    toggleCorner.Parent = toggle
-    
-    return toggle
-end
-
--- Create Button Function
-local function createButton(text, layoutOrder)
-    local button = Instance.new("TextButton")
-    button.Text = text
-    button.Size = UDim2.new(1, 0, 0, 32)
-    button.Position = UDim2.new(0, 0, 0, 0)
-    button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.Font = Enum.Font.GothamSemibold
-    button.TextSize = 12
-    button.AutoButtonColor = true
-    button.LayoutOrder = layoutOrder
-    button.Parent = contentScrolling
-    
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0.08, 0)
-    buttonCorner.Parent = button
-    
-    return button
-end
-
--- Tab Contents
-local mainContent = {}
-local playerContent = {}
-local shopContent = {}
-local visualsContent = {}
-
--- MAIN TAB
-table.insert(mainContent, createToggle("▶ TWEEN TO BASE", 1))
-table.insert(mainContent, createToggle("SLOW FLIGHT: OFF", 2))
-table.insert(mainContent, createToggle("FLOAT: OFF", 3))
-table.insert(mainContent, createToggle("INSTANT PROXIMITY: OFF", 4))
-
--- PLAYER TAB
-table.insert(playerContent, createToggle("SEMI INVISIBLE: OFF", 1))
-table.insert(playerContent, createToggle("INFINITE JUMP: OFF", 2))
-table.insert(playerContent, createToggle("SPEED BOOSTER: OFF", 3))
-table.insert(playerContent, createToggle("GOD MODE: OFF", 4))
-table.insert(playerContent, createToggle("WALKSPEED (50): OFF", 5))
-
--- SHOP TAB
-table.insert(shopContent, createButton("SHOP DROPDOWN", 1))
-
--- VISUALS TAB
-table.insert(visualsContent, createToggle("PLAYER ESP: OFF", 1))
-table.insert(visualsContent, createToggle("FULLBRIGHT: OFF", 2))
-table.insert(visualsContent, createButton("DISCORD INVITE", 3))
-
--- Hide all content initially
-for _, button in ipairs(mainContent) do
-    button.Visible = false
-end
-for _, button in ipairs(playerContent) do
-    button.Visible = false
-end
-for _, button in ipairs(shopContent) do
-    button.Visible = false
-end
-for _, button in ipairs(visualsContent) do
-    button.Visible = false
-end
-
--- Tab System
-local function switchTab(tabName)
-    currentTab = tabName
-    
-    for _, button in ipairs(mainContent) do
-        button.Visible = false
-    end
-    for _, button in ipairs(playerContent) do
-        button.Visible = false
-    end
-    for _, button in ipairs(shopContent) do
-        button.Visible = false
-    end
-    for _, button in ipairs(visualsContent) do
-        button.Visible = false
-    end
-    
-    if tabName == "Main" then
-        for _, button in ipairs(mainContent) do
-            button.Visible = true
-        end
-    elseif tabName == "Player" then
-        for _, button in ipairs(playerContent) do
-            button.Visible = true
-        end
-    elseif tabName == "Shop" then
-        for _, button in ipairs(shopContent) do
-            button.Visible = true
-        end
-    elseif tabName == "Visuals" then
-        for _, button in ipairs(visualsContent) do
-            button.Visible = true
-        end
-    end
-    
-    for name, button in pairs(tabButtons) do
-        if name == tabName then
-            button.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-            button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-            button.TextColor3 = Color3.fromRGB(200, 200, 200)
-        end
-    end
-    print("Switched to tab:", tabName)
-end
-
--- Connect tab buttons
-for tabName, button in pairs(tabButtons) do
-    button.MouseButton1Click:Connect(function()
-        print("Tab button clicked:", tabName)
-        switchTab(tabName)
-    end)
-end
-
--- Initialize first tab
-switchTab("Main")
-
--- Update scrolling frame size
-contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    contentScrolling.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y)
-end)
-
--- Toggle GUI
-toggleButton.MouseButton1Click:Connect(function()
-    print("Toggle button clicked")
-    gui.Enabled = not gui.Enabled
-    if gui.Enabled then
-        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-        statusLabel.Text = "GUI Opened"
-    else
-        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-        statusLabel.Text = "GUI Closed"
-    end
-end)
-
 -- Proximity Prompts
 local function cleanupProximityConnections()
     for _, connection in pairs(connections.ProximityPrompts) do
@@ -602,28 +390,38 @@ else
     logError("Plots not found in Workspace")
 end
 
-mainContent[4].MouseButton1Click:Connect(function()
-    print("Instant Proximity toggled")
-    ipp = not ipp
-    mainContent[4].Text = ipp and "INSTANT PROXIMITY: ON" or "INSTANT PROXIMITY: OFF"
-    mainContent[4].BackgroundColor3 = ipp and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 70)
-    statusLabel.Text = ipp and "Instant Proximity enabled" or "Instant Proximity disabled"
-    if ipp then
-        for _, v in pairs(pp) do
-            v.HoldDuration = 0
+Sections.Main:AddToggle("InstantProximityPrompt", {
+    Title = "Instant Proximity Prompts",
+    Default = false,
+    Callback = function(state)
+        print("Instant Proximity toggled")
+        ipp = state
+        if ipp then
+            for _, v in pairs(pp) do
+                v.HoldDuration = 0
+            end
+            lib:Notification("KRYPTON HUB", "Instant Proximity enabled", 3)
+        else
+            for _, v in pairs(pp) do
+                v.HoldDuration = 0.5
+            end
+            lib:Notification("KRYPTON HUB", "Instant Proximity disabled", 3)
         end
     end
-end)
+})
 
--- Tween to Base
-mainContent[1].MouseButton1Click:Connect(function()
-    print("Tween to Base toggled")
-    if tweenActive then
-        tweenActive = false
-        mainContent[1].Text = "▶ TWEEN TO BASE"
-        mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Tween stopped"
-    else
+-- Teleport Features
+Sections.Teleport:AddToggle("TweenToBase", {
+    Title = "Tween to Base",
+    Description = "Smoothly teleports to your base",
+    Default = false,
+    Callback = function(state)
+        print("Tween to Base toggled")
+        if not state then
+            tweenActive = false
+            lib:Notification("KRYPTON HUB", "Tween stopped", 3)
+            return
+        end
         local base = nil
         for _, v in pairs(Workspace:WaitForChild("Plots"):GetChildren()) do
             local yourBase = v:FindFirstChild("YourBase", true)
@@ -634,10 +432,7 @@ mainContent[1].MouseButton1Click:Connect(function()
         end
         if base and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
             tweenActive = true
-            mainContent[1].Text = "■ STOP TWEEN"
-            mainContent[1].BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-            statusLabel.Text = "Tweening to base..."
-            
+            lib:Notification("KRYPTON HUB", "Tweening to base...", 3)
             local hrp = player.Character.HumanoidRootPart
             local humanoid = player.Character.Humanoid
             local plrpos = hrp.Position
@@ -654,72 +449,72 @@ mainContent[1].MouseButton1Click:Connect(function()
             tween:Play()
             tween.Completed:Connect(function()
                 tweenActive = false
-                mainContent[1].Text = "▶ TWEEN TO BASE"
-                mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-                statusLabel.Text = "Reached base"
+                lib:Notification("KRYPTON HUB", "Reached base", 3)
             end)
         else
             logError("Base or character components not found")
         end
     end
-end)
+})
 
 -- Slow Flight
-mainContent[2].MouseButton1Click:Connect(function()
-    print("Slow Flight toggled")
-    flyActive = not flyActive
-    if flyActive then
-        mainContent[2].Text = "SLOW FLIGHT: ON"
-        mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Slow Flight enabled - Use camera direction"
-        connections.Fly = RunService.Stepped:Connect(function()
-            updateCharacterReferences()
-            if flyActive and hrp then
-                hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * config.flySpeed
+Sections.Main:AddToggle("SlowFlight", {
+    Title = "Slow Flight",
+    Description = "Fly using camera direction",
+    Default = false,
+    Callback = function(state)
+        print("Slow Flight toggled")
+        flyActive = state
+        if flyActive then
+            lib:Notification("KRYPTON HUB", "Slow Flight enabled - Use camera direction", 3)
+            connections.Fly = RunService.Stepped:Connect(function()
+                updateCharacterReferences()
+                if flyActive and hrp then
+                    hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * config.flySpeed
+                end
+            end)
+        else
+            lib:Notification("KRYPTON HUB", "Slow Flight disabled", 3)
+            if connections.Fly then
+                connections.Fly:Disconnect()
+                connections.Fly = nil
             end
-        end)
-    else
-        mainContent[2].Text = "SLOW FLIGHT: OFF"
-        mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Slow Flight disabled"
-        if connections.Fly then
-            connections.Fly:Disconnect()
-            connections.Fly = nil
-        end
-        if humanoid then
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
         end
     end
-end)
+})
 
 -- Float
-mainContent[3].MouseButton1Click:Connect(function()
-    print("Float toggled")
-    floatActive = not floatActive
-    if floatActive then
-        mainContent[3].Text = "FLOAT: ON"
-        mainContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Float enabled"
-        updateCharacterReferences()
-        if hrp then
-            setupGlobalGodmode()
-            connections.Float = Instance.new("BodyVelocity")
-            connections.Float.Velocity = Vector3.new(0, config.floatVelocity, 0)
-            connections.Float.MaxForce = Vector3.new(0, config.floatMaxForce, 0)
-            connections.Float.Parent = hrp
+Sections.Main:AddToggle("Float", {
+    Title = "Float",
+    Description = "Float in the air",
+    Default = false,
+    Callback = function(state)
+        print("Float toggled")
+        floatActive = state
+        if floatActive then
+            lib:Notification("KRYPTON HUB", "Float enabled", 3)
+            updateCharacterReferences()
+            if hrp then
+                setupGlobalGodmode()
+                connections.Float = Instance.new("BodyVelocity")
+                connections.Float.Velocity = Vector3.new(0, config.floatVelocity, 0)
+                connections.Float.MaxForce = Vector3.new(0, config.floatMaxForce, 0)
+                connections.Float.Parent = hrp
+            else
+                logError("HumanoidRootPart not found for Float")
+            end
         else
-            logError("HumanoidRootPart not found for Float")
-        end
-    else
-        mainContent[3].Text = "FLOAT: OFF"
-        mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Float disabled"
-        if connections.Float then
-            connections.Float:Destroy()
-            connections.Float = nil
+            lib:Notification("KRYPTON HUB", "Float disabled", 3)
+            if connections.Float then
+                connections.Float:Destroy()
+                connections.Float = nil
+            end
         end
     end
-end)
+})
 
 -- Semi-Invisible
 local function semiInvisibleFunction()
@@ -888,16 +683,12 @@ local function semiInvisibleFunction()
         setupGlobalGodmode()
         if enableInvisibility() then
             isInvisible = true
-            playerContent[1].Text = "SEMI INVISIBLE: ON"
-            playerContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            statusLabel.Text = "Semi-Invisible enabled (F key to toggle)"
+            lib:Notification("KRYPTON HUB", "Semi-Invisible enabled (F key to toggle)", 3)
         end
     else
         disableInvisibility()
         isInvisible = false
-        playerContent[1].Text = "SEMI INVISIBLE: OFF"
-        playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Semi-Invisible disabled"
+        lib:Notification("KRYPTON HUB", "Semi-Invisible disabled", 3)
         pcall(function()
             local oldGui = player.PlayerGui:FindFirstChild("InvisibleGui")
             if oldGui then oldGui:Destroy() end
@@ -909,10 +700,15 @@ local function semiInvisibleFunction()
     end
 end
 
-playerContent[1].MouseButton1Click:Connect(function()
-    print("Semi-Invisible button clicked")
-    semiInvisibleFunction()
-end)
+Sections.Character:AddToggle("SemiInvisible", {
+    Title = "Semi Invisible",
+    Description = "Makes you partially invisible (F key to toggle)",
+    Default = false,
+    Callback = function(state)
+        print("Semi-Invisible button clicked")
+        semiInvisibleFunction()
+    end
+})
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
         print("F key pressed for Semi-Invisible")
@@ -921,87 +717,87 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- Infinite Jump
-playerContent[2].MouseButton1Click:Connect(function()
-    print("Infinite Jump toggled")
-    infJumpActive = not infJumpActive
-    if infJumpActive then
-        playerContent[2].Text = "INFINITE JUMP: ON"
-        playerContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Infinite Jump enabled"
-        connections.Jump = UserInputService.JumpRequest:Connect(function()
-            if infJumpActive and humanoid and humanoid.Health > 0 then
-                setupGlobalGodmode()
-                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                if hrp then
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+Sections.Character:AddToggle("InfiniteJump", {
+    Title = "Infinite Jump",
+    Default = false,
+    Callback = function(state)
+        print("Infinite Jump toggled")
+        infJumpActive = state
+        if infJumpActive then
+            lib:Notification("KRYPTON HUB", "Infinite Jump enabled", 3)
+            connections.Jump = UserInputService.JumpRequest:Connect(function()
+                if infJumpActive and humanoid and humanoid.Health > 0 then
+                    setupGlobalGodmode()
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    if hrp then
+                        hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+                    end
                 end
+            end)
+        else
+            lib:Notification("KRYPTON HUB", "Infinite Jump disabled", 3)
+            if connections.Jump then
+                connections.Jump:Disconnect()
+                connections.Jump = nil
             end
-        end)
-    else
-        playerContent[2].Text = "INFINITE JUMP: OFF"
-        playerContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Infinite Jump disabled"
-        if connections.Jump then
-            connections.Jump:Disconnect()
-            connections.Jump = nil
         end
     end
-end)
+})
 
 -- Speed Booster
-local baseSpeed = config.walkSpeed
-playerContent[3].MouseButton1Click:Connect(function()
-    print("Speed Booster toggled")
-    speedActive = not speedActive
-    if speedActive then
-        playerContent[3].Text = "SPEED BOOSTER: ON"
-        playerContent[3].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Speed Booster enabled"
-        local function GetCharacter()
-            local Char = player.Character or player.CharacterAdded:Wait()
-            local HRP = Char and Char:WaitForChild("HumanoidRootPart")
-            local Hum = Char and Char:FindFirstChildOfClass("Humanoid")
-            return Char, HRP, Hum
-        end
-        local function getMovementInput()
-            local Char, HRP, Hum = GetCharacter()
-            if not Char or not HRP or not Hum then return Vector3.new(0,0,0) end
-            local moveVector = Hum.MoveDirection
-            if moveVector.Magnitude > 0.1 then
-                return Vector3.new(moveVector.X, 0, moveVector.Z).Unit
+Sections.Character:AddToggle("SpeedBooster", {
+    Title = "Speed Booster",
+    Description = "Increases movement speed",
+    Default = false,
+    Callback = function(state)
+        print("Speed Booster toggled")
+        speedActive = state
+        if speedActive then
+            lib:Notification("KRYPTON HUB", "Speed Booster enabled", 3)
+            local function GetCharacter()
+                local Char = player.Character or player.CharacterAdded:Wait()
+                local HRP = Char and Char:WaitForChild("HumanoidRootPart")
+                local Hum = Char and Char:FindFirstChildOfClass("Humanoid")
+                return Char, HRP, Hum
             end
-            return Vector3.new(0,0,0)
-        end
-        connections.Speed = RunService.Stepped:Connect(function()
-            local Char, HRP, Hum = GetCharacter()
-            if not Char or not HRP or not Hum then return end
-            local inputDirection = getMovementInput()
-            if inputDirection.Magnitude > 0 then
-                HRP.AssemblyLinearVelocity = Vector3.new(
-                    inputDirection.X * baseSpeed,
-                    HRP.AssemblyLinearVelocity.Y,
-                    inputDirection.Z * baseSpeed
-                )
-            else
-                HRP.AssemblyLinearVelocity = Vector3.new(0, HRP.AssemblyLinearVelocity.Y, 0)
+            local function getMovementInput()
+                local Char, HRP, Hum = GetCharacter()
+                if not Char or not HRP or not Hum then return Vector3.new(0,0,0) end
+                local moveVector = Hum.MoveDirection
+                if moveVector.Magnitude > 0.1 then
+                    return Vector3.new(moveVector.X, 0, moveVector.Z).Unit
+                end
+                return Vector3.new(0,0,0)
             end
-        end)
-    else
-        playerContent[3].Text = "SPEED BOOSTER: OFF"
-        playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Speed Booster disabled"
-        if connections.Speed then
-            connections.Speed:Disconnect()
-            connections.Speed = nil
-        end
-        updateCharacterReferences()
-        if hrp then
-            hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+            connections.Speed = RunService.Stepped:Connect(function()
+                local Char, HRP, Hum = GetCharacter()
+                if not Char or not HRP or not Hum then return end
+                local inputDirection = getMovementInput()
+                if inputDirection.Magnitude > 0 then
+                    HRP.AssemblyLinearVelocity = Vector3.new(
+                        inputDirection.X * config.walkSpeed,
+                        HRP.AssemblyLinearVelocity.Y,
+                        inputDirection.Z * config.walkSpeed
+                    )
+                else
+                    HRP.AssemblyLinearVelocity = Vector3.new(0, HRP.AssemblyLinearVelocity.Y, 0)
+                end
+            end)
+        else
+            lib:Notification("KRYPTON HUB", "Speed Booster disabled", 3)
+            if connections.Speed then
+                connections.Speed:Disconnect()
+                connections.Speed = nil
+            end
+            updateCharacterReferences()
+            if hrp then
+                hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+            end
         end
     end
-end)
+})
 
--- God Mode (Toggle)
+-- God Mode
 local function enableGodMode()
     local function apply(character)
         local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -1048,21 +844,21 @@ local function disableGodMode()
     end
 end
 
-playerContent[4].MouseButton1Click:Connect(function()
-    print("God Mode toggled")
-    godModeToggle = not godModeToggle
-    if godModeToggle then
-        playerContent[4].Text = "GOD MODE: ON"
-        playerContent[4].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "God Mode enabled"
-        enableGodMode()
-    else
-        playerContent[4].Text = "GOD MODE: OFF"
-        playerContent[4].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "God Mode disabled"
-        disableGodMode()
+Sections.Character:AddToggle("GodMode", {
+    Title = "God Mode",
+    Default = false,
+    Callback = function(state)
+        print("God Mode toggled")
+        godModeToggle = state
+        if godModeToggle then
+            lib:Notification("KRYPTON HUB", "God Mode enabled", 3)
+            enableGodMode()
+        else
+            lib:Notification("KRYPTON HUB", "God Mode disabled", 3)
+            disableGodMode()
+        end
     end
-end)
+})
 
 -- WalkSpeed
 local walkSpeedToggle = false
@@ -1094,29 +890,29 @@ local function setWalkSpeed(speed)
     end
 end
 
-playerContent[5].MouseButton1Click:Connect(function()
-    print("WalkSpeed toggled")
-    walkSpeedToggle = not walkSpeedToggle
-    if walkSpeedToggle then
-        playerContent[5].Text = "WALKSPEED (50): ON"
-        playerContent[5].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "WalkSpeed enabled"
-        setWalkSpeed(config.walkSpeed)
-    else
-        playerContent[5].Text = "WALKSPEED (50): OFF"
-        playerContent[5].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "WalkSpeed disabled"
-        setWalkSpeed(16)
-        if HumanModCons.wsLoop then
-            HumanModCons.wsLoop:Disconnect()
-            HumanModCons.wsLoop = nil
-        end
-        if HumanModCons.wsCA then
-            HumanModCons.wsCA:Disconnect()
-            HumanModCons.wsCA = nil
+Sections.Character:AddToggle("WalkSpeed", {
+    Title = "WalkSpeed (50)",
+    Default = false,
+    Callback = function(state)
+        print("WalkSpeed toggled")
+        walkSpeedToggle = state
+        if walkSpeedToggle then
+            lib:Notification("KRYPTON HUB", "WalkSpeed enabled", 3)
+            setWalkSpeed(config.walkSpeed)
+        else
+            lib:Notification("KRYPTON HUB", "WalkSpeed disabled", 3)
+            setWalkSpeed(16)
+            if HumanModCons.wsLoop then
+                HumanModCons.wsLoop:Disconnect()
+                HumanModCons.wsLoop = nil
+            end
+            if HumanModCons.wsCA then
+                HumanModCons.wsCA:Disconnect()
+                HumanModCons.wsCA = nil
+            end
         end
     end
-end)
+})
 
 -- Shop Dropdown
 do
@@ -1153,130 +949,80 @@ do
         table.insert(dropdownOptions, item.Name)
     end
 
-    local dropdownFrame = Instance.new("Frame")
-    dropdownFrame.Size = UDim2.new(1, 0, 0, 32)
-    dropdownFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    dropdownFrame.LayoutOrder = 1
-    dropdownFrame.Parent = contentScrolling
-
-    local dropdownCorner = Instance.new("UICorner")
-    dropdownCorner.CornerRadius = UDim.new(0.08, 0)
-    dropdownCorner.Parent = dropdownFrame
-
-    local dropdown = Instance.new("TextButton")
-    dropdown.Text = "Select Item to Purchase"
-    dropdown.Size = UDim2.new(1, -10, 1, 0)
-    dropdown.Position = UDim2.new(0, 5, 0, 0)
-    dropdown.BackgroundTransparency = 1
-    dropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dropdown.Font = Enum.Font.GothamSemibold
-    dropdown.TextSize = 12
-    dropdown.TextXAlignment = Enum.TextXAlignment.Left
-    dropdown.Parent = dropdownFrame
-
-    local dropdownList = Instance.new("Frame")
-    dropdownList.Size = UDim2.new(1, 0, 0, 100)
-    dropdownList.Position = UDim2.new(0, 0, 1, 5)
-    dropdownList.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    dropdownList.Visible = false
-    dropdownList.Parent = dropdownFrame
-
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, 2)
-    listLayout.Parent = dropdownList
-
-    local dropdownOptionsButtons = {}
-    for i, option in ipairs(dropdownOptions) do
-        local optionButton = Instance.new("TextButton")
-        optionButton.Text = option
-        optionButton.Size = UDim2.new(1, 0, 0, 20)
-        optionButton.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        optionButton.Font = Enum.Font.Gotham
-        optionButton.TextSize = 12
-        optionButton.LayoutOrder = i
-        optionButton.Parent = dropdownList
-        dropdownOptionsButtons[option] = optionButton
-    end
-
-    dropdown.MouseButton1Click:Connect(function()
-        print("Shop dropdown clicked")
-        dropdownList.Visible = not dropdownList.Visible
-    end)
-
-    for _, option in ipairs(dropdownOptions) do
-        dropdownOptionsButtons[option].MouseButton1Click:Connect(function()
-            print("Shop option selected:", option)
-            dropdown.Text = option
-            dropdownList.Visible = false
+    Sections.Shop:AddDropdown("ShopItemDropdown", {
+        Title = "Select Item to Purchase",
+        Description = "Pick an item from the shop list.",
+        Options = dropdownOptions,
+        Default = "",
+        PlaceHolder = "Search Item...",
+        Multiple = false,
+        Callback = function(selected)
+            print("Shop option selected:", selected)
             for _, item in pairs(allItems) do
-                if option == item.Name then
+                if selected == item.Name then
                     local success, err = pcall(function()
                         local remote = game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy")
                         if remote then
-                            local result = remote:InvokeServer(item.ID)
-                            return result
+                            remote:InvokeServer(item.ID)
                         else
                             error("Shop remote not found")
                         end
                     end)
-                    statusLabel.Text = success and ("Tried to buy: " .. item.Name .. " (Success)") or ("Error buying " .. item.Name .. ": " .. tostring(err))
-                    print("Shop purchase attempt:", success, err)
+                    lib:Notification(
+                        "KRYPTON HUB",
+                        success and ("Tried to buy: " .. item.Name) or ("Error: " .. tostring(err)),
+                        3
+                    )
+                    break
                 end
             end
-        end)
-    end
-
-    shopContent[1].MouseButton1Click:Connect(function()
-        print("Shop button clicked")
-        dropdownList.Visible = not dropdownList.Visible
-    end)
+        end
+    })
 end
 
 -- ESP
-visualsContent[1].MouseButton1Click:Connect(function()
-    print("Player ESP toggled")
-    espActive = not espActive
-    if espActive then
-        visualsContent[1].Text = "PLAYER ESP: ON"
-        visualsContent[1].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "ESP enabled"
-        local function createESP(character, folder)
-            if character and folder then
-                local highlight = Instance.new("Highlight")
-                highlight.Adornee = character
-                highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.FillTransparency = 0.5
-                highlight.OutlineTransparency = 0
-                highlight.Parent = folder
-            end
-        end
-        for _, otherPlayer in pairs(Players:GetPlayers()) do
-            if otherPlayer ~= player then
-                local espFolder = Instance.new("Folder")
-                espFolder.Name = otherPlayer.Name .. "_ESP"
-                espFolder.Parent = Workspace
-                espFolders[otherPlayer] = espFolder
-                if otherPlayer.Character then
-                    createESP(otherPlayer.Character, espFolder)
+Sections.Visuals:AddToggle("ESP", {
+    Title = "Player ESP",
+    Default = false,
+    Callback = function(state)
+        print("Player ESP toggled")
+        espActive = state
+        if espActive then
+            lib:Notification("KRYPTON HUB", "ESP enabled", 3)
+            local function createESP(character, folder)
+                if character and folder then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Adornee = character
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = folder
                 end
-                otherPlayer.CharacterAdded:Connect(function(char)
-                    createESP(char, espFolder)
-                end)
             end
+            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                if otherPlayer ~= player then
+                    local espFolder = Instance.new("Folder")
+                    espFolder.Name = otherPlayer.Name .. "_ESP"
+                    espFolder.Parent = Workspace
+                    espFolders[otherPlayer] = espFolder
+                    if otherPlayer.Character then
+                        createESP(otherPlayer.Character, espFolder)
+                    end
+                    otherPlayer.CharacterAdded:Connect(function(char)
+                        createESP(char, espFolder)
+                    end)
+                end
+            end
+        else
+            lib:Notification("KRYPTON HUB", "ESP disabled", 3)
+            for _, folder in pairs(espFolders) do
+                if folder then folder:Destroy() end
+            end
+            espFolders = {}
         end
-    else
-        visualsContent[1].Text = "PLAYER ESP: OFF"
-        visualsContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "ESP disabled"
-        for _, folder in pairs(espFolders) do
-            if folder then folder:Destroy() end
-        end
-        espFolders = {}
     end
-end)
+})
 
 Players.PlayerRemoving:Connect(function(otherPlayer)
     if espFolders[otherPlayer] then
@@ -1287,46 +1033,38 @@ Players.PlayerRemoving:Connect(function(otherPlayer)
 end)
 
 -- Fullbright
-visualsContent[2].MouseButton1Click:Connect(function()
-    print("Fullbright toggled")
-    fullbrightActive = not fullbrightActive
-    if fullbrightActive then
-        visualsContent[2].Text = "FULLBRIGHT: ON"
-        visualsContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        statusLabel.Text = "Fullbright enabled"
-        originalBrightness = Lighting.Brightness
-        originalClockTime = Lighting.ClockTime
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.GlobalShadows = false
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-    else
-        visualsContent[2].Text = "FULLBRIGHT: OFF"
-        visualsContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        statusLabel.Text = "Fullbright disabled"
-        if originalBrightness then
-            Lighting.Brightness = originalBrightness
+Sections.Visuals:AddToggle("Fullbright", {
+    Title = "Fullbright",
+    Default = false,
+    Callback = function(state)
+        print("Fullbright toggled")
+        fullbrightActive = state
+        if fullbrightActive then
+            lib:Notification("KRYPTON HUB", "Fullbright enabled", 3)
+            originalBrightness = Lighting.Brightness
+            originalClockTime = Lighting.ClockTime
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            Lighting.GlobalShadows = false
+            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        else
+            lib:Notification("KRYPTON HUB", "Fullbright disabled", 3)
+            if originalBrightness then
+                Lighting.Brightness = originalBrightness
+            end
+            if originalClockTime then
+                Lighting.ClockTime = originalClockTime
+            end
+            Lighting.GlobalShadows = true
         end
-        if originalClockTime then
-            Lighting.ClockTime = originalClockTime
-        end
-        Lighting.GlobalShadows = true
     end
-end)
+})
 
--- Discord Button
-visualsContent[3].MouseButton1Click:Connect(function()
-    print("Discord button clicked")
-    if setclipboard then
-        setclipboard("https://discord.gg/jXSyQFnQCY")
-        statusLabel.Text = "Discord link copied to clipboard!"
-        visualsContent[3].Text = "✓ COPIED!"
-        task.wait(2)
-        visualsContent[3].Text = "DISCORD INVITE"
-    else
-        statusLabel.Text = "Clipboard not supported on this device"
-    end
-end)
+-- Config Setup
+FlagsManager:SetLibrary(lib)
+FlagsManager:SetIgnoreIndexes({})
+FlagsManager:SetFolder("Config/KryptonHub")
+FlagsManager:InitSaveSystem(tabs.Config)
 
 -- Auto-cleanup on character death
 player.CharacterAdded:Connect(function()
@@ -1341,30 +1079,6 @@ player.CharacterAdded:Connect(function()
     fullbrightActive = false
     godModeToggle = false
     ipp = false
-
-    mainContent[1].Text = "▶ TWEEN TO BASE"
-    mainContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    mainContent[2].Text = "SLOW FLIGHT: OFF"
-    mainContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    mainContent[3].Text = "FLOAT: OFF"
-    mainContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    mainContent[4].Text = "INSTANT PROXIMITY: OFF"
-    mainContent[4].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    playerContent[1].Text = "SEMI INVISIBLE: OFF"
-    playerContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    playerContent[2].Text = "INFINITE JUMP: OFF"
-    playerContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    playerContent[3].Text = "SPEED BOOSTER: OFF"
-    playerContent[3].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    playerContent[4].Text = "GOD MODE: OFF"
-    playerContent[4].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    playerContent[5].Text = "WALKSPEED (50): OFF"
-    playerContent[5].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    visualsContent[1].Text = "PLAYER ESP: OFF"
-    visualsContent[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    visualsContent[2].Text = "FULLBRIGHT: OFF"
-    visualsContent[2].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    visualsContent[3].Text = "DISCORD INVITE"
 
     if connections.Fly then connections.Fly:Disconnect() end
     if connections.Float then connections.Float:Destroy() end
@@ -1392,7 +1106,7 @@ player.CharacterAdded:Connect(function()
     for _, v in pairs(pp) do
         v.HoldDuration = 0.5
     end
-    statusLabel.Text = "Character respawned - Ready"
+    lib:Notification("KRYPTON HUB", "Character respawned - Ready", 3)
 end)
 
 -- Cleanup on Script End
@@ -1435,7 +1149,8 @@ game:BindToClose(function()
     Lighting.GlobalShadows = true
 end)
 
+lib:Notification("KRYPTON HUB", "Krypton Hub Loaded! Press RightControl to toggle GUI.", 5)
 print("Krypton Hub - Complete Edition Loaded!")
 print("Features: Tween to Base, Slow Flight, Float, Semi-Invisible, Infinite Jump, Speed Booster, God Mode, WalkSpeed, ESP, Fullbright, Instant Proximity, Shop")
-print("Controls: F key to toggle semi-invisible, Circle button to open GUI")
+print("Controls: RightControl to toggle GUI, F key to toggle semi-invisible")
 print("Discord: https://discord.gg/jXSyQFnQCY")
