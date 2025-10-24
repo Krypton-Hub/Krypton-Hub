@@ -1,4 +1,3 @@
-
 -- Services
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -247,13 +246,12 @@ toggleGui.ResetOnSpawn = false
 toggleGui.Parent = player:WaitForChild("PlayerGui")
 print("Toggle GUI created:", toggleGui)
 
-local toggleButton = Instance.new("TextButton")
+local toggleButton = Instance.new("ImageButton") -- Changed to ImageButton
 toggleButton.Size = UDim2.new(0, 60, 0, 60)
 toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
 toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
 toggleButton.BackgroundTransparency = 0.3
-toggleButton.Text = ""
-toggleButton.Image = "rbxassetid://95131705390407" -- Updated logo
+toggleButton.Image = "rbxassetid://95131705390407" -- Set image here
 toggleButton.Active = true
 toggleButton.Draggable = true
 toggleButton.Parent = toggleGui
