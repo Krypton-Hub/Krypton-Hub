@@ -12,7 +12,7 @@ blur.Size = 0
 TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
 
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "StellarLoader"
+screenGui.Name = "KryptonLoader"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 
@@ -27,7 +27,7 @@ bg.BackgroundTransparency = 1
 bg.ZIndex = 0
 TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
 
-local word = "STELLAR"
+local word = "KRYPTON"
 local letters = {}
 
 local function tweenOutAndDestroy()
@@ -116,7 +116,7 @@ local function RoleChecker()
     elseif string.find(LRM_UserNote, "Premium") then
         return "Premium Version"
     elseif string.find(LRM_UserNote, "Owner") then
-        return "Developer x2zu"
+        return "Developer agent_duke13"
     else
         return "No Role Assigned"
     end
@@ -124,7 +124,7 @@ end
 
 -- UI Setup
 local main = lib:Load({
-    Title = game:GetService("MarketplaceService"):GetProductInfo(109983668079237).Name .. ' 〢 discord.gg/stellar 〢 ' .. RoleChecker(),
+    Title = game:GetService("MarketplaceService"):GetProductInfo(109983668079237).Name .. ' 〢 ' .. RoleChecker(),
     ToggleButton = "rbxassetid://105059922903197",
     BindGui = Enum.KeyCode.RightControl,
 })
@@ -153,7 +153,7 @@ Sections.Discord:AddParagraph({
 Sections.Discord:AddButton({
     Title = "Copy Discord Invite",
     Callback = function()
-        setclipboard("https://discord.gg/FmMuvkaWvG")
+        setclipboard("https://discord.gg/jXSyQFnQCY")
         lib:Notification("Discord", "Copied invite to clipboard, just paste it.", 5)
     end,
 })
