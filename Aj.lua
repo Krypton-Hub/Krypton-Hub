@@ -3,12 +3,10 @@ local TPS = game:GetService("TeleportService")
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
 
 while not Players.LocalPlayer do task.wait() end
 local player = Players.LocalPlayer
@@ -56,25 +54,6 @@ local foundPodiumsData = {}
 local monitoringConnection = nil
 local autoHopping = false
 
-local folderExists = game.Workspace:FindFirstChild("FolderHopperCheck") ~= nil
-local alreadyHereFolderExists = game.Workspace:FindFirstChild("Sigmahopper") ~= nil
-
-local mutationColors = {
-    Gold = Color3.fromRGB(255, 215, 0),
-    Diamond = Color3.fromRGB(0, 255, 255),
-    Lava = Color3.fromRGB(255, 100, 0),
-    Bloodrot = Color3.fromRGB(255, 0, 0),
-    Candy = Color3.fromRGB(255, 182, 193),
-    Normal = Color3.fromRGB(255, 255, 255),
-    Default = Color3.fromRGB(255, 255, 255)
-}
-
-local cachedPlots = nil
-local cachedPodiums = nil
-local lastPodiumCheck = 0
-local PODIUM_CACHE_DURATION = 1
-
--- Test if SetCore is supported
 local setCoreSupported = false
 local function testSetCore()
     local success, _ = pcall(function()
@@ -93,16 +72,15 @@ local function createNotificationGui(title, text, duration)
         local notificationGui = Instance.new("ScreenGui")
         notificationGui.Name = "TempNotification"
         notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        notificationGui.ZIndex = 200 -- Increased for visibility
         notificationGui.IgnoreGuiInset = true
         notificationGui.Parent = player.PlayerGui
+        print("Notification GUI created and parented to PlayerGui")
 
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(0.3, 0, 0.15, 0)
         frame.Position = UDim2.new(0.35, 0, 0.05, 0)
         frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
         frame.BorderSizePixel = 0
-        frame.ZIndex = 200
         frame.Parent = notificationGui
 
         local corner = Instance.new("UICorner")
@@ -123,7 +101,6 @@ local function createNotificationGui(title, text, duration)
         titleLabel.TextSize = 14
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        titleLabel.ZIndex = 201
         titleLabel.Parent = frame
 
         local textLabel = Instance.new("TextLabel")
@@ -136,12 +113,12 @@ local function createNotificationGui(title, text, duration)
         textLabel.Font = Enum.Font.Gotham
         textLabel.TextXAlignment = Enum.TextXAlignment.Left
         textLabel.TextWrapped = true
-        textLabel.ZIndex = 201
         textLabel.Parent = frame
 
         task.spawn(function()
             task.wait(duration)
             notificationGui:Destroy()
+            print("Notification GUI destroyed")
         end)
     end)
     if not success then
@@ -149,7 +126,6 @@ local function createNotificationGui(title, text, duration)
     end
 end
 
--- Notification function with fallback
 local function showNotification(title, text)
     local duration = settings.notificationDuration or 4
     print(string.format("Notification: %s - %s (Duration: %d)", title, text, duration))
@@ -170,7 +146,7 @@ local function showNotification(title, text)
 end
 
 local function checkAPIAvailability()
-    local mainAPI = "https://games.roblox.com/v1/games/" .. ALLOWED_PLACE_ID .. "/servers/Public?sortOrder=" .. settings.sortOrder .. "&limit=100&excludeFullGames=true"
+    local mainAPI = "https://games.roblox.com/v1/games/" .. ALLOWED_PLACE_ID .. "/servers/Public?sortOrder=" .. settings.sortOrder .. "&limit=10&excludeFullGames=true"
     local success, response = pcall(function() return game:HttpGet(mainAPI) end)
     return success and response ~= ""
 end
@@ -278,6 +254,15 @@ local function extractNumber(str)
 end
 
 local function getMutationTextAndColor(mutation)
+    local mutationColors = {
+        Gold = Color3.fromRGB(255, 215, 0),
+        Diamond = Color3.fromRGB(0, 255, 255),
+        Lava = Color3.fromRGB(255, 100, 0),
+        Bloodrot = Color3.fromRGB(255, 0, 0),
+        Candy = Color3.fromRGB(255, 182, 193),
+        Normal = Color3.fromRGB(255, 255, 255),
+        Default = Color3.fromRGB(255, 255, 255)
+    }
     if not mutation or mutation.Visible == false then
         return "Normal", Color3.fromRGB(255, 255, 255), false
     end
@@ -304,6 +289,11 @@ local function isPlayerBase(plot)
 end
 
 local function getAllPodiums()
+    local cachedPlots = Workspace:FindFirstChild("Plots")
+    local cachedPodiums = nil
+    local lastPodiumCheck = 0
+    local PODIUM_CACHE_DURATION = 1
+
     if cachedPodiums and tick() - lastPodiumCheck < PODIUM_CACHE_DURATION then
         return cachedPodiums
     end
@@ -311,10 +301,6 @@ local function getAllPodiums()
     local podiums = {}
     
     if not cachedPlots then
-        cachedPlots = Workspace:FindFirstChild("Plots")
-    end
-    
-    if not cachedPlots then 
         lastPodiumCheck = tick()
         cachedPodiums = podiums
         return podiums 
@@ -502,7 +488,7 @@ local function getAvailableServers()
         end
     end
     
-    local mainAPI = "https://games.roblox.com/v1/games/" .. ALLOWED_PLACE_ID .. "/servers/Public?sortOrder=" .. settings.sortOrder .. "&limit=100&excludeFullGames=true"
+    local mainAPI = "https://games.roblox.com/v1/games/" .. ALLOWED_PLACE_ID .. "/servers/Public?sortOrder=" .. settings.sortOrder .. "&limit=10&excludeFullGames=true"
     local servers = getServersFromAPI(mainAPI, true)
     
     if #servers > 0 then return servers end
@@ -600,9 +586,6 @@ local function checkPodiumsForWebhooksAndFilters()
                 mutText, 
                 rarityLabel.Text)
             print("Checking podium:", modelText)
-            
-            local genValue = extractNumber(genLabel.Text)
-            local displayName = displayNameLabel.Text
             
             local labels = {
                 DisplayName = displayNameLabel.Text,
@@ -785,7 +768,6 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
         container.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
         container.BorderSizePixel = 0
         container.Parent = parent
-        container.ZIndex = 101
         
         local containerCorner = Instance.new("UICorner")
         containerCorner.CornerRadius = UDim.new(0, 4)
@@ -804,7 +786,6 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
         scrollFrame.ScrollBarThickness = 6
         scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-        scrollFrame.ZIndex = 101
         scrollFrame.Parent = container
         
         local layout = Instance.new("UIListLayout")
@@ -823,7 +804,6 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
         textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
         textBox.TextSize = 12
         textBox.Font = Enum.Font.Gotham
-        textBox.ZIndex = 101
         textBox.Parent = container
         
         local function updateCanvas()
@@ -836,7 +816,6 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
             tag.Size = UDim2.new(0, 0, 0, 20)
             tag.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
             tag.BorderSizePixel = 0
-            tag.ZIndex = 101
             tag.Parent = scrollFrame
             
             local tagCorner = Instance.new("UICorner")
@@ -852,7 +831,6 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
             tagLabel.TextSize = 10
             tagLabel.Font = Enum.Font.Gotham
             tagLabel.TextXAlignment = Enum.TextXAlignment.Left
-            tagLabel.ZIndex = 101
             tagLabel.Parent = tag
             
             local removeButton = Instance.new("TextButton")
@@ -864,7 +842,6 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
             removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
             removeButton.TextSize = 8
             removeButton.Font = Enum.Font.GothamBold
-            removeButton.ZIndex = 101
             removeButton.Parent = tag
             
             local removeCorner = Instance.new("UICorner")
@@ -920,7 +897,7 @@ local function createTagList(parent, list, placeholder, onAdd, onRemove)
     end)
     if not success then
         print("Failed to create tag list:", err)
-        return function() end -- Return empty function to prevent further errors
+        return function() end
     end
 end
 
@@ -936,17 +913,15 @@ local function createSettingsGUI()
         screenGui.Name = "ServerHopperGUI"
         screenGui.ResetOnSpawn = false
         screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        screenGui.ZIndex = 100 -- Increased for visibility
         screenGui.IgnoreGuiInset = true
         screenGui.Parent = playerGui
-        print("ScreenGui created with ZIndex:", screenGui.ZIndex)
+        print("ScreenGui created and parented to PlayerGui")
         
         local mainFrame = Instance.new("Frame")
         mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
         mainFrame.Position = UDim2.new(guiState.position.XScale, guiState.position.XOffset, guiState.position.YScale, guiState.position.YOffset)
         mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
         mainFrame.BorderSizePixel = 0
-        mainFrame.ZIndex = 100
         mainFrame.Parent = screenGui
         
         local mainCorner = Instance.new("UICorner")
@@ -963,7 +938,6 @@ local function createSettingsGUI()
         titleBar.Position = UDim2.new(0, 0, 0, 0)
         titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
         titleBar.BorderSizePixel = 0
-        titleBar.ZIndex = 100
         titleBar.Parent = mainFrame
         
         local titleCorner = Instance.new("UICorner")
@@ -975,7 +949,6 @@ local function createSettingsGUI()
         titleFix.Position = UDim2.new(0, 0, 1, -20)
         titleFix.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
         titleFix.BorderSizePixel = 0
-        titleFix.ZIndex = 100
         titleFix.Parent = titleBar
         
         local titleLabel = Instance.new("TextLabel")
@@ -987,7 +960,6 @@ local function createSettingsGUI()
         titleLabel.TextSize = 14
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        titleLabel.ZIndex = 101
         titleLabel.Parent = titleBar
         
         local isMinimized = guiState.isMinimized
@@ -1002,7 +974,6 @@ local function createSettingsGUI()
         minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         minimizeButton.TextSize = 12
         minimizeButton.Font = Enum.Font.GothamBold
-        minimizeButton.ZIndex = 101
         minimizeButton.Parent = titleBar
         
         local minimizeCorner = Instance.new("UICorner")
@@ -1018,7 +989,6 @@ local function createSettingsGUI()
         closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         closeButton.TextSize = 12
         closeButton.Font = Enum.Font.GothamBold
-        closeButton.ZIndex = 101
         closeButton.Parent = titleBar
         
         local closeCorner = Instance.new("UICorner")
@@ -1030,7 +1000,6 @@ local function createSettingsGUI()
         contentFrame.Position = UDim2.new(0, 0, 0, 40)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Visible = not isMinimized
-        contentFrame.ZIndex = 100
         contentFrame.Parent = mainFrame
         
         local scrollFrame = Instance.new("ScrollingFrame")
@@ -1041,7 +1010,6 @@ local function createSettingsGUI()
         scrollFrame.ScrollBarThickness = 6
         scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 400)
-        scrollFrame.ZIndex = 100
         scrollFrame.Parent = contentFrame
         
         local layout = Instance.new("UIListLayout")
@@ -1072,12 +1040,11 @@ local function createSettingsGUI()
             end
         end)
         
-        local function createInputField(name, placeholder, defaultValue, layoutOrder, settingKey, desc)
+        local function createInputField(name, placeholder, defaultValue, layoutOrder, settingKey)
             local container = Instance.new("Frame")
             container.Size = UDim2.new(1, 0, 0, 40)
             container.BackgroundTransparency = 1
             container.LayoutOrder = layoutOrder
-            container.ZIndex = 100
             container.Parent = scrollFrame
             
             local label = Instance.new("TextLabel")
@@ -1089,7 +1056,6 @@ local function createSettingsGUI()
             label.TextSize = 11
             label.Font = Enum.Font.Gotham
             label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 101
             label.Parent = container
             
             local inputFrame = Instance.new("Frame")
@@ -1097,7 +1063,6 @@ local function createSettingsGUI()
             inputFrame.Position = UDim2.new(0, 0, 0, 14)
             inputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
             inputFrame.BorderSizePixel = 0
-            inputFrame.ZIndex = 100
             inputFrame.Parent = container
             
             local inputCorner = Instance.new("UICorner")
@@ -1107,7 +1072,7 @@ local function createSettingsGUI()
             local inputStroke = Instance.new("UIStroke")
             inputStroke.Thickness = 1
             inputStroke.Color = Color3.fromRGB(60, 60, 70)
-            inputStroke.Parent = inputFrame
+            inputFrame.Parent = container
             
             local textBox = Instance.new("TextBox")
             textBox.Size = UDim2.new(1, -8, 1, 0)
@@ -1119,7 +1084,6 @@ local function createSettingsGUI()
             textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
             textBox.TextSize = 12
             textBox.Font = Enum.Font.Gotham
-            textBox.ZIndex = 101
             textBox.Parent = inputFrame
             
             textBox.Focused:Connect(function()
@@ -1144,12 +1108,11 @@ local function createSettingsGUI()
             return textBox
         end
         
-        local function createTagInputField(name, list, placeholder, layoutOrder, descAdd, descRemove)
+        local function createTagInputField(name, list, placeholder, layoutOrder)
             local container = Instance.new("Frame")
             container.Size = UDim2.new(1, 0, 0, 40)
             container.BackgroundTransparency = 1
             container.LayoutOrder = layoutOrder
-            container.ZIndex = 100
             container.Parent = scrollFrame
             
             local label = Instance.new("TextLabel")
@@ -1161,14 +1124,12 @@ local function createSettingsGUI()
             label.TextSize = 11
             label.Font = Enum.Font.Gotham
             label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 101
             label.Parent = container
             
             local tagContainer = Instance.new("Frame")
             tagContainer.Size = UDim2.new(1, -10, 0, 26)
             tagContainer.Position = UDim2.new(0, 0, 0, 14)
             tagContainer.BackgroundTransparency = 1
-            tagContainer.ZIndex = 100
             tagContainer.Parent = container
             
             local refreshTags = createTagList(tagContainer, list, placeholder,
@@ -1192,12 +1153,11 @@ local function createSettingsGUI()
             return refreshTags
         end
         
-        local function createSortOrderToggle(name, defaultValue, layoutOrder, desc)
+        local function createSortOrderToggle(name, defaultValue, layoutOrder)
             local container = Instance.new("Frame")
             container.Size = UDim2.new(1, 0, 0, 40)
             container.BackgroundTransparency = 1
             container.LayoutOrder = layoutOrder
-            container.ZIndex = 100
             container.Parent = scrollFrame
             
             local label = Instance.new("TextLabel")
@@ -1209,7 +1169,6 @@ local function createSettingsGUI()
             label.TextSize = 11
             label.Font = Enum.Font.Gotham
             label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 101
             label.Parent = container
             
             local toggleButton = Instance.new("TextButton")
@@ -1222,7 +1181,6 @@ local function createSettingsGUI()
             toggleButton.TextSize = 12
             toggleButton.Font = Enum.Font.Gotham
             toggleButton.TextXAlignment = Enum.TextXAlignment.Left
-            toggleButton.ZIndex = 101
             toggleButton.Parent = container
             
             local toggleCorner = Instance.new("UICorner")
@@ -1254,12 +1212,11 @@ local function createSettingsGUI()
             return toggleButton
         end
         
-        local function createToggle(name, defaultValue, layoutOrder, settingKey, descOn, descOff)
+        local function createToggle(name, defaultValue, layoutOrder, settingKey)
             local container = Instance.new("Frame")
             container.Size = UDim2.new(1, 0, 0, 34)
             container.BackgroundTransparency = 1
             container.LayoutOrder = layoutOrder
-            container.ZIndex = 100
             container.Parent = scrollFrame
             
             local label = Instance.new("TextLabel")
@@ -1271,7 +1228,6 @@ local function createSettingsGUI()
             label.TextSize = 11
             label.Font = Enum.Font.Gotham
             label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 101
             label.Parent = container
             
             local toggleFrame = Instance.new("Frame")
@@ -1279,7 +1235,6 @@ local function createSettingsGUI()
             toggleFrame.Position = UDim2.new(1, -40, 0.5, -10)
             toggleFrame.BackgroundColor3 = defaultValue and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
             toggleFrame.BorderSizePixel = 0
-            toggleFrame.ZIndex = 100
             toggleFrame.Parent = container
             
             local toggleCorner = Instance.new("UICorner")
@@ -1291,7 +1246,6 @@ local function createSettingsGUI()
             toggleButton.Position = defaultValue and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
             toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             toggleButton.BorderSizePixel = 0
-            toggleButton.ZIndex = 101
             toggleButton.Parent = toggleFrame
             
             local buttonCorner = Instance.new("UICorner")
@@ -1304,7 +1258,6 @@ local function createSettingsGUI()
             clickDetector.Position = UDim2.new(0, 0, 0, 0)
             clickDetector.BackgroundTransparency = 1
             clickDetector.Text = ""
-            clickDetector.ZIndex = 101
             clickDetector.Parent = toggleFrame
             
             clickDetector.MouseButton1Click:Connect(function()
@@ -1325,31 +1278,29 @@ local function createSettingsGUI()
             return function() return isEnabled end
         end
         
-        local minGenInput = createInputField("Min. Generation", "1000000", tostring(settings.minGeneration), 1, "minGeneration", "Minimum generation for searching pets without specified target.")
-        local refreshTargetTags = createTagInputField("Target (Add)", settings.targetNames, "Name", 2, "Added target for search regardless of generation:", "Removed target:")
-        local refreshBlacklistTags = createTagInputField("Blacklist (Add)", settings.blacklistNames, "Name", 3, "Added to blacklist to ignore:", "Removed from blacklist:")
-        local rarityInput = createInputField("Rarity", "Secret, Mythical", settings.targetRarity, 4, "targetRarity", "Target rarity. Only pets of this rarity will be noticed.")
-        local mutationInput = createInputField("Mutation", "Rainbow, Gold", settings.targetMutation, 5, "targetMutation", "Target mutation. Only pets with this mutation will be noticed.")
-        local minPlayersInput = createInputField("Min. Players", "2", tostring(settings.minPlayers), 6, "minPlayers", "Minimum number of players on server for hopping.")
-        local soundInput = createInputField("Sound ID", "rbxassetid://9167433166", settings.customSoundId, 7, "customSoundId", "Sound ID to play when pet is found.")
-        local notificationDurationInput = createInputField("Notification Duration (sec)", "4", tostring(settings.notificationDuration), 8, "notificationDuration", "Duration of notifications in seconds.")
+        local minGenInput = createInputField("Min. Generation", "1000000", tostring(settings.minGeneration), 1, "minGeneration")
+        local refreshTargetTags = createTagInputField("Target (Add)", settings.targetNames, "Name", 2)
+        local refreshBlacklistTags = createTagInputField("Blacklist (Add)", settings.blacklistNames, "Name", 3)
+        local rarityInput = createInputField("Rarity", "Secret, Mythical", settings.targetRarity, 4, "targetRarity")
+        local mutationInput = createInputField("Mutation", "Rainbow, Gold", settings.targetMutation, 5, "targetMutation")
+        local minPlayersInput = createInputField("Min. Players", "2", tostring(settings.minPlayers), 6, "minPlayers")
+        local soundInput = createInputField("Sound ID", "rbxassetid://9167433166", settings.customSoundId, 7, "customSoundId")
+        local notificationDurationInput = createInputField("Notification Duration (sec)", "4", tostring(settings.notificationDuration), 8, "notificationDuration")
         
-        local sortOrderToggle = createSortOrderToggle("Sort Order", settings.sortOrder, 9, "Server sort order: Asc - low to high, Desc - high to low.")
-        local autoStartToggle = createToggle("Auto Start", settings.autoStart, 10, "autoStart", "Auto start script after webhook check enabled.", "Auto start script disabled.")
+        local sortOrderToggle = createSortOrderToggle("Sort Order", settings.sortOrder, 9)
+        local autoStartToggle = createToggle("Auto Start", settings.autoStart, 10, "autoStart")
         
         local fixedBottomFrame = Instance.new("Frame")
         fixedBottomFrame.Name = "FixedBottomFrame"
         fixedBottomFrame.Size = UDim2.new(1, 0, 0, 120)
         fixedBottomFrame.Position = UDim2.new(0, 0, 1, -120)
         fixedBottomFrame.BackgroundTransparency = 1
-        fixedBottomFrame.ZIndex = 100
         fixedBottomFrame.Parent = contentFrame
         
         local buttonContainer = Instance.new("Frame")
         buttonContainer.Size = UDim2.new(1, -10, 0, 60)
         buttonContainer.Position = UDim2.new(0, 5, 0, 0)
         buttonContainer.BackgroundTransparency = 1
-        buttonContainer.ZIndex = 100
         buttonContainer.Parent = fixedBottomFrame
         
         local startButton = Instance.new("TextButton")
@@ -1361,7 +1312,6 @@ local function createSettingsGUI()
         startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         startButton.TextSize = 14
         startButton.Font = Enum.Font.GothamBold
-        startButton.ZIndex = 101
         startButton.Parent = buttonContainer
         
         local startCorner = Instance.new("UICorner")
@@ -1377,7 +1327,6 @@ local function createSettingsGUI()
         stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         stopButton.TextSize = 14
         stopButton.Font = Enum.Font.GothamBold
-        stopButton.ZIndex = 101
         stopButton.Parent = buttonContainer
         
         local stopCorner = Instance.new("UICorner")
@@ -1388,7 +1337,6 @@ local function createSettingsGUI()
         statusContainer.Size = UDim2.new(1, -10, 0, 50)
         statusContainer.Position = UDim2.new(0, 5, 0, 65)
         statusContainer.BackgroundTransparency = 1
-        statusContainer.ZIndex = 100
         statusContainer.Parent = fixedBottomFrame
         
         local statusLabel = Instance.new("TextLabel")
@@ -1401,7 +1349,6 @@ local function createSettingsGUI()
         statusLabel.Font = Enum.Font.Gotham
         statusLabel.TextXAlignment = Enum.TextXAlignment.Left
         statusLabel.TextWrapped = true
-        statusLabel.ZIndex = 101
         statusLabel.Parent = statusContainer
         
         local apiStatusLabel = Instance.new("TextLabel")
@@ -1413,7 +1360,6 @@ local function createSettingsGUI()
         apiStatusLabel.TextSize = 9
         apiStatusLabel.Font = Enum.Font.Gotham
         apiStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-        apiStatusLabel.ZIndex = 101
         apiStatusLabel.Parent = statusContainer
         
         local function updateScrollCanvas()
@@ -1538,6 +1484,7 @@ local function createSettingsGUI()
             end
             
             screenGui:Destroy()
+            print("ScreenGui destroyed")
         end)
         
         local dragging = false
@@ -1590,6 +1537,7 @@ local function createSettingsGUI()
                     local hopperGui = playerGui:FindFirstChild("ServerHopperGUI")
                     if hopperGui then
                         hopperGui:Destroy()
+                        print("CloseHop: ScreenGui destroyed")
                     end
                 end
             end)
@@ -1612,26 +1560,36 @@ local function testExecutorCompatibility()
         writefile("test.txt", "test")
         return isfile("test.txt") and readfile("test.txt") == "test"
     end)
-    print("File I/O test:", fileSuccess and "Success" or "Failed: " .. fileResult)
+    print("File I/O test:", fileSuccess and "Success" or "Failed: " .. tostring(fileResult))
     
     local httpSuccess, httpResult = pcall(function()
         return game:HttpGet("https://games.roblox.com/v1/games/109983668079237/servers/Public?limit=10")
     end)
-    print("HTTP test:", httpSuccess and "Success" or "Failed: " .. httpResult)
+    print("HTTP test:", httpSuccess and "Success" or "Failed: " .. tostring(httpResult))
     
     setCoreSupported = testSetCore()
     print("SetCore test:", setCoreSupported and "Success" or "Failed")
     
     local guiSuccess, guiResult = pcall(function()
         local testGui = Instance.new("ScreenGui")
-        testGui.ZIndex = 100
+        testGui.Name = "TestGUI"
+        testGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         testGui.Parent = player.PlayerGui
+        local testFrame = Instance.new("Frame")
+        testFrame.Size = UDim2.new(0.2, 0, 0.2, 0)
+        testFrame.Position = UDim2.new(0.4, 0, 0.4, 0)
+        testFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        testFrame.Parent = testGui
+        print("Test GUI created and parented to PlayerGui")
+        task.wait(2)
         testGui:Destroy()
+        print("Test GUI destroyed")
         return true
     end)
-    print("GUI creation test:", guiSuccess and "Success" or "Failed: " .. guiResult)
+    print("GUI creation test:", guiSuccess and "Success" or "Failed: " .. tostring(guiResult))
 end
 
+-- Run tests and load settings
 testExecutorCompatibility()
 loadSettings()
 loadGUIState()
