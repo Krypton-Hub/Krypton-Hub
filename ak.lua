@@ -1418,4 +1418,5 @@ if game.PlaceId == ALLOWED_PLACE_ID then
     createSettingsGUI()
 else
     
+
 end
