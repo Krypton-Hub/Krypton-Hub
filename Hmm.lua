@@ -117,7 +117,7 @@ local function RoleChecker()
     elseif string.find(LRM_UserNote, "Premium") then
         return "Premium Version"
     elseif string.find(LRM_UserNote, "Owner") then
-        return "Developer "
+        return "Developer agent_duke13"
     else
         return "No Role Assigned"
     end
@@ -125,9 +125,10 @@ end
 
 -- UI Setup
 local main = lib:Load({
-    Title = game:GetService("MarketplaceService"):GetProductInfo(95131705390407).Name .. ' 〢 discord.gg/jXSyQFnQCY 〢 ' .. RoleChecker(),
+    Title = game:GetService("MarketplaceService"):GetProductInfo(109983668079237).Name .. ' 〢 discord.gg/jXSyQFnQCY 〢 ' .. RoleChecker(),
     ToggleButton = "rbxassetid://95131705390407",
     BindGui = Enum.KeyCode.RightControl,
+    Image = "rbxassetid://95131705390407",
 })
 
 local tabs = {
@@ -151,6 +152,13 @@ local Sections = {
     VisualTabs = tabs.Visuals:AddSection({Title = "ESP", Description = "", Default = false, Locked = false}),
     Effects = tabs.Visuals:AddSection({Title = "Visual Effects", Description = "", Default = false, Locked = false}),
 }
+
+-- Add logo to Welcome section
+Sections.Welcome:AddParagraph({
+    Title = "Krypton Hub",
+    Description = "Powered by agent_duke13",
+    Image = "rbxassetid://95131705390407",
+})
 
 Sections.Discord:AddParagraph({
     Title = "Found a bug?",
