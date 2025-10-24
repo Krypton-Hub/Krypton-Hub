@@ -7,6 +7,24 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
+-- Configuration
+local config = {
+    walkSpeed = 50,
+    flySpeed = 25,
+    floatVelocity = 25,
+    floatMaxForce = 50000,
+    animationId = "http://www.roblox.com/asset/?id=18537363391",
+    characterLoadTimeout = 30 -- seconds
+}
+
+-- Error Logging
+local function logError(message)
+    warn("[Krypton Hub Error]: " .. message)
+    if statusLabel then
+        statusLabel.Text = "Error: " .. message
+    end
+end
+
 -- Loading Screen
 local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 0
@@ -75,7 +93,14 @@ task.wait(2)
 tweenOutAndDestroy()
 
 -- Wait for game and player to load
-repeat task.wait() until player and player.Character
+local startTime = tick()
+repeat
+    task.wait()
+    if tick() - startTime > config.characterLoadTimeout then
+        logError("Timeout waiting for player or character to load")
+        break
+    end
+until player and player.Character
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -106,6 +131,7 @@ local godModeToggle = false
 local ipp = false
 local pp = {} -- Proximity prompts
 local originalBrightness, originalClockTime
+local statusLabel -- Will be set later
 
 -- Update Character References
 local function updateCharacterReferences()
@@ -123,16 +149,24 @@ updateCharacterReferences()
 player.CharacterAdded:Connect(function(c)
     character = c
     task.wait(0.5)
-    hrp = character:WaitForChild("HumanoidRootPart")
-    humanoid = character:WaitForChild("Humanoid")
+    updateCharacterReferences()
 end)
 
 -- Global Godmode Protection
 local function setupGlobalGodmode()
     local mt = getrawmetatable(game)
+    if not mt then
+        logError("Failed to get game metatable")
+        return
+    end
     local oldNC = mt.__namecall
     local oldNI = mt.__newindex
     
+    if not oldNC or not oldNI then
+        logError("Metatable methods not found")
+        return
+    end
+
     setreadonly(mt, false)
     
     mt.__namecall = newcclosure(function(self, ...)
@@ -321,7 +355,7 @@ local statusCorner = Instance.new("UICorner")
 statusCorner.CornerRadius = UDim.new(0.05, 0)
 statusCorner.Parent = statusBar
 
-local statusLabel = Instance.new("TextLabel")
+statusLabel = Instance.new("TextLabel")
 statusLabel.Text = "Status: Ready"
 statusLabel.Size = UDim2.new(1, -10, 1, 0)
 statusLabel.Position = UDim2.new(0, 5, 0, 0)
@@ -497,31 +531,34 @@ local function cleanupProximityConnections()
 end
 
 local function dop(p)
-    if p.Base.Spawn.PromptAttachment:FindFirstChild("ProximityPrompt") then
-        local c = p.Base.Spawn.PromptAttachment.ProximityPrompt
-        table.insert(pp, c)
-        if ipp then
-            c.HoldDuration = 0
-            table.insert(connections.ProximityPrompts, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
-                if c.HoldDuration ~= 0 and ipp then
-                    c.HoldDuration = 0
-                end
-            end))
-        end
-    end
-    table.insert(connections.ProximityPrompts, p.Base.Spawn.PromptAttachment.ChildAdded:Connect(function(c)
-        if c:IsA("ProximityPrompt") then
+    if p and p:FindFirstChild("Base") and p.Base:FindFirstChild("Spawn") and p.Base.Spawn:FindFirstChild("PromptAttachment") then
+        local promptAttachment = p.Base.Spawn.PromptAttachment
+        if promptAttachment:FindFirstChild("ProximityPrompt") then
+            local c = promptAttachment.ProximityPrompt
             table.insert(pp, c)
             if ipp then
                 c.HoldDuration = 0
+                table.insert(connections.ProximityPrompts, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+                    if c.HoldDuration ~= 0 and ipp then
+                        c.HoldDuration = 0
+                    end
+                end))
             end
-            table.insert(connections.ProximityPrompts, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
-                if c.HoldDuration ~= 0 and ipp then
+        end
+        table.insert(connections.ProximityPrompts, promptAttachment.ChildAdded:Connect(function(c)
+            if c:IsA("ProximityPrompt") then
+                table.insert(pp, c)
+                if ipp then
                     c.HoldDuration = 0
                 end
-            end))
-        end
-    end))
+                table.insert(connections.ProximityPrompts, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+                    if c.HoldDuration ~= 0 and ipp then
+                        c.HoldDuration = 0
+                    end
+                end))
+            end
+        end))
+    end
 end
 
 for _, plot in pairs(Workspace:WaitForChild("Plots"):GetChildren()) do
@@ -588,7 +625,7 @@ mainContent[1].MouseButton1Click:Connect(function()
                 statusLabel.Text = "Reached base"
             end)
         else
-            statusLabel.Text = "Base not found!"
+            logError("Base or character components not found")
         end
     end
 end)
@@ -600,10 +637,10 @@ mainContent[2].MouseButton1Click:Connect(function()
         mainContent[2].Text = "SLOW FLIGHT: ON"
         mainContent[2].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "Slow Flight enabled - Use camera direction"
-        connections.Fly = RunService.RenderStepped:Connect(function()
+        connections.Fly = RunService.Stepped:Connect(function()
             updateCharacterReferences()
             if flyActive and hrp then
-                hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * 25
+                hrp.Velocity = Workspace.CurrentCamera.CFrame.LookVector * config.flySpeed
             end
         end)
     else
@@ -631,9 +668,11 @@ mainContent[3].MouseButton1Click:Connect(function()
         if hrp then
             setupGlobalGodmode()
             connections.Float = Instance.new("BodyVelocity")
-            connections.Float.Velocity = Vector3.new(0, 25, 0)
-            connections.Float.MaxForce = Vector3.new(0, 50000, 0)
+            connections.Float.Velocity = Vector3.new(0, config.floatVelocity, 0)
+            connections.Float.MaxForce = Vector3.new(0, config.floatMaxForce, 0)
             connections.Float.Parent = hrp
+        else
+            logError("HumanoidRootPart not found for Float")
         end
     else
         mainContent[3].Text = "FLOAT: OFF"
@@ -725,24 +764,31 @@ local function semiInvisibleFunction()
     local function animationTrickery()
         if character and humanoid and humanoid.Health > 0 then
             local anim = Instance.new("Animation")
-            anim.AnimationId = "http://www.roblox.com/asset/?id=18537363391"
+            anim.AnimationId = config.animationId
             local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
-            animTrack = animator:LoadAnimation(anim)
-            animTrack.Priority = Enum.AnimationPriority.Action4
-            animTrack:Play(0, 1, 0)
-            anim:Destroy()
-            local animStoppedConn = animTrack.Stopped:Connect(function()
-                if isInvisible then
-                    animationTrickery()
-                end
+            local success, loadedAnimTrack = pcall(function()
+                return animator:LoadAnimation(anim)
             end)
-            table.insert(connections.SemiInvisible, animStoppedConn)
-            task.delay(0, function()
-                animTrack.TimePosition = 0.7
-                task.delay(1, function()
-                    animTrack:AdjustSpeed(math.huge)
+            if success then
+                animTrack = loadedAnimTrack
+                animTrack.Priority = Enum.AnimationPriority.Action4
+                animTrack:Play(0, 1, 0)
+                anim:Destroy()
+                local animStoppedConn = animTrack.Stopped:Connect(function()
+                    if isInvisible then
+                        animationTrickery()
+                    end
                 end)
-            end)
+                table.insert(connections.SemiInvisible, animStoppedConn)
+                task.delay(0, function()
+                    animTrack.TimePosition = 0.7
+                    task.delay(1, function()
+                        animTrack:AdjustSpeed(math.huge)
+                    end)
+                end)
+            else
+                logError("Failed to load animation for semi-invisible")
+            end
         end
     end
 
@@ -861,7 +907,7 @@ playerContent[2].MouseButton1Click:Connect(function()
 end)
 
 -- Speed Booster
-local baseSpeed = 27
+local baseSpeed = config.walkSpeed
 playerContent[3].MouseButton1Click:Connect(function()
     speedActive = not speedActive
     if speedActive then
@@ -870,8 +916,8 @@ playerContent[3].MouseButton1Click:Connect(function()
         statusLabel.Text = "Speed Booster enabled"
         local function GetCharacter()
             local Char = player.Character or player.CharacterAdded:Wait()
-            local HRP = Char:WaitForChild("HumanoidRootPart")
-            local Hum = Char:FindFirstChildOfClass("Humanoid")
+            local HRP = Char and Char:WaitForChild("HumanoidRootPart")
+            local Hum = Char and Char:FindFirstChildOfClass("Humanoid")
             return Char, HRP, Hum
         end
         local function getMovementInput()
@@ -883,7 +929,7 @@ playerContent[3].MouseButton1Click:Connect(function()
             end
             return Vector3.new(0,0,0)
         end
-        connections.Speed = RunService.Heartbeat:Connect(function()
+        connections.Speed = RunService.Stepped:Connect(function()
             local Char, HRP, Hum = GetCharacter()
             if not Char or not HRP or not Hum then return end
             local inputDirection = getMovementInput()
@@ -1010,7 +1056,7 @@ playerContent[5].MouseButton1Click:Connect(function()
         playerContent[5].Text = "WALKSPEED (50): ON"
         playerContent[5].BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         statusLabel.Text = "WalkSpeed enabled"
-        setWalkSpeed(50)
+        setWalkSpeed(config.walkSpeed)
     else
         playerContent[5].Text = "WALKSPEED (50): OFF"
         playerContent[5].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
@@ -1122,12 +1168,13 @@ do
                     local success, err = pcall(function()
                         local remote = game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy")
                         if remote then
-                            remote:InvokeServer(item.ID)
+                            local result = remote:InvokeServer(item.ID)
+                            return result
                         else
                             error("Shop remote not found")
                         end
                     end)
-                    statusLabel.Text = success and ("Tried to buy: " .. item.Name) or ("Error: " .. tostring(err))
+                    statusLabel.Text = success and ("Tried to buy: " .. item.Name .. " (Success)") or ("Error buying " .. item.Name .. ": " .. tostring(err))
                 end
             end
         end)
@@ -1178,6 +1225,13 @@ visualsContent[1].MouseButton1Click:Connect(function()
             if folder then folder:Destroy() end
         end
         espFolders = {}
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(otherPlayer)
+    if espFolders[otherPlayer] then
+        espFolders[otherPlayer]:Destroy()
+        espFolders[otherPlayer] = nil
     end
 end)
 
@@ -1289,22 +1343,34 @@ end)
 
 -- Cleanup on Script End
 game:BindToClose(function()
-    for _, connection in pairs(connections.ProximityPrompts) do
-        connection:Disconnect()
+    for key, connection in pairs(connections) do
+        if typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        elseif typeof(connection) == "Instance" then
+            connection:Destroy()
+        elseif type(connection) == "table" then
+            for _, conn in ipairs(connection) do
+                if typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                end
+            end
+        end
     end
-    for _, connection in pairs(connections.SemiInvisible) do
-        if connection then connection:Disconnect() end
-    end
-    for _, connection in pairs(connections.GodModeToggle) do
-        if typeof(connection) == "RBXScriptConnection" then connection:Disconnect() end
-    end
-    if connections.Fly then connections.Fly:Disconnect() end
-    if connections.Float then connections.Float:Destroy() end
-    if connections.Jump then connections.Jump:Disconnect() end
-    if connections.Speed then connections.Speed:Disconnect() end
+    connections = {
+        ProximityPrompts = {},
+        SemiInvisible = {},
+        GodModeToggle = {},
+        Fly = nil,
+        Float = nil,
+        Jump = nil,
+        Speed = nil,
+        ESP = nil,
+        Fullbright = nil
+    }
     for _, folder in pairs(espFolders) do
         if folder then folder:Destroy() end
     end
+    espFolders = {}
     if originalBrightness then
         Lighting.Brightness = originalBrightness
     end
