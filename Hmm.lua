@@ -262,21 +262,56 @@ createButton("Steal", 140, function()
     -- Ensure network ownership
     if hrp:CanSetNetworkOwnership() then
         hrp:SetNetworkOwner(player)
+        notify("Network ownership set", Color3.fromRGB(0, 255, 0))
+    else
+        notify("Warning: Cannot set network ownership", Color3.fromRGB(255, 255, 0))
     end
 
-    -- Elevate character using BodyPosition
-    notify("Elevating...", Color3.fromRGB(0, 255, 0))
-    hum:Jump() -- Trigger a jump for natural upward motion
-    local bodyPos = Instance.new("BodyPosition")
-    bodyPos.MaxForce = Vector3.new(0, math.huge, 0)
-    bodyPos.Position = hrp.Position + Vector3.new(0, 15, 0)
-    bodyPos.D = 1000 -- Damping for smooth movement
-    bodyPos.P = 10000 -- Power for strong positioning
-    bodyPos.Parent = hrp
+    -- Check if Humanoid can jump
+    if hum:GetState() == Enum.HumanoidStateType.Jumping or 
+       hum:GetState() == Enum.HumanoidStateType.Freefall or
+       hum:GetState() == Enum.HumanoidStateType.Landed then
+        notify("Elevating...", Color3.fromRGB(0, 255, 0))
+        hum:Jump() -- Trigger jump for initial upward motion
 
-    -- Wait for elevation to complete
-    wait(0.6) -- Match original timing
-    bodyPos:Destroy() -- Remove BodyPosition to allow natural falling
+        -- Create BodyPosition for elevation
+        local bodyPos = Instance.new("BodyPosition")
+        bodyPos.MaxForce = Vector3.new(math.huge, math.huge, math.huge) -- Strong force for all axes
+        bodyPos.Position = hrp.Position + Vector3.new(0, 15, 0)
+        bodyPos.D = 1250 -- Increased damping for smoother movement
+        bodyPos.P = 15000 -- Increased power for stronger positioning
+        bodyPos.Parent = hrp
+
+        -- Monitor elevation progress
+        local startTime = tick()
+        local elevationSuccess = false
+        local connection
+        connection = RunService.RenderStepped:Connect(function()
+            if (hrp.Position.Y >= (hrp.Position.Y + 14)) or (tick() - startTime >= 1) then
+                elevationSuccess = true
+                bodyPos:Destroy()
+                connection:Disconnect()
+            end
+        end)
+
+        wait(0.6) -- Wait for elevation (match original timing)
+        bodyPos:Destroy() -- Ensure BodyPosition is removed
+        if connection then
+            connection:Disconnect()
+        end
+
+        if not elevationSuccess then
+            notify("Elevation failed, trying fallback...", Color3.fromRGB(255, 255, 0))
+            -- Fallback: Adjust CFrame slightly for elevation
+            hrp.CFrame = hrp.CFrame + Vector3.new(0, 15, 0)
+            wait(0.1) -- Brief pause to stabilize
+        else
+            notify("Elevation complete!", Color3.fromRGB(0, 255, 0))
+        end
+    else
+        notify("Cannot elevate: Invalid Humanoid state!", Color3.fromRGB(255, 0, 0))
+        return
+    end
 
     -- Move to saved position using Humanoid:MoveTo
     notify("Moving to saved position...", Color3.fromRGB(0, 255, 0))
