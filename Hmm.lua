@@ -253,55 +253,31 @@ createButton("Steal", 140, function()
         return
     end
 
+    -- Validate saved position
+    if savedPosition.Y < 0 then
+        notify("Invalid position: Below map!", Color3.fromRGB(255, 0, 0))
+        return
+    end
+
     -- Ensure network ownership
     if hrp:CanSetNetworkOwnership() then
         hrp:SetNetworkOwner(player)
     end
 
-    -- Disable collisions
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
+    -- Use Humanoid:MoveTo for natural movement
+    notify("Moving to saved position...", Color3.fromRGB(0, 255, 0))
+    hum:MoveTo(savedPosition)
+    local moveTimeout = 10 -- Timeout in seconds
+    local success = hum.MoveToFinished:Wait(moveTimeout)
 
-    -- Float up 15 studs and anchor
-    hrp.Anchored = true
-    local floatPos = hrp.Position + Vector3.new(0, 15, 0)
-    hrp.CFrame = CFrame.new(floatPos)
-    wait(0.6)
-
-    -- Instant teleport to saved position
-    hrp.CFrame = CFrame.new(savedPosition)
-    notify("Teleported to saved position!", Color3.fromRGB(0, 255, 0))
-
-    -- Restore collisions and unanchor
-    wait(0.1) -- Small delay to stabilize
-    hrp.Anchored = false
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = true
-        end
+    if success then
+        notify("Reached saved position!", Color3.fromRGB(0, 255, 0))
+    else
+        notify("Failed to reach position!", Color3.fromRGB(255, 0, 0))
     end
 
     -- Ensure God Mode keeps player alive
     if godModeEnabled and hum then
         hum.Health = hum.MaxHealth
     end
-
-    -- Nudge position to avoid anti-cheat snapback
-    local nudgeConnection
-    nudgeConnection = RunService.RenderStepped:Connect(function()
-        if hrp and (hrp.Position - savedPosition).Magnitude > 2 then
-            hrp.CFrame = CFrame.new(savedPosition) -- Keep nudging to saved position
-        else
-            nudgeConnection:Disconnect()
-        end
-    end)
-    spawn(function()
-        wait(2) -- Nudge for 2 seconds to counter snapback
-        if nudgeConnection then
-            nudgeConnection:Disconnect()
-        end
-    end)
 end)
