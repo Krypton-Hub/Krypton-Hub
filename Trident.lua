@@ -1,5 +1,5 @@
 -- Load DrRay UI Library with error handling
-local success, DrRayLibrary = pcall(function()
+local success, DrRayLibrary= pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
 end)
 if not success then
