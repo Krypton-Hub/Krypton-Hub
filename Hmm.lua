@@ -123,12 +123,12 @@ local function RoleChecker()
     end
 end
 
--- UI Setup
+-- UI Setup (REMOVED IMAGES TO PREVENT BLACK IMAGES)
 local main = lib:Load({
     Title = game:GetService("MarketplaceService"):GetProductInfo(109983668079237).Name .. ' 〢 discord.gg/jXSyQFnQCY 〢 ' .. RoleChecker(),
-    ToggleButton = "rbxassetid://95131705390407",
+    ToggleButton = Enum.KeyCode.RightControl, -- Changed from image to keycode
     BindGui = Enum.KeyCode.RightControl,
-    Image = "rbxassetid://95131705390407",
+    -- Removed Image parameter to prevent black images
 })
 
 local tabs = {
@@ -152,13 +152,6 @@ local Sections = {
     VisualTabs = tabs.Visuals:AddSection({Title = "ESP", Description = "", Default = false, Locked = false}),
     Effects = tabs.Visuals:AddSection({Title = "Visual Effects", Description = "", Default = false, Locked = false}),
 }
-
--- Add logo to Welcome section
-Sections.Welcome:AddParagraph({
-    Title = "Krypton Hub",
-    Description = "Powered by agent_duke13",
-    Image = "rbxassetid://95131705390407",
-})
 
 Sections.Discord:AddParagraph({
     Title = "Found a bug?",
@@ -186,6 +179,84 @@ getgenv().WelcomeParagraph:SetDesc([[
     [+] Enhanced movement features
     Join the Discord for help, suggestions, and the latest updates.
 ]])
+
+-- ========== FIXED INSTANT PROXIMITY PROMPTS ==========
+local ipp = false
+local promptConnections = {}
+
+local function cleanupPromptConnections()
+    for _, connection in pairs(promptConnections) do
+        if connection and connection.Connected then
+            connection:Disconnect()
+        end
+    end
+    promptConnections = {}
+end
+
+local function setupProximityPrompt(prompt)
+    if not prompt:IsA("ProximityPrompt") then return end
+    
+    if ipp then
+        prompt.HoldDuration = 0
+    end
+    
+    -- Only create one connection per prompt
+    local connection = prompt:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+        if ipp and prompt.HoldDuration ~= 0 then
+            prompt.HoldDuration = 0
+        end
+    end)
+    
+    table.insert(promptConnections, connection)
+end
+
+-- Find existing prompts
+task.spawn(function()
+    for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
+        if plot:FindFirstChild("AnimalPodiums") then
+            for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
+                if podium.Base.Spawn.PromptAttachment:FindFirstChild("ProximityPrompt") then
+                    setupProximityPrompt(podium.Base.Spawn.PromptAttachment.ProximityPrompt)
+                end
+            end
+            
+            -- Listen for new prompts
+            local childAddedConn = plot.AnimalPodiums.ChildAdded:Connect(function(podium)
+                task.wait(1) -- Wait for podium to fully load
+                if podium.Base.Spawn.PromptAttachment:FindFirstChild("ProximityPrompt") then
+                    setupProximityPrompt(podium.Base.Spawn.PromptAttachment.ProximityPrompt)
+                end
+            end)
+            table.insert(promptConnections, childAddedConn)
+        end
+    end
+end)
+
+Sections.Main:AddToggle("InstantProximityPrompt", {
+    Title = "Instant Proximity Prompts",
+    Default = false,
+    Callback = function(state)
+        ipp = state
+        
+        if ipp then
+            -- Set all existing prompts to instant
+            for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
+                if plot:FindFirstChild("AnimalPodiums") then
+                    for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
+                        if podium.Base.Spawn.PromptAttachment:FindFirstChild("ProximityPrompt") then
+                            podium.Base.Spawn.PromptAttachment.ProximityPrompt.HoldDuration = 0
+                        end
+                    end
+                end
+            end
+            lib:Notification("KRYPTON-HUB", "Instant Prompts Enabled", 3)
+        else
+            -- Cleanup connections but don't reset durations (let game handle it)
+            cleanupPromptConnections()
+            lib:Notification("KRYPTON-HUB", "Instant Prompts Disabled", 3)
+        end
+    end
+})
 
 -- ========== ENHANCED GODMODE PROTECTION ==========
 local character, hrp, humanoid
@@ -763,68 +834,6 @@ local espToggle = Sections.VisualTabs:AddToggle("EnhancedESP", {
     end
 })
 
--- ========== PROXIMITY PROMPTS (Original Feature) ==========
-local ipp = false
-local pp = {}
-local tableofconnections = {}
-
-local function cleanupConnections()
-    for _, connection in pairs(tableofconnections) do
-        connection:Disconnect()
-    end
-    tableofconnections = {}
-end
-
-local function dop(p)
-    if p.Base.Spawn.PromptAttachment:FindFirstChild("ProximityPrompt") then
-        local c = p.Base.Spawn.PromptAttachment.ProximityPrompt
-        table.insert(pp, c)
-        if ipp then
-            c.HoldDuration = 0
-            table.insert(tableofconnections, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
-                if c.HoldDuration ~= 0 and ipp then
-                    c.HoldDuration = 0
-                end
-            end))
-        end
-    end
-    table.insert(tableofconnections, p.Base.Spawn.PromptAttachment.ChildAdded:Connect(function(c)
-        if c:IsA("ProximityPrompt") then
-            table.insert(pp, c)
-            if ipp then
-                c.HoldDuration = 0
-            end
-            table.insert(tableofconnections, c:GetPropertyChangedSignal("HoldDuration"):Connect(function()
-                if c.HoldDuration ~= 0 and ipp then
-                    c.HoldDuration = 0
-                end
-            end))
-        end
-    end))
-end
-
-for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
-    if plot:FindFirstChild("AnimalPodiums") then
-        for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
-            dop(podium)
-        end
-        table.insert(tableofconnections, plot.AnimalPodiums.ChildAdded:Connect(dop))
-    end
-end
-
-Sections.Main:AddToggle("InstantProximityPrompt", {
-    Title = "Instant Proximity Prompts",
-    Default = false,
-    Callback = function(state)
-        ipp = state
-        if ipp then
-            for _, v in pairs(pp) do
-                v.HoldDuration = 0
-            end
-        end
-    end
-})
-
 -- ========== ORIGINAL FEATURES ==========
 
 -- WalkSpeed
@@ -1066,6 +1075,9 @@ player.CharacterAdded:Connect(function()
         Lighting.ClockTime = originalClockTime
     end
     Lighting.GlobalShadows = true
+    
+    -- Cleanup instant prompts
+    cleanupPromptConnections()
 end)
 
 -- Config Setup
@@ -1076,7 +1088,7 @@ FlagsManager:InitSaveSystem(tabs.Config)
 
 -- Cleanup on Script End
 game:BindToClose(function()
-    cleanupConnections()
+    cleanupPromptConnections()
 end)
 
 lib:Notification('KRYPTON-HUB', 'Enhanced features loaded! Use F key for Semi-Invisible', 5)
