@@ -13,7 +13,7 @@ local CoreGui = game:GetService("CoreGui")
 while not Players.LocalPlayer do task.wait() end
 local player = Players.LocalPlayer
 local ALLOWED_PLACE_ID = 109983668079237
-local RETRY_DELAY = 0.5 -- Increased for mobile stability
+local RETRY_DELAY = 0.5
 local SETTINGS_FILE = "ServerHopperSettings.json"
 local GUI_STATE_FILE = "ServerHopperGUIState.json"
 local API_STATE_FILE = "ServerHopperAPIState.json"
@@ -87,57 +87,66 @@ local function testSetCore()
     return success
 end
 
--- Fallback notification GUI for mobile
+-- Fallback notification GUI
 local function createNotificationGui(title, text, duration)
-    local notificationGui = Instance.new("ScreenGui")
-    notificationGui.Name = "TempNotification"
-    notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    notificationGui.ZIndex = 100
-    notificationGui.Parent = player.PlayerGui
+    local success, err = pcall(function()
+        local notificationGui = Instance.new("ScreenGui")
+        notificationGui.Name = "TempNotification"
+        notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        notificationGui.ZIndex = 200 -- Increased for visibility
+        notificationGui.IgnoreGuiInset = true
+        notificationGui.Parent = player.PlayerGui
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0.3, 0, 0.15, 0)
-    frame.Position = UDim2.new(0.35, 0, 0.05, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    frame.BorderSizePixel = 0
-    frame.Parent = notificationGui
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0.3, 0, 0.15, 0)
+        frame.Position = UDim2.new(0.35, 0, 0.05, 0)
+        frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        frame.BorderSizePixel = 0
+        frame.ZIndex = 200
+        frame.Parent = notificationGui
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = frame
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 1
-    stroke.Color = Color3.fromRGB(100, 100, 110)
-    stroke.Parent = frame
+        local stroke = Instance.new("UIStroke")
+        stroke.Thickness = 1
+        stroke.Color = Color3.fromRGB(100, 100, 110)
+        stroke.Parent = frame
 
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -10, 0, 20)
-    titleLabel.Position = UDim2.new(0, 5, 0, 5)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = title
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 14
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = frame
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, -10, 0, 20)
+        titleLabel.Position = UDim2.new(0, 5, 0, 5)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = title
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextSize = 14
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.ZIndex = 201
+        titleLabel.Parent = frame
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, -10, 0, 40)
-    textLabel.Position = UDim2.new(0, 5, 0, 25)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = text
-    textLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
-    textLabel.TextSize = 12
-    textLabel.Font = Enum.Font.Gotham
-    textLabel.TextXAlignment = Enum.TextXAlignment.Left
-    textLabel.TextWrapped = true
-    textLabel.Parent = frame
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, -10, 0, 40)
+        textLabel.Position = UDim2.new(0, 5, 0, 25)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = text
+        textLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+        textLabel.TextSize = 12
+        textLabel.Font = Enum.Font.Gotham
+        textLabel.TextXAlignment = Enum.TextXAlignment.Left
+        textLabel.TextWrapped = true
+        textLabel.ZIndex = 201
+        textLabel.Parent = frame
 
-    task.spawn(function()
-        task.wait(duration)
-        notificationGui:Destroy()
+        task.spawn(function()
+            task.wait(duration)
+            notificationGui:Destroy()
+        end)
     end)
+    if not success then
+        print("Failed to create notification GUI:", err)
+    end
 end
 
 -- Notification function with fallback
@@ -157,7 +166,6 @@ local function showNotification(title, text)
         print("SetCore failed:", err)
     end
     
-    -- Fallback to custom GUI
     createNotificationGui(title, text, duration)
 end
 
@@ -237,12 +245,17 @@ local function loadAPIState()
 end
 
 local function playFoundSound()
-    local sound = Instance.new("Sound")
-    sound.SoundId = settings.customSoundId
-    sound.Volume = 1
-    sound.PlayOnRemove = true
-    sound.Parent = workspace
-    sound:Destroy()
+    local success, err = pcall(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = settings.customSoundId
+        sound.Volume = 1
+        sound.PlayOnRemove = true
+        sound.Parent = workspace
+        sound:Destroy()
+    end)
+    if not success then
+        print("Failed to play sound:", err)
+    end
 end
 
 local function extractNumber(str)
@@ -586,7 +599,7 @@ local function checkPodiumsForWebhooksAndFilters()
                 genLabel.Text, 
                 mutText, 
                 rarityLabel.Text)
-            print("Checking podium:", modelText) -- Debug rarity output
+            print("Checking podium:", modelText)
             
             local genValue = extractNumber(genLabel.Text)
             local displayName = displayNameLabel.Text
@@ -723,7 +736,12 @@ end
 local function runServerCheck()
     if not isRunning then return end
     
-    local foundPets, results = checkPodiumsForWebhooksAndFilters()
+    local success, foundPets, results = pcall(checkPodiumsForWebhooksAndFilters)
+    if not success then
+        print("Error in checkPodiumsForWebhooksAndFilters:", foundPets)
+        showNotification("Error", "Failed to check podiums: " .. tostring(foundPets))
+        return
+    end
     
     if foundPets and #results > 0 then
         foundPodiumsData = results
@@ -761,775 +779,830 @@ local function runServerCheck()
 end
 
 local function createTagList(parent, list, placeholder, onAdd, onRemove)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 28)
-    container.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    container.BorderSizePixel = 0
-    container.Parent = parent
-    
-    local containerCorner = Instance.new("UICorner")
-    containerCorner.CornerRadius = UDim.new(0, 4)
-    containerCorner.Parent = container
-    
-    local containerStroke = Instance.new("UIStroke")
-    containerStroke.Thickness = 1
-    containerStroke.Color = Color3.fromRGB(60, 60, 70)
-    containerStroke.Parent = container
-    
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, -60, 1, 0)
-    scrollFrame.Position = UDim2.new(0, 4, 0, 0)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 6
-    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.Parent = container
-    
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Horizontal
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 3)
-    layout.Parent = scrollFrame
-    
-    local textBox = Instance.new("TextBox")
-    textBox.Size = UDim2.new(0, 60, 1, 0)
-    textBox.Position = UDim2.new(1, -56, 0, 0)
-    textBox.BackgroundTransparency = 1
-    textBox.Text = ""
-    textBox.PlaceholderText = placeholder
-    textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
-    textBox.TextSize = 12
-    textBox.Font = Enum.Font.Gotham
-    textBox.Parent = container
-    
-    local function updateCanvas()
-        local totalWidth = layout.AbsoluteContentSize.X
-        scrollFrame.CanvasSize = UDim2.new(0, totalWidth, 0, 0)
-    end
-    
-    local function createTag(text)
-        local tag = Instance.new("Frame")
-        tag.Size = UDim2.new(0, 0, 0, 20)
-        tag.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
-        tag.BorderSizePixel = 0
-        tag.Parent = scrollFrame
-        
-        local tagCorner = Instance.new("UICorner")
-        tagCorner.CornerRadius = UDim.new(0, 8)
-        tagCorner.Parent = tag
-        
-        local tagLabel = Instance.new("TextLabel")
-        tagLabel.Size = UDim2.new(1, -14, 1, 0)
-        tagLabel.Position = UDim2.new(0, 3, 0, 0)
-        tagLabel.BackgroundTransparency = 1
-        tagLabel.Text = text
-        tagLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        tagLabel.TextSize = 10
-        tagLabel.Font = Enum.Font.Gotham
-        tagLabel.TextXAlignment = Enum.TextXAlignment.Left
-        tagLabel.Parent = tag
-        
-        local removeButton = Instance.new("TextButton")
-        removeButton.Size = UDim2.new(0, 16, 0, 16)
-        removeButton.Position = UDim2.new(1, -17, 0.5, -7)
-        removeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        removeButton.BorderSizePixel = 0
-        removeButton.Text = "X"
-        removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        removeButton.TextSize = 8
-        removeButton.Font = Enum.Font.GothamBold
-        removeButton.Parent = tag
-        
-        local removeCorner = Instance.new("UICorner")
-        removeCorner.CornerRadius = UDim.new(0, 8)
-        removeCorner.Parent = removeButton
-        
-        local textSize = TextService:GetTextSize(text, 10, Enum.Font.Gotham, Vector2.new(math.huge, 20))
-        tag.Size = UDim2.new(0, textSize.X + 22, 0, 20)
-        
-        removeButton.MouseButton1Click:Connect(function()
-            print("Remove tag tapped:", text)
-            onRemove(text)
-            tag:Destroy()
-            updateCanvas()
-        end)
-        
-        updateCanvas()
-        return tag
-    end
-    
-    local function refreshTags()
-        for _, child in ipairs(scrollFrame:GetChildren()) do
-            if child:IsA("Frame") then
-                child:Destroy()
-            end
-        end
-        
-        for _, item in ipairs(list) do
-            createTag(item)
-        end
-    end
-    
-    textBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed and textBox.Text ~= "" then
-            print("Tag added via touch:", textBox.Text)
-            onAdd(textBox.Text:gsub("^%s*(.-)%s*$", "%1"))
-            textBox.Text = ""
-            refreshTags()
-        end
-    end)
-    
-    textBox.Focused:Connect(function()
-        print("Tag TextBox focused")
-        TweenService:Create(containerStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 150, 255)}):Play()
-    end)
-    
-    textBox.FocusLost:Connect(function()
-        TweenService:Create(containerStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(60, 60, 70)}):Play()
-    end)
-    
-    refreshTags()
-    return refreshTags
-end
-
-local function createSettingsGUI()
-    local playerGui = player:WaitForChild("PlayerGui")
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "ServerHopperGUI"
-    screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.ZIndex = 10
-    screenGui.Parent = playerGui
-    
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
-    mainFrame.Position = UDim2.new(guiState.position.XScale, guiState.position.XOffset, guiState.position.YScale, guiState.position.YOffset)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Parent = screenGui
-    
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 8)
-    mainCorner.Parent = mainFrame
-    
-    local mainStroke = Instance.new("UIStroke")
-    mainStroke.Thickness = 1
-    mainStroke.Color = Color3.fromRGB(50, 100, 60)
-    mainStroke.Parent = mainFrame
-    
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 40)
-    titleBar.Position = UDim2.new(0, 0, 0, 0)
-    titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = mainFrame
-    
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 8)
-    titleCorner.Parent = titleBar
-    
-    local titleFix = Instance.new("Frame")
-    titleFix.Size = UDim2.new(1, 0, 0, 20)
-    titleFix.Position = UDim2.new(0, 0, 1, -20)
-    titleFix.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    titleFix.BorderSizePixel = 0
-    titleFix.Parent = titleBar
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -80, 1, 0)
-    titleLabel.Position = UDim2.new(0, 8, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "Server Hopper"
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 14
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = titleBar
-    
-    local isMinimized = guiState.isMinimized
-    local originalSize = mainFrame.Size
-    
-    local minimizeButton = Instance.new("TextButton")
-    minimizeButton.Size = UDim2.new(0, 30, 0, 30)
-    minimizeButton.Position = UDim2.new(1, -64, 0, 5)
-    minimizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    minimizeButton.BorderSizePixel = 0
-    minimizeButton.Text = isMinimized and "+" or "-"
-    minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minimizeButton.TextSize = 12
-    minimizeButton.Font = Enum.Font.GothamBold
-    minimizeButton.Parent = titleBar
-    
-    local minimizeCorner = Instance.new("UICorner")
-    minimizeCorner.CornerRadius = UDim.new(0, 4)
-    minimizeCorner.Parent = minimizeButton
-    
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -32, 0, 5)
-    closeButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "X"
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.TextSize = 12
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.Parent = titleBar
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 4)
-    closeCorner.Parent = closeButton
-    
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1, 0, 1, -40)
-    contentFrame.Position = UDim2.new(0, 0, 0, 40)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Visible = not isMinimized
-    contentFrame.Parent = mainFrame
-    
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, -10, 1, -120)
-    scrollFrame.Position = UDim2.new(0, 5, 0, 5)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 6
-    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 400)
-    scrollFrame.Parent = contentFrame
-    
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 4)
-    layout.Parent = scrollFrame
-    
-    if isMinimized then
-        mainFrame.Size = UDim2.new(0.4, 0, 0, 40)
-    else
-        mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
-    end
-    
-    minimizeButton.MouseButton1Click:Connect(function()
-        print("Minimize button tapped")
-        isMinimized = not isMinimized
-        guiState.isMinimized = isMinimized
-        saveGUIState()
-        
-        if isMinimized then
-            mainFrame.Size = UDim2.new(0.4, 0, 0, 40)
-            minimizeButton.Text = "+"
-            contentFrame.Visible = false
-        else
-            contentFrame.Visible = true
-            mainFrame.Size = originalSize
-            minimizeButton.Text = "-"
-        end
-    end)
-    
-    local function createInputField(name, placeholder, defaultValue, layoutOrder, settingKey, desc)
+    local success, err = pcall(function()
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 40)
-        container.BackgroundTransparency = 1
-        container.LayoutOrder = layoutOrder
-        container.Parent = scrollFrame
+        container.Size = UDim2.new(1, 0, 0, 28)
+        container.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        container.BorderSizePixel = 0
+        container.Parent = parent
+        container.ZIndex = 101
         
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 14)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = name
-        label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 11
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = container
+        local containerCorner = Instance.new("UICorner")
+        containerCorner.CornerRadius = UDim.new(0, 4)
+        containerCorner.Parent = container
         
-        local inputFrame = Instance.new("Frame")
-        inputFrame.Size = UDim2.new(1, -10, 0, 26)
-        inputFrame.Position = UDim2.new(0, 0, 0, 14)
-        inputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-        inputFrame.BorderSizePixel = 0
-        inputFrame.Parent = container
+        local containerStroke = Instance.new("UIStroke")
+        containerStroke.Thickness = 1
+        containerStroke.Color = Color3.fromRGB(60, 60, 70)
+        containerStroke.Parent = container
         
-        local inputCorner = Instance.new("UICorner")
-        inputCorner.CornerRadius = UDim.new(0, 4)
-        inputCorner.Parent = inputFrame
-    
-        local inputStroke = Instance.new("UIStroke")
-        inputStroke.Thickness = 1
-        inputStroke.Color = Color3.fromRGB(60, 60, 70)
-        inputStroke.Parent = inputFrame
+        local scrollFrame = Instance.new("ScrollingFrame")
+        scrollFrame.Size = UDim2.new(1, -60, 1, 0)
+        scrollFrame.Position = UDim2.new(0, 4, 0, 0)
+        scrollFrame.BackgroundTransparency = 1
+        scrollFrame.BorderSizePixel = 0
+        scrollFrame.ScrollBarThickness = 6
+        scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        scrollFrame.ZIndex = 101
+        scrollFrame.Parent = container
+        
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 3)
+        layout.Parent = scrollFrame
         
         local textBox = Instance.new("TextBox")
-        textBox.Size = UDim2.new(1, -8, 1, 0)
-        textBox.Position = UDim2.new(0, 4, 0, 0)
+        textBox.Size = UDim2.new(0, 60, 1, 0)
+        textBox.Position = UDim2.new(1, -56, 0, 0)
         textBox.BackgroundTransparency = 1
-        textBox.Text = defaultValue or ""
+        textBox.Text = ""
         textBox.PlaceholderText = placeholder
         textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
         textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
         textBox.TextSize = 12
         textBox.Font = Enum.Font.Gotham
-        textBox.Parent = inputFrame
+        textBox.ZIndex = 101
+        textBox.Parent = container
         
-        textBox.Focused:Connect(function()
-            print("TextBox focused:", settingKey)
-            TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 150, 255)}):Play()
-        end)
+        local function updateCanvas()
+            local totalWidth = layout.AbsoluteContentSize.X
+            scrollFrame.CanvasSize = UDim2.new(0, totalWidth, 0, 0)
+        end
+        
+        local function createTag(text)
+            local tag = Instance.new("Frame")
+            tag.Size = UDim2.new(0, 0, 0, 20)
+            tag.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
+            tag.BorderSizePixel = 0
+            tag.ZIndex = 101
+            tag.Parent = scrollFrame
+            
+            local tagCorner = Instance.new("UICorner")
+            tagCorner.CornerRadius = UDim.new(0, 8)
+            tagCorner.Parent = tag
+            
+            local tagLabel = Instance.new("TextLabel")
+            tagLabel.Size = UDim2.new(1, -14, 1, 0)
+            tagLabel.Position = UDim2.new(0, 3, 0, 0)
+            tagLabel.BackgroundTransparency = 1
+            tagLabel.Text = text
+            tagLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            tagLabel.TextSize = 10
+            tagLabel.Font = Enum.Font.Gotham
+            tagLabel.TextXAlignment = Enum.TextXAlignment.Left
+            tagLabel.ZIndex = 101
+            tagLabel.Parent = tag
+            
+            local removeButton = Instance.new("TextButton")
+            removeButton.Size = UDim2.new(0, 16, 0, 16)
+            removeButton.Position = UDim2.new(1, -17, 0.5, -7)
+            removeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            removeButton.BorderSizePixel = 0
+            removeButton.Text = "X"
+            removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            removeButton.TextSize = 8
+            removeButton.Font = Enum.Font.GothamBold
+            removeButton.ZIndex = 101
+            removeButton.Parent = tag
+            
+            local removeCorner = Instance.new("UICorner")
+            removeCorner.CornerRadius = UDim.new(0, 8)
+            removeCorner.Parent = removeButton
+            
+            local textSize = TextService:GetTextSize(text, 10, Enum.Font.Gotham, Vector2.new(math.huge, 20))
+            tag.Size = UDim2.new(0, textSize.X + 22, 0, 20)
+            
+            removeButton.MouseButton1Click:Connect(function()
+                print("Remove tag tapped:", text)
+                onRemove(text)
+                tag:Destroy()
+                updateCanvas()
+            end)
+            
+            updateCanvas()
+            return tag
+        end
+        
+        local function refreshTags()
+            for _, child in ipairs(scrollFrame:GetChildren()) do
+                if child:IsA("Frame") then
+                    child:Destroy()
+                end
+            end
+            
+            for _, item in ipairs(list) do
+                createTag(item)
+            end
+        end
         
         textBox.FocusLost:Connect(function(enterPressed)
-            print("TextBox lost focus:", settingKey, "Enter:", enterPressed)
-            TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(60, 60, 70)}):Play()
-            
-            if settingKey and enterPressed then
-                if settingKey == "minGeneration" or settingKey == "minPlayers" or settingKey == "notificationDuration" then
-                    settings[settingKey] = tonumber(textBox.Text) or settings[settingKey]
-                else
-                    settings[settingKey] = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
-                end
-                saveSettings()
+            if enterPressed and textBox.Text ~= "" then
+                print("Tag added via touch:", textBox.Text)
+                onAdd(textBox.Text:gsub("^%s*(.-)%s*$", "%1"))
+                textBox.Text = ""
+                refreshTags()
             end
         end)
         
-        return textBox
-    end
-    
-    local function createTagInputField(name, list, placeholder, layoutOrder, descAdd, descRemove)
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 40)
-        container.BackgroundTransparency = 1
-        container.LayoutOrder = layoutOrder
-        container.Parent = scrollFrame
+        textBox.Focused:Connect(function()
+            print("Tag TextBox focused")
+            TweenService:Create(containerStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 150, 255)}):Play()
+        end)
         
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 14)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = name
-        label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 11
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = container
+        textBox.FocusLost:Connect(function()
+            TweenService:Create(containerStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(60, 60, 70)}):Play()
+        end)
         
-        local tagContainer = Instance.new("Frame")
-        tagContainer.Size = UDim2.new(1, -10, 0, 26)
-        tagContainer.Position = UDim2.new(0, 0, 0, 14)
-        tagContainer.BackgroundTransparency = 1
-        tagContainer.Parent = container
-        
-        local refreshTags = createTagList(tagContainer, list, placeholder,
-            function(text)
-                if text and text ~= "" and not table.find(list, text) then
-                    print("Tag added:", text)
-                    table.insert(list, text)
-                    saveSettings()
-                end
-            end,
-            function(text)
-                print("Tag removed:", text)
-                local index = table.find(list, text)
-                if index then
-                    table.remove(list, index)
-                    saveSettings()
-                end
-            end
-        )
-        
+        refreshTags()
         return refreshTags
+    end)
+    if not success then
+        print("Failed to create tag list:", err)
+        return function() end -- Return empty function to prevent further errors
     end
-    
-    local function createSortOrderToggle(name, defaultValue, layoutOrder, desc)
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 40)
-        container.BackgroundTransparency = 1
-        container.LayoutOrder = layoutOrder
-        container.Parent = scrollFrame
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 14)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = name
-        label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 11
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = container
-        
-        local toggleButton = Instance.new("TextButton")
-        toggleButton.Size = UDim2.new(1, -10, 0, 26)
-        toggleButton.Position = UDim2.new(0, 0, 0, 14)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-        toggleButton.BorderSizePixel = 0
-        toggleButton.Text = defaultValue
-        toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleButton.TextSize = 12
-        toggleButton.Font = Enum.Font.Gotham
-        toggleButton.TextXAlignment = Enum.TextXAlignment.Left
-        toggleButton.Parent = container
-        
-        local toggleCorner = Instance.new("UICorner")
-        toggleCorner.CornerRadius = UDim.new(0, 4)
-        toggleCorner.Parent = toggleButton
-    
-        local toggleStroke = Instance.new("UIStroke")
-        toggleStroke.Thickness = 1
-        toggleStroke.Color = Color3.fromRGB(60, 60, 70)
-        toggleStroke.Parent = toggleButton
-        
-        local padding = Instance.new("UIPadding")
-        padding.PaddingLeft = UDim.new(0, 4)
-        padding.Parent = toggleButton
-        
-        local currentValue = defaultValue
-        toggleButton.MouseButton1Click:Connect(function()
-            print("Sort order toggled:", currentValue)
-            if currentValue == "Asc" then
-                currentValue = "Desc"
-            else
-                currentValue = "Asc"
-            end
-            toggleButton.Text = currentValue
-            settings.sortOrder = currentValue
-            saveSettings()
-        end)
-        
-        return toggleButton
-    end
-    
-    local function createToggle(name, defaultValue, layoutOrder, settingKey, descOn, descOff)
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 34)
-        container.BackgroundTransparency = 1
-        container.LayoutOrder = layoutOrder
-        container.Parent = scrollFrame
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -45, 1, 0)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = name
-        label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 11
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = container
-        
-        local toggleFrame = Instance.new("Frame")
-        toggleFrame.Size = UDim2.new(0, 40, 0, 20)
-        toggleFrame.Position = UDim2.new(1, -40, 0.5, -10)
-        toggleFrame.BackgroundColor3 = defaultValue and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
-        toggleFrame.BorderSizePixel = 0
-        toggleFrame.Parent = container
-        
-        local toggleCorner = Instance.new("UICorner")
-        toggleCorner.CornerRadius = UDim.new(0, 10)
-        toggleCorner.Parent = toggleFrame
-        
-        local toggleButton = Instance.new("Frame")
-        toggleButton.Size = UDim2.new(0, 16, 0, 16)
-        toggleButton.Position = defaultValue and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        toggleButton.BorderSizePixel = 0
-        toggleButton.Parent = toggleFrame
-        
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 8)
-        buttonCorner.Parent = toggleButton
-        
-        local isEnabled = defaultValue
-        local clickDetector = Instance.new("TextButton")
-        clickDetector.Size = UDim2.new(1, 0, 1, 0)
-        clickDetector.Position = UDim2.new(0, 0, 0, 0)
-        clickDetector.BackgroundTransparency = 1
-        clickDetector.Text = ""
-        clickDetector.Parent = toggleFrame
-        
-        clickDetector.MouseButton1Click:Connect(function()
-            print("Toggle tapped:", name, isEnabled)
-            isEnabled = not isEnabled
-            local frameColor = isEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
-            local buttonPos = isEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-            
-            TweenService:Create(toggleFrame, TweenInfo.new(0.2), {BackgroundColor3 = frameColor}):Play()
-            TweenService:Create(toggleButton, TweenInfo.new(0.2), {Position = buttonPos}):Play()
-            
-            if settingKey and settings[settingKey] ~= nil then
-                settings[settingKey] = isEnabled
-                saveSettings()
-            end
-        end)
-        
-        return function() return isEnabled end
-    end
-    
-    local minGenInput = createInputField("Min. Generation", "1000000", tostring(settings.minGeneration), 1, "minGeneration", "Minimum generation for searching pets without specified target.")
-    local refreshTargetTags = createTagInputField("Target (Add)", settings.targetNames, "Name", 2, "Added target for search regardless of generation:", "Removed target:")
-    local refreshBlacklistTags = createTagInputField("Blacklist (Add)", settings.blacklistNames, "Name", 3, "Added to blacklist to ignore:", "Removed from blacklist:")
-    local rarityInput = createInputField("Rarity", "Secret, Mythical", settings.targetRarity, 4, "targetRarity", "Target rarity. Only pets of this rarity will be noticed.")
-    local mutationInput = createInputField("Mutation", "Rainbow, Gold", settings.targetMutation, 5, "targetMutation", "Target mutation. Only pets with this mutation will be noticed.")
-    local minPlayersInput = createInputField("Min. Players", "2", tostring(settings.minPlayers), 6, "minPlayers", "Minimum number of players on server for hopping.")
-    local soundInput = createInputField("Sound ID", "rbxassetid://9167433166", settings.customSoundId, 7, "customSoundId", "Sound ID to play when pet is found.")
-    local notificationDurationInput = createInputField("Notification Duration (sec)", "4", tostring(settings.notificationDuration), 8, "notificationDuration", "Duration of notifications in seconds.")
-    
-    local sortOrderToggle = createSortOrderToggle("Sort Order", settings.sortOrder, 9, "Server sort order: Asc - low to high, Desc - high to low.")
-    local autoStartToggle = createToggle("Auto Start", settings.autoStart, 10, "autoStart", "Auto start script after webhook check enabled.", "Auto start script disabled.")
-    
-    local fixedBottomFrame = Instance.new("Frame")
-    fixedBottomFrame.Name = "FixedBottomFrame"
-    fixedBottomFrame.Size = UDim2.new(1, 0, 0, 120)
-    fixedBottomFrame.Position = UDim2.new(0, 0, 1, -120)
-    fixedBottomFrame.BackgroundTransparency = 1
-    fixedBottomFrame.Parent = contentFrame
-    
-    local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(1, -10, 0, 60)
-    buttonContainer.Position = UDim2.new(0, 5, 0, 0)
-    buttonContainer.BackgroundTransparency = 1
-    buttonContainer.Parent = fixedBottomFrame
-    
-    local startButton = Instance.new("TextButton")
-    startButton.Size = UDim2.new(1, -5, 0, 32)
-    startButton.Position = UDim2.new(0, 0, 0, 0)
-    startButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-    startButton.BorderSizePixel = 0
-    startButton.Text = "START"
-    startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    startButton.TextSize = 14
-    startButton.Font = Enum.Font.GothamBold
-    startButton.Parent = buttonContainer
-    
-    local startCorner = Instance.new("UICorner")
-    startCorner.CornerRadius = UDim.new(0, 5)
-    startCorner.Parent = startButton
-    
-    local stopButton = Instance.new("TextButton")
-    stopButton.Size = UDim2.new(1, -5, 0, 32)
-    stopButton.Position = UDim2.new(0, 0, 0, 34)
-    stopButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-    stopButton.BorderSizePixel = 0
-    stopButton.Text = "STOP"
-    stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    stopButton.TextSize = 14
-    stopButton.Font = Enum.Font.GothamBold
-    stopButton.Parent = buttonContainer
-    
-    local stopCorner = Instance.new("UICorner")
-    stopCorner.CornerRadius = UDim.new(0, 5)
-    stopCorner.Parent = stopButton
-    
-    local statusContainer = Instance.new("Frame")
-    statusContainer.Size = UDim2.new(1, -10, 0, 50)
-    statusContainer.Position = UDim2.new(0, 5, 0, 65)
-    statusContainer.BackgroundTransparency = 1
-    statusContainer.Parent = fixedBottomFrame
-    
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, 0, 0, 26)
-    statusLabel.Position = UDim2.new(0, 0, 0, 0)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "Ready to search..."
-    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
-    statusLabel.TextSize = 10
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    statusLabel.TextWrapped = true
-    statusLabel.Parent = statusContainer
-    
-    local apiStatusLabel = Instance.new("TextLabel")
-    apiStatusLabel.Size = UDim2.new(1, 0, 0, 24)
-    apiStatusLabel.Position = UDim2.new(0, 0, 0, 26)
-    apiStatusLabel.BackgroundTransparency = 1
-    apiStatusLabel.Text = string.format("API: %d/3 | Cache: %d", apiState.mainApiUses, #apiState.cachedServers)
-    apiStatusLabel.TextColor3 = Color3.fromRGB(120, 120, 130)
-    apiStatusLabel.TextSize = 9
-    apiStatusLabel.Font = Enum.Font.Gotham
-    apiStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    apiStatusLabel.Parent = statusContainer
-    
-    local function updateScrollCanvas()
-        local contentHeight = layout.AbsoluteContentSize.Y + 20
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
-    end
-    
-    updateScrollCanvas()
-    
-    local function addButtonHover(button, hoverColor, originalColor)
-        button.MouseEnter:Connect(function()
-            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor}):Play()
-        end)
-        button.MouseLeave:Connect(function()
-            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = originalColor}):Play()
-        end)
-    end
-    
-    addButtonHover(startButton, Color3.fromRGB(60, 180, 60), Color3.fromRGB(50, 150, 50))
-    addButtonHover(stopButton, Color3.fromRGB(180, 60, 60), Color3.fromRGB(150, 50, 50))
-    addButtonHover(closeButton, Color3.fromRGB(255, 80, 80), Color3.fromRGB(220, 60, 60))
-    addButtonHover(minimizeButton, Color3.fromRGB(130, 130, 130), Color3.fromRGB(100, 100, 100))
-    
-    local function updateAPIStatus()
-        apiStatusLabel.Text = string.format("API: %d/3 | Cache: %d | %s",
-            apiState.mainApiUses,
-            #apiState.cachedServers,
-            apiState.useCachedServers and "Cache" or "Live"
-        )
-    end
-    
-    local hopConnection = nil
-    
-    local function startHopping()
-        print("Start button tapped")
-        if isRunning then
-            statusLabel.Text = "Already running!"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 150, 100)
-            showNotification("Warning", "Search is already running!")
-            return
+end
+
+local function createSettingsGUI()
+    print("Attempting to create GUI...")
+    local success, err = pcall(function()
+        local playerGui = player:WaitForChild("PlayerGui", 5)
+        if not playerGui then
+            error("PlayerGui not found")
         end
         
-        local fileSuccess, _ = pcall(function()
-            if not isfile("hopStarted.txt") then
-                writefile("hopStarted.txt", "true")
-            end
-        end)
-        if fileSuccess then
-            showNotification("Search started", "Looking for target pets...")
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "ServerHopperGUI"
+        screenGui.ResetOnSpawn = false
+        screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        screenGui.ZIndex = 100 -- Increased for visibility
+        screenGui.IgnoreGuiInset = true
+        screenGui.Parent = playerGui
+        print("ScreenGui created with ZIndex:", screenGui.ZIndex)
+        
+        local mainFrame = Instance.new("Frame")
+        mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
+        mainFrame.Position = UDim2.new(guiState.position.XScale, guiState.position.XOffset, guiState.position.YScale, guiState.position.YOffset)
+        mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+        mainFrame.BorderSizePixel = 0
+        mainFrame.ZIndex = 100
+        mainFrame.Parent = screenGui
+        
+        local mainCorner = Instance.new("UICorner")
+        mainCorner.CornerRadius = UDim.new(0, 8)
+        mainCorner.Parent = mainFrame
+        
+        local mainStroke = Instance.new("UIStroke")
+        mainStroke.Thickness = 1
+        mainStroke.Color = Color3.fromRGB(50, 100, 60)
+        mainStroke.Parent = mainFrame
+        
+        local titleBar = Instance.new("Frame")
+        titleBar.Size = UDim2.new(1, 0, 0, 40)
+        titleBar.Position = UDim2.new(0, 0, 0, 0)
+        titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+        titleBar.BorderSizePixel = 0
+        titleBar.ZIndex = 100
+        titleBar.Parent = mainFrame
+        
+        local titleCorner = Instance.new("UICorner")
+        titleCorner.CornerRadius = UDim.new(0, 8)
+        titleCorner.Parent = titleBar
+        
+        local titleFix = Instance.new("Frame")
+        titleFix.Size = UDim2.new(1, 0, 0, 20)
+        titleFix.Position = UDim2.new(0, 0, 1, -20)
+        titleFix.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+        titleFix.BorderSizePixel = 0
+        titleFix.ZIndex = 100
+        titleFix.Parent = titleBar
+        
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, -80, 1, 0)
+        titleLabel.Position = UDim2.new(0, 8, 0, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "Server Hopper"
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextSize = 14
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.ZIndex = 101
+        titleLabel.Parent = titleBar
+        
+        local isMinimized = guiState.isMinimized
+        local originalSize = mainFrame.Size
+        
+        local minimizeButton = Instance.new("TextButton")
+        minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+        minimizeButton.Position = UDim2.new(1, -64, 0, 5)
+        minimizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        minimizeButton.BorderSizePixel = 0
+        minimizeButton.Text = isMinimized and "+" or "-"
+        minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        minimizeButton.TextSize = 12
+        minimizeButton.Font = Enum.Font.GothamBold
+        minimizeButton.ZIndex = 101
+        minimizeButton.Parent = titleBar
+        
+        local minimizeCorner = Instance.new("UICorner")
+        minimizeCorner.CornerRadius = UDim.new(0, 4)
+        minimizeCorner.Parent = minimizeButton
+        
+        local closeButton = Instance.new("TextButton")
+        closeButton.Size = UDim2.new(0, 30, 0, 30)
+        closeButton.Position = UDim2.new(1, -32, 0, 5)
+        closeButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+        closeButton.BorderSizePixel = 0
+        closeButton.Text = "X"
+        closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        closeButton.TextSize = 12
+        closeButton.Font = Enum.Font.GothamBold
+        closeButton.ZIndex = 101
+        closeButton.Parent = titleBar
+        
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, 4)
+        closeCorner.Parent = closeButton
+        
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Size = UDim2.new(1, 0, 1, -40)
+        contentFrame.Position = UDim2.new(0, 0, 0, 40)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.Visible = not isMinimized
+        contentFrame.ZIndex = 100
+        contentFrame.Parent = mainFrame
+        
+        local scrollFrame = Instance.new("ScrollingFrame")
+        scrollFrame.Size = UDim2.new(1, -10, 1, -120)
+        scrollFrame.Position = UDim2.new(0, 5, 0, 5)
+        scrollFrame.BackgroundTransparency = 1
+        scrollFrame.BorderSizePixel = 0
+        scrollFrame.ScrollBarThickness = 6
+        scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 400)
+        scrollFrame.ZIndex = 100
+        scrollFrame.Parent = contentFrame
+        
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 4)
+        layout.Parent = scrollFrame
+        
+        if isMinimized then
+            mainFrame.Size = UDim2.new(0.4, 0, 0, 40)
         else
-            print("File I/O failed, continuing without writing hopStarted.txt")
-            showNotification("Search started", "Looking for target pets...")
+            mainFrame.Size = UDim2.new(0.4, 0, 0.5, 0)
         end
         
-        isRunning = true
-        statusLabel.Text = "Searching..."
-        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-        
-        hopConnection = task.spawn(function()
-            while isRunning do
-                local success, err = pcall(runServerCheck)
-                if not success then
-                    print("Error in runServerCheck:", err)
-                    showNotification("Error", "Server check failed: " .. tostring(err))
-                end
-                if #foundPodiumsData > 0 then
-                    break
-                end
-                task.wait(0.1)
-                updateAPIStatus()
-            end
-        end)
-    end
-    
-    startButton.MouseButton1Click:Connect(function()
-        print("Start button clicked/tapped")
-        local success, err = pcall(startHopping)
-        if not success then
-            print("Error in startHopping:", err)
-            showNotification("Error", "Failed to start hopping: " .. tostring(err))
-        end
-    end)
-    
-    stopButton.MouseButton1Click:Connect(function()
-        print("Stop button tapped")
-        isRunning = false
-        foundPodiumsData = {}
-        autoHopping = false
-        if currentConnection then
-            currentConnection:Disconnect()
-            currentConnection = nil
-        end
-        if monitoringConnection then
-            monitoringConnection:Disconnect()
-            monitoringConnection = nil
-        end
-        if hopConnection then
-            task.cancel(hopConnection)
-            hopConnection = nil
-        end
-        statusLabel.Text = "Search stopped."
-        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        showNotification("Stopped", "Server hopping stopped.")
-    end)
-    
-    closeButton.MouseButton1Click:Connect(function()
-        print("Close button tapped")
-        isRunning = false
-        foundPodiumsData = {}
-        autoHopping = false
-        if currentConnection then
-            currentConnection:Disconnect()
-            currentConnection = nil
-        end
-        if monitoringConnection then
-            monitoringConnection:Disconnect()
-            monitoringConnection = nil
-        end
-        if hopConnection then
-            task.cancel(hopConnection)
-            hopConnection = nil
-        end
-        
-        screenGui:Destroy()
-    end)
-    
-    local dragging = false
-    local dragStart = nil
-    local startPos = nil
-    
-    titleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            print("Dragging started")
-            dragging = true
-            dragStart = input.Position
-            startPos = mainFrame.Position
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            mainFrame.Position = newPos
-            
-            guiState.position = {
-                XScale = newPos.X.Scale,
-                XOffset = newPos.X.Offset,
-                YScale = newPos.Y.Scale,
-                YOffset = newPos.Y.Offset
-            }
+        minimizeButton.MouseButton1Click:Connect(function()
+            print("Minimize button tapped")
+            isMinimized = not isMinimized
+            guiState.isMinimized = isMinimized
             saveGUIState()
-        end
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            print("Dragging ended")
-            dragging = false
-        end
-    end)
-    
-    spawn(function()
-        while screenGui.Parent do
-            updateAPIStatus()
-            task.wait(5)
-        end
-    end)
-    
-    _G.CloseHop = function()
-        pcall(function()
-            local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
-            if playerGui then
-                local hopperGui = playerGui:FindFirstChild("ServerHopperGUI")
-                if hopperGui then
-                    hopperGui:Destroy()
-                end
+            
+            if isMinimized then
+                mainFrame.Size = UDim2.new(0.4, 0, 0, 40)
+                minimizeButton.Text = "+"
+                contentFrame.Visible = false
+            else
+                contentFrame.Visible = true
+                mainFrame.Size = originalSize
+                minimizeButton.Text = "-"
             end
         end)
-    end
-    
-    if settings.autoStart then
-        task.wait(0.5)
-        startHopping()
+        
+        local function createInputField(name, placeholder, defaultValue, layoutOrder, settingKey, desc)
+            local container = Instance.new("Frame")
+            container.Size = UDim2.new(1, 0, 0, 40)
+            container.BackgroundTransparency = 1
+            container.LayoutOrder = layoutOrder
+            container.ZIndex = 100
+            container.Parent = scrollFrame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 0, 14)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = name
+            label.TextColor3 = Color3.fromRGB(200, 200, 210)
+            label.TextSize = 11
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 101
+            label.Parent = container
+            
+            local inputFrame = Instance.new("Frame")
+            inputFrame.Size = UDim2.new(1, -10, 0, 26)
+            inputFrame.Position = UDim2.new(0, 0, 0, 14)
+            inputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+            inputFrame.BorderSizePixel = 0
+            inputFrame.ZIndex = 100
+            inputFrame.Parent = container
+            
+            local inputCorner = Instance.new("UICorner")
+            inputCorner.CornerRadius = UDim.new(0, 4)
+            inputCorner.Parent = inputFrame
+        
+            local inputStroke = Instance.new("UIStroke")
+            inputStroke.Thickness = 1
+            inputStroke.Color = Color3.fromRGB(60, 60, 70)
+            inputStroke.Parent = inputFrame
+            
+            local textBox = Instance.new("TextBox")
+            textBox.Size = UDim2.new(1, -8, 1, 0)
+            textBox.Position = UDim2.new(0, 4, 0, 0)
+            textBox.BackgroundTransparency = 1
+            textBox.Text = defaultValue or ""
+            textBox.PlaceholderText = placeholder
+            textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+            textBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
+            textBox.TextSize = 12
+            textBox.Font = Enum.Font.Gotham
+            textBox.ZIndex = 101
+            textBox.Parent = inputFrame
+            
+            textBox.Focused:Connect(function()
+                print("TextBox focused:", settingKey)
+                TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100, 150, 255)}):Play()
+            end)
+            
+            textBox.FocusLost:Connect(function(enterPressed)
+                print("TextBox lost focus:", settingKey, "Enter:", enterPressed)
+                TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(60, 60, 70)}):Play()
+                
+                if settingKey and enterPressed then
+                    if settingKey == "minGeneration" or settingKey == "minPlayers" or settingKey == "notificationDuration" then
+                        settings[settingKey] = tonumber(textBox.Text) or settings[settingKey]
+                    else
+                        settings[settingKey] = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
+                    end
+                    saveSettings()
+                end
+            end)
+            
+            return textBox
+        end
+        
+        local function createTagInputField(name, list, placeholder, layoutOrder, descAdd, descRemove)
+            local container = Instance.new("Frame")
+            container.Size = UDim2.new(1, 0, 0, 40)
+            container.BackgroundTransparency = 1
+            container.LayoutOrder = layoutOrder
+            container.ZIndex = 100
+            container.Parent = scrollFrame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 0, 14)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = name
+            label.TextColor3 = Color3.fromRGB(200, 200, 210)
+            label.TextSize = 11
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 101
+            label.Parent = container
+            
+            local tagContainer = Instance.new("Frame")
+            tagContainer.Size = UDim2.new(1, -10, 0, 26)
+            tagContainer.Position = UDim2.new(0, 0, 0, 14)
+            tagContainer.BackgroundTransparency = 1
+            tagContainer.ZIndex = 100
+            tagContainer.Parent = container
+            
+            local refreshTags = createTagList(tagContainer, list, placeholder,
+                function(text)
+                    if text and text ~= "" and not table.find(list, text) then
+                        print("Tag added:", text)
+                        table.insert(list, text)
+                        saveSettings()
+                    end
+                end,
+                function(text)
+                    print("Tag removed:", text)
+                    local index = table.find(list, text)
+                    if index then
+                        table.remove(list, index)
+                        saveSettings()
+                    end
+                end
+            )
+            
+            return refreshTags
+        end
+        
+        local function createSortOrderToggle(name, defaultValue, layoutOrder, desc)
+            local container = Instance.new("Frame")
+            container.Size = UDim2.new(1, 0, 0, 40)
+            container.BackgroundTransparency = 1
+            container.LayoutOrder = layoutOrder
+            container.ZIndex = 100
+            container.Parent = scrollFrame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 0, 14)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = name
+            label.TextColor3 = Color3.fromRGB(200, 200, 210)
+            label.TextSize = 11
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 101
+            label.Parent = container
+            
+            local toggleButton = Instance.new("TextButton")
+            toggleButton.Size = UDim2.new(1, -10, 0, 26)
+            toggleButton.Position = UDim2.new(0, 0, 0, 14)
+            toggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+            toggleButton.BorderSizePixel = 0
+            toggleButton.Text = defaultValue
+            toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            toggleButton.TextSize = 12
+            toggleButton.Font = Enum.Font.Gotham
+            toggleButton.TextXAlignment = Enum.TextXAlignment.Left
+            toggleButton.ZIndex = 101
+            toggleButton.Parent = container
+            
+            local toggleCorner = Instance.new("UICorner")
+            toggleCorner.CornerRadius = UDim.new(0, 4)
+            toggleCorner.Parent = toggleButton
+        
+            local toggleStroke = Instance.new("UIStroke")
+            toggleStroke.Thickness = 1
+            toggleStroke.Color = Color3.fromRGB(60, 60, 70)
+            toggleStroke.Parent = toggleButton
+            
+            local padding = Instance.new("UIPadding")
+            padding.PaddingLeft = UDim.new(0, 4)
+            padding.Parent = toggleButton
+            
+            local currentValue = defaultValue
+            toggleButton.MouseButton1Click:Connect(function()
+                print("Sort order toggled:", currentValue)
+                if currentValue == "Asc" then
+                    currentValue = "Desc"
+                else
+                    currentValue = "Asc"
+                end
+                toggleButton.Text = currentValue
+                settings.sortOrder = currentValue
+                saveSettings()
+            end)
+            
+            return toggleButton
+        end
+        
+        local function createToggle(name, defaultValue, layoutOrder, settingKey, descOn, descOff)
+            local container = Instance.new("Frame")
+            container.Size = UDim2.new(1, 0, 0, 34)
+            container.BackgroundTransparency = 1
+            container.LayoutOrder = layoutOrder
+            container.ZIndex = 100
+            container.Parent = scrollFrame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -45, 1, 0)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = name
+            label.TextColor3 = Color3.fromRGB(200, 200, 210)
+            label.TextSize = 11
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 101
+            label.Parent = container
+            
+            local toggleFrame = Instance.new("Frame")
+            toggleFrame.Size = UDim2.new(0, 40, 0, 20)
+            toggleFrame.Position = UDim2.new(1, -40, 0.5, -10)
+            toggleFrame.BackgroundColor3 = defaultValue and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
+            toggleFrame.BorderSizePixel = 0
+            toggleFrame.ZIndex = 100
+            toggleFrame.Parent = container
+            
+            local toggleCorner = Instance.new("UICorner")
+            toggleCorner.CornerRadius = UDim.new(0, 10)
+            toggleCorner.Parent = toggleFrame
+            
+            local toggleButton = Instance.new("Frame")
+            toggleButton.Size = UDim2.new(0, 16, 0, 16)
+            toggleButton.Position = defaultValue and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+            toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            toggleButton.BorderSizePixel = 0
+            toggleButton.ZIndex = 101
+            toggleButton.Parent = toggleFrame
+            
+            local buttonCorner = Instance.new("UICorner")
+            buttonCorner.CornerRadius = UDim.new(0, 8)
+            buttonCorner.Parent = toggleButton
+            
+            local isEnabled = defaultValue
+            local clickDetector = Instance.new("TextButton")
+            clickDetector.Size = UDim2.new(1, 0, 1, 0)
+            clickDetector.Position = UDim2.new(0, 0, 0, 0)
+            clickDetector.BackgroundTransparency = 1
+            clickDetector.Text = ""
+            clickDetector.ZIndex = 101
+            clickDetector.Parent = toggleFrame
+            
+            clickDetector.MouseButton1Click:Connect(function()
+                print("Toggle tapped:", name, isEnabled)
+                isEnabled = not isEnabled
+                local frameColor = isEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 70)
+                local buttonPos = isEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+                
+                TweenService:Create(toggleFrame, TweenInfo.new(0.2), {BackgroundColor3 = frameColor}):Play()
+                TweenService:Create(toggleButton, TweenInfo.new(0.2), {Position = buttonPos}):Play()
+                
+                if settingKey and settings[settingKey] ~= nil then
+                    settings[settingKey] = isEnabled
+                    saveSettings()
+                end
+            end)
+            
+            return function() return isEnabled end
+        end
+        
+        local minGenInput = createInputField("Min. Generation", "1000000", tostring(settings.minGeneration), 1, "minGeneration", "Minimum generation for searching pets without specified target.")
+        local refreshTargetTags = createTagInputField("Target (Add)", settings.targetNames, "Name", 2, "Added target for search regardless of generation:", "Removed target:")
+        local refreshBlacklistTags = createTagInputField("Blacklist (Add)", settings.blacklistNames, "Name", 3, "Added to blacklist to ignore:", "Removed from blacklist:")
+        local rarityInput = createInputField("Rarity", "Secret, Mythical", settings.targetRarity, 4, "targetRarity", "Target rarity. Only pets of this rarity will be noticed.")
+        local mutationInput = createInputField("Mutation", "Rainbow, Gold", settings.targetMutation, 5, "targetMutation", "Target mutation. Only pets with this mutation will be noticed.")
+        local minPlayersInput = createInputField("Min. Players", "2", tostring(settings.minPlayers), 6, "minPlayers", "Minimum number of players on server for hopping.")
+        local soundInput = createInputField("Sound ID", "rbxassetid://9167433166", settings.customSoundId, 7, "customSoundId", "Sound ID to play when pet is found.")
+        local notificationDurationInput = createInputField("Notification Duration (sec)", "4", tostring(settings.notificationDuration), 8, "notificationDuration", "Duration of notifications in seconds.")
+        
+        local sortOrderToggle = createSortOrderToggle("Sort Order", settings.sortOrder, 9, "Server sort order: Asc - low to high, Desc - high to low.")
+        local autoStartToggle = createToggle("Auto Start", settings.autoStart, 10, "autoStart", "Auto start script after webhook check enabled.", "Auto start script disabled.")
+        
+        local fixedBottomFrame = Instance.new("Frame")
+        fixedBottomFrame.Name = "FixedBottomFrame"
+        fixedBottomFrame.Size = UDim2.new(1, 0, 0, 120)
+        fixedBottomFrame.Position = UDim2.new(0, 0, 1, -120)
+        fixedBottomFrame.BackgroundTransparency = 1
+        fixedBottomFrame.ZIndex = 100
+        fixedBottomFrame.Parent = contentFrame
+        
+        local buttonContainer = Instance.new("Frame")
+        buttonContainer.Size = UDim2.new(1, -10, 0, 60)
+        buttonContainer.Position = UDim2.new(0, 5, 0, 0)
+        buttonContainer.BackgroundTransparency = 1
+        buttonContainer.ZIndex = 100
+        buttonContainer.Parent = fixedBottomFrame
+        
+        local startButton = Instance.new("TextButton")
+        startButton.Size = UDim2.new(1, -5, 0, 32)
+        startButton.Position = UDim2.new(0, 0, 0, 0)
+        startButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        startButton.BorderSizePixel = 0
+        startButton.Text = "START"
+        startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        startButton.TextSize = 14
+        startButton.Font = Enum.Font.GothamBold
+        startButton.ZIndex = 101
+        startButton.Parent = buttonContainer
+        
+        local startCorner = Instance.new("UICorner")
+        startCorner.CornerRadius = UDim.new(0, 5)
+        startCorner.Parent = startButton
+        
+        local stopButton = Instance.new("TextButton")
+        stopButton.Size = UDim2.new(1, -5, 0, 32)
+        stopButton.Position = UDim2.new(0, 0, 0, 34)
+        stopButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        stopButton.BorderSizePixel = 0
+        stopButton.Text = "STOP"
+        stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        stopButton.TextSize = 14
+        stopButton.Font = Enum.Font.GothamBold
+        stopButton.ZIndex = 101
+        stopButton.Parent = buttonContainer
+        
+        local stopCorner = Instance.new("UICorner")
+        stopCorner.CornerRadius = UDim.new(0, 5)
+        stopCorner.Parent = stopButton
+        
+        local statusContainer = Instance.new("Frame")
+        statusContainer.Size = UDim2.new(1, -10, 0, 50)
+        statusContainer.Position = UDim2.new(0, 5, 0, 65)
+        statusContainer.BackgroundTransparency = 1
+        statusContainer.ZIndex = 100
+        statusContainer.Parent = fixedBottomFrame
+        
+        local statusLabel = Instance.new("TextLabel")
+        statusLabel.Size = UDim2.new(1, 0, 0, 26)
+        statusLabel.Position = UDim2.new(0, 0, 0, 0)
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.Text = "Ready to search..."
+        statusLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+        statusLabel.TextSize = 10
+        statusLabel.Font = Enum.Font.Gotham
+        statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+        statusLabel.TextWrapped = true
+        statusLabel.ZIndex = 101
+        statusLabel.Parent = statusContainer
+        
+        local apiStatusLabel = Instance.new("TextLabel")
+        apiStatusLabel.Size = UDim2.new(1, 0, 0, 24)
+        apiStatusLabel.Position = UDim2.new(0, 0, 0, 26)
+        apiStatusLabel.BackgroundTransparency = 1
+        apiStatusLabel.Text = string.format("API: %d/3 | Cache: %d", apiState.mainApiUses, #apiState.cachedServers)
+        apiStatusLabel.TextColor3 = Color3.fromRGB(120, 120, 130)
+        apiStatusLabel.TextSize = 9
+        apiStatusLabel.Font = Enum.Font.Gotham
+        apiStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+        apiStatusLabel.ZIndex = 101
+        apiStatusLabel.Parent = statusContainer
+        
+        local function updateScrollCanvas()
+            local contentHeight = layout.AbsoluteContentSize.Y + 20
+            scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+        end
+        
+        updateScrollCanvas()
+        
+        local function addButtonHover(button, hoverColor, originalColor)
+            button.MouseEnter:Connect(function()
+                TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor}):Play()
+            end)
+            button.MouseLeave:Connect(function()
+                TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = originalColor}):Play()
+            end)
+        end
+        
+        addButtonHover(startButton, Color3.fromRGB(60, 180, 60), Color3.fromRGB(50, 150, 50))
+        addButtonHover(stopButton, Color3.fromRGB(180, 60, 60), Color3.fromRGB(150, 50, 50))
+        addButtonHover(closeButton, Color3.fromRGB(255, 80, 80), Color3.fromRGB(220, 60, 60))
+        addButtonHover(minimizeButton, Color3.fromRGB(130, 130, 130), Color3.fromRGB(100, 100, 100))
+        
+        local function updateAPIStatus()
+            apiStatusLabel.Text = string.format("API: %d/3 | Cache: %d | %s",
+                apiState.mainApiUses,
+                #apiState.cachedServers,
+                apiState.useCachedServers and "Cache" or "Live"
+            )
+        end
+        
+        local hopConnection = nil
+        
+        local function startHopping()
+            print("Start button tapped")
+            if isRunning then
+                statusLabel.Text = "Already running!"
+                statusLabel.TextColor3 = Color3.fromRGB(255, 150, 100)
+                showNotification("Warning", "Search is already running!")
+                return
+            end
+            
+            local fileSuccess, _ = pcall(function()
+                if not isfile("hopStarted.txt") then
+                    writefile("hopStarted.txt", "true")
+                end
+            end)
+            if fileSuccess then
+                showNotification("Search started", "Looking for target pets...")
+            else
+                print("File I/O failed, continuing without writing hopStarted.txt")
+                showNotification("Search started", "Looking for target pets...")
+            end
+            
+            isRunning = true
+            statusLabel.Text = "Searching..."
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            
+            hopConnection = task.spawn(function()
+                while isRunning do
+                    local success, err = pcall(runServerCheck)
+                    if not success then
+                        print("Error in runServerCheck:", err)
+                        showNotification("Error", "Server check failed: " .. tostring(err))
+                    end
+                    if #foundPodiumsData > 0 then
+                        break
+                    end
+                    task.wait(0.1)
+                    updateAPIStatus()
+                end
+            end)
+        end
+        
+        startButton.MouseButton1Click:Connect(function()
+            print("Start button clicked/tapped")
+            local success, err = pcall(startHopping)
+            if not success then
+                print("Error in startHopping:", err)
+                showNotification("Error", "Failed to start hopping: " .. tostring(err))
+            end
+        end)
+        
+        stopButton.MouseButton1Click:Connect(function()
+            print("Stop button tapped")
+            isRunning = false
+            foundPodiumsData = {}
+            autoHopping = false
+            if currentConnection then
+                currentConnection:Disconnect()
+                currentConnection = nil
+            end
+            if monitoringConnection then
+                monitoringConnection:Disconnect()
+                monitoringConnection = nil
+            end
+            if hopConnection then
+                task.cancel(hopConnection)
+                hopConnection = nil
+            end
+            statusLabel.Text = "Search stopped."
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            showNotification("Stopped", "Server hopping stopped.")
+        end)
+        
+        closeButton.MouseButton1Click:Connect(function()
+            print("Close button tapped")
+            isRunning = false
+            foundPodiumsData = {}
+            autoHopping = false
+            if currentConnection then
+                currentConnection:Disconnect()
+                currentConnection = nil
+            end
+            if monitoringConnection then
+                monitoringConnection:Disconnect()
+                monitoringConnection = nil
+            end
+            if hopConnection then
+                task.cancel(hopConnection)
+                hopConnection = nil
+            end
+            
+            screenGui:Destroy()
+        end)
+        
+        local dragging = false
+        local dragStart = nil
+        local startPos = nil
+        
+        titleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                print("Dragging started")
+                dragging = true
+                dragStart = input.Position
+                startPos = mainFrame.Position
+            end
+        end)
+        
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                mainFrame.Position = newPos
+                
+                guiState.position = {
+                    XScale = newPos.X.Scale,
+                    XOffset = newPos.X.Offset,
+                    YScale = newPos.Y.Scale,
+                    YOffset = newPos.Y.Offset
+                }
+                saveGUIState()
+            end
+        end)
+        
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                print("Dragging ended")
+                dragging = false
+            end
+        end)
+        
+        spawn(function()
+            while screenGui.Parent do
+                updateAPIStatus()
+                task.wait(5)
+            end
+        end)
+        
+        _G.CloseHop = function()
+            pcall(function()
+                local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+                if playerGui then
+                    local hopperGui = playerGui:FindFirstChild("ServerHopperGUI")
+                    if hopperGui then
+                        hopperGui:Destroy()
+                    end
+                end
+            end)
+        end
+        
+        if settings.autoStart then
+            task.wait(0.5)
+            startHopping()
+        end
+    end)
+    if not success then
+        print("Failed to create GUI:", err)
+        showNotification("Error", "Failed to create GUI: " .. tostring(err))
     end
 end
 
@@ -1548,6 +1621,15 @@ local function testExecutorCompatibility()
     
     setCoreSupported = testSetCore()
     print("SetCore test:", setCoreSupported and "Success" or "Failed")
+    
+    local guiSuccess, guiResult = pcall(function()
+        local testGui = Instance.new("ScreenGui")
+        testGui.ZIndex = 100
+        testGui.Parent = player.PlayerGui
+        testGui:Destroy()
+        return true
+    end)
+    print("GUI creation test:", guiSuccess and "Success" or "Failed: " .. guiResult)
 end
 
 testExecutorCompatibility()
@@ -1555,11 +1637,14 @@ loadSettings()
 loadGUIState()
 loadAPIState()
 
+print("Checking Place ID:", game.PlaceId, "Expected:", ALLOWED_PLACE_ID)
 if game.PlaceId == ALLOWED_PLACE_ID then
     local success, err = pcall(createSettingsGUI)
     if not success then
         print("Error creating GUI:", err)
         showNotification("Error", "Failed to create GUI: " .. tostring(err))
+    else
+        print("GUI created successfully")
     end
 else
     showNotification("Error", "This script only works in Place ID " .. ALLOWED_PLACE_ID)
