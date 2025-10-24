@@ -1414,7 +1414,7 @@ loadSettings()
 loadGUIState()
 loadAPIState()
 
-if game.PlaceId == 109983668079237 then
+if game.PlaceId == ALLOWED_PLACE_ID then
     createSettingsGUI()
 else
     
