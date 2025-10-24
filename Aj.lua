@@ -13,7 +13,7 @@ local CoreGui = game:GetService("CoreGui")
 while not Players.LocalPlayer do task.wait() end
 local player = Players.LocalPlayer
 local ALLOWED_PLACE_ID = 109983668079237
-local RETRY_DELAY = 0.1
+local RETRY_DELAY = 0.3
 local SETTINGS_FILE = "ServerHopperSettings.json"
 local GUI_STATE_FILE = "ServerHopperGUIState.json"
 local API_STATE_FILE = "ServerHopperAPIState.json"
@@ -1418,4 +1418,5 @@ if game.PlaceId == ALLOWED_PLACE_ID then
     createSettingsGUI()
 else
     
+
 end
