@@ -264,7 +264,21 @@ createButton("Steal", 140, function()
         hrp:SetNetworkOwner(player)
     end
 
-    -- Use Humanoid:MoveTo for natural movement
+    -- Elevate character using BodyPosition
+    notify("Elevating...", Color3.fromRGB(0, 255, 0))
+    hum:Jump() -- Trigger a jump for natural upward motion
+    local bodyPos = Instance.new("BodyPosition")
+    bodyPos.MaxForce = Vector3.new(0, math.huge, 0)
+    bodyPos.Position = hrp.Position + Vector3.new(0, 15, 0)
+    bodyPos.D = 1000 -- Damping for smooth movement
+    bodyPos.P = 10000 -- Power for strong positioning
+    bodyPos.Parent = hrp
+
+    -- Wait for elevation to complete
+    wait(0.6) -- Match original timing
+    bodyPos:Destroy() -- Remove BodyPosition to allow natural falling
+
+    -- Move to saved position using Humanoid:MoveTo
     notify("Moving to saved position...", Color3.fromRGB(0, 255, 0))
     hum:MoveTo(savedPosition)
     local moveTimeout = 10 -- Timeout in seconds
