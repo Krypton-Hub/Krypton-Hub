@@ -14,7 +14,7 @@ screenGui.Parent = player:WaitForChild("PlayerGui")
 
 -- Frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 190) -- Increased height for God Mode toggle
+frame.Size = UDim2.new(0, 220, 0, 190)
 frame.Position = UDim2.fromScale(0.5, 0.2) - UDim2.fromOffset(110, 0)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BackgroundTransparency = 0
@@ -240,7 +240,7 @@ createButton("Save Position", 105, function()
 end)
 
 -- Steal button
-createToggle("Steal", 140, function()
+createButton("Steal", 140, function()
     if not savedPosition then
         notify("No saved position set!", Color3.fromRGB(255, 0, 0))
         return
@@ -253,7 +253,12 @@ createToggle("Steal", 140, function()
         return
     end
 
-    -- Disable collisions to prevent getting stuck
+    -- Ensure network ownership
+    if hrp:CanSetNetworkOwnership() then
+        hrp:SetNetworkOwner(player)
+    end
+
+    -- Disable collisions
     for _, part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
@@ -266,28 +271,37 @@ createToggle("Steal", 140, function()
     hrp.CFrame = CFrame.new(floatPos)
     wait(0.6)
 
-    -- Move to saved position
-    local flySpeed = 25
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        local dir = (savedPosition - hrp.Position)
-        if dir.Magnitude < 2 then
-            connection:Disconnect()
-            wait(0.2)
-            -- Restore collisions and unanchor
-            hrp.Anchored = false
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-            -- Ensure player doesn't fall through map
-            if hum and godModeEnabled then
-                hum.Health = hum.MaxHealth
-            end
-            notify("Steal complete!", Color3.fromRGB(0, 255, 0))
+    -- Instant teleport to saved position
+    hrp.CFrame = CFrame.new(savedPosition)
+    notify("Teleported to saved position!", Color3.fromRGB(0, 255, 0))
+
+    -- Restore collisions and unanchor
+    wait(0.1) -- Small delay to stabilize
+    hrp.Anchored = false
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+
+    -- Ensure God Mode keeps player alive
+    if godModeEnabled and hum then
+        hum.Health = hum.MaxHealth
+    end
+
+    -- Nudge position to avoid anti-cheat snapback
+    local nudgeConnection
+    nudgeConnection = RunService.RenderStepped:Connect(function()
+        if hrp and (hrp.Position - savedPosition).Magnitude > 2 then
+            hrp.CFrame = CFrame.new(savedPosition) -- Keep nudging to saved position
         else
-            hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(savedPosition), 0.02)
+            nudgeConnection:Disconnect()
+        end
+    end)
+    spawn(function()
+        wait(2) -- Nudge for 2 seconds to counter snapback
+        if nudgeConnection then
+            nudgeConnection:Disconnect()
         end
     end)
 end)
