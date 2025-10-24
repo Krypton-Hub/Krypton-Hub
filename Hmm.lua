@@ -1,3 +1,4 @@
+
 -- Services
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -25,72 +26,78 @@ local function logError(message)
     end
 end
 
--- Loading Screen
-local blur = Instance.new("BlurEffect", Lighting)
-blur.Size = 0
-TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
+-- Simplified Loading Screen (for debugging)
+local function showLoadingScreen()
+    print("Starting loading screen")
+    local blur = Instance.new("BlurEffect", Lighting)
+    blur.Size = 0
+    TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
 
-local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "KryptonLoader"
-screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
+    local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+    screenGui.Name = "KryptonLoader"
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
 
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(1, 0, 1, 0)
-frame.BackgroundTransparency = 1
+    local frame = Instance.new("Frame", screenGui)
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundTransparency = 1
 
-local bg = Instance.new("Frame", frame)
-bg.Size = UDim2.new(1, 0, 1, 0)
-bg.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-bg.BackgroundTransparency = 1
-bg.ZIndex = 0
-TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
+    local bg = Instance.new("Frame", frame)
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+    bg.BackgroundTransparency = 1
+    bg.ZIndex = 0
+    TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
 
-local word = "KRYPTON"
-local letters = {}
+    local word = "KRYPTON"
+    local letters = {}
 
-local function tweenOutAndDestroy()
-    for _, label in ipairs(letters) do
-        TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 1, TextSize = 20}):Play()
+    local function tweenOutAndDestroy()
+        for _, label in ipairs(letters) do
+            TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 1, TextSize = 20}):Play()
+        end
+        TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play()
+        task.wait(0.6)
+        screenGui:Destroy()
+        blur:Destroy()
+        print("Loading screen completed")
     end
-    TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play()
-    task.wait(0.6)
-    screenGui:Destroy()
-    blur:Destroy()
+
+    for i = 1, #word do
+        local char = word:sub(i, i)
+        local label = Instance.new("TextLabel")
+        label.Text = char
+        label.Font = Enum.Font.GothamBlack
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextStrokeTransparency = 1
+        label.TextTransparency = 1
+        label.TextScaled = false
+        label.TextSize = 30
+        label.Size = UDim2.new(0, 60, 0, 60)
+        label.AnchorPoint = Vector2.new(0.5, 0.5)
+        label.Position = UDim2.new(0.5, (i - (#word / 2 + 0.5)) * 65, 0.5, 0)
+        label.BackgroundTransparency = 1
+        label.Parent = frame
+
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 170, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 100, 160))
+        })
+        gradient.Rotation = 90
+        gradient.Parent = label
+
+        local tweenIn = TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 0, TextSize = 60})
+        tweenIn:Play()
+        table.insert(letters, label)
+        task.wait(0.25)
+    end
+    task.wait(2)
+    tweenOutAndDestroy()
 end
 
-for i = 1, #word do
-    local char = word:sub(i, i)
-    local label = Instance.new("TextLabel")
-    label.Text = char
-    label.Font = Enum.Font.GothamBlack
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextStrokeTransparency = 1
-    label.TextTransparency = 1
-    label.TextScaled = false
-    label.TextSize = 30
-    label.Size = UDim2.new(0, 60, 0, 60)
-    label.AnchorPoint = Vector2.new(0.5, 0.5)
-    label.Position = UDim2.new(0.5, (i - (#word / 2 + 0.5)) * 65, 0.5, 0)
-    label.BackgroundTransparency = 1
-    label.Parent = frame
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 170, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 100, 160))
-    })
-    gradient.Rotation = 90
-    gradient.Parent = label
-
-    local tweenIn = TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 0, TextSize = 60})
-    tweenIn:Play()
-    table.insert(letters, label)
-    task.wait(0.25)
-end
-task.wait(2)
-tweenOutAndDestroy()
+showLoadingScreen()
 
 -- Wait for game and player to load
 local startTime = tick()
@@ -101,9 +108,12 @@ repeat
         break
     end
 until player and player.Character
+print("Player loaded:", player)
+print("Character loaded:", player.Character)
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
+print("Game loaded")
 
 -- Global Variables
 local character, hrp, humanoid
@@ -139,9 +149,11 @@ local function updateCharacterReferences()
     if character then
         hrp = character:FindFirstChild("HumanoidRootPart")
         humanoid = character:FindFirstChildOfClass("Humanoid")
+        print("Character updated - HRP:", hrp, "Humanoid:", humanoid)
     else
         hrp = nil
         humanoid = nil
+        print("No character found")
     end
 end
 updateCharacterReferences()
@@ -210,14 +222,21 @@ local function setupGlobalGodmode()
     end)
     
     setreadonly(mt, true)
+    print("Godmode setup completed")
 end
 if humanoid then
-    setupGlobalGodmode()
+    local success, err = pcall(setupGlobalGodmode)
+    if not success then
+        logError("Godmode setup failed: " .. err)
+    end
 end
 player.CharacterAdded:Connect(function()
     updateCharacterReferences()
     if humanoid then
-        setupGlobalGodmode()
+        local success, err = pcall(setupGlobalGodmode)
+        if not success then
+            logError("Godmode setup failed: " .. err)
+        end
     end
 end)
 
@@ -226,6 +245,7 @@ local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "KryptonToggle"
 toggleGui.ResetOnSpawn = false
 toggleGui.Parent = player:WaitForChild("PlayerGui")
+print("Toggle GUI created:", toggleGui)
 
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 60, 0, 60)
@@ -237,6 +257,7 @@ toggleButton.Image = "rbxassetid://95131705390407" -- Updated logo
 toggleButton.Active = true
 toggleButton.Draggable = true
 toggleButton.Parent = toggleGui
+print("Toggle button created:", toggleButton)
 
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(1, 0)
@@ -247,7 +268,8 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "KryptonHubGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
-gui.Enabled = false
+gui.Enabled = true -- Set to true for debugging
+print("Main GUI created:", gui)
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 280, 0, 320)
@@ -493,11 +515,13 @@ local function switchTab(tabName)
             button.TextColor3 = Color3.fromRGB(200, 200, 200)
         end
     end
+    print("Switched to tab:", tabName)
 end
 
 -- Connect tab buttons
 for tabName, button in pairs(tabButtons) do
     button.MouseButton1Click:Connect(function()
+        print("Tab button clicked:", tabName)
         switchTab(tabName)
     end)
 end
@@ -512,6 +536,7 @@ end)
 
 -- Toggle GUI
 toggleButton.MouseButton1Click:Connect(function()
+    print("Toggle button clicked")
     gui.Enabled = not gui.Enabled
     if gui.Enabled then
         toggleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
@@ -533,6 +558,7 @@ end
 local function dop(p)
     if p and p:FindFirstChild("Base") and p.Base:FindFirstChild("Spawn") and p.Base.Spawn:FindFirstChild("PromptAttachment") then
         local promptAttachment = p.Base.Spawn.PromptAttachment
+        print("PromptAttachment found for", p.Name)
         if promptAttachment:FindFirstChild("ProximityPrompt") then
             local c = promptAttachment.ProximityPrompt
             table.insert(pp, c)
@@ -558,19 +584,28 @@ local function dop(p)
                 end))
             end
         end))
+    else
+        print("No PromptAttachment for", p and p.Name or "nil")
     end
 end
 
-for _, plot in pairs(Workspace:WaitForChild("Plots"):GetChildren()) do
-    if plot:FindFirstChild("AnimalPodiums") then
-        for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
-            dop(podium)
+local plots = Workspace:FindFirstChild("Plots")
+if plots then
+    for _, plot in pairs(plots:GetChildren()) do
+        print("Checking plot:", plot.Name)
+        if plot:FindFirstChild("AnimalPodiums") then
+            for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
+                dop(podium)
+            end
+            table.insert(connections.ProximityPrompts, plot.AnimalPodiums.ChildAdded:Connect(dop))
         end
-        table.insert(connections.ProximityPrompts, plot.AnimalPodiums.ChildAdded:Connect(dop))
     end
+else
+    logError("Plots not found in Workspace")
 end
 
 mainContent[4].MouseButton1Click:Connect(function()
+    print("Instant Proximity toggled")
     ipp = not ipp
     mainContent[4].Text = ipp and "INSTANT PROXIMITY: ON" or "INSTANT PROXIMITY: OFF"
     mainContent[4].BackgroundColor3 = ipp and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 70)
@@ -584,6 +619,7 @@ end)
 
 -- Tween to Base
 mainContent[1].MouseButton1Click:Connect(function()
+    print("Tween to Base toggled")
     if tweenActive then
         tweenActive = false
         mainContent[1].Text = "▶ TWEEN TO BASE"
@@ -632,6 +668,7 @@ end)
 
 -- Slow Flight
 mainContent[2].MouseButton1Click:Connect(function()
+    print("Slow Flight toggled")
     flyActive = not flyActive
     if flyActive then
         mainContent[2].Text = "SLOW FLIGHT: ON"
@@ -659,6 +696,7 @@ end)
 
 -- Float
 mainContent[3].MouseButton1Click:Connect(function()
+    print("Float toggled")
     floatActive = not floatActive
     if floatActive then
         mainContent[3].Text = "FLOAT: ON"
@@ -687,6 +725,7 @@ end)
 
 -- Semi-Invisible
 local function semiInvisibleFunction()
+    print("Semi-Invisible toggled")
     local DEPTH_OFFSET = 0.15
     local clone, oldRoot, hip, animTrack, connection, characterConnection
 
@@ -872,15 +911,20 @@ local function semiInvisibleFunction()
     end
 end
 
-playerContent[1].MouseButton1Click:Connect(semiInvisibleFunction)
+playerContent[1].MouseButton1Click:Connect(function()
+    print("Semi-Invisible button clicked")
+    semiInvisibleFunction()
+end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
+        print("F key pressed for Semi-Invisible")
         semiInvisibleFunction()
     end
 end)
 
 -- Infinite Jump
 playerContent[2].MouseButton1Click:Connect(function()
+    print("Infinite Jump toggled")
     infJumpActive = not infJumpActive
     if infJumpActive then
         playerContent[2].Text = "INFINITE JUMP: ON"
@@ -909,6 +953,7 @@ end)
 -- Speed Booster
 local baseSpeed = config.walkSpeed
 playerContent[3].MouseButton1Click:Connect(function()
+    print("Speed Booster toggled")
     speedActive = not speedActive
     if speedActive then
         playerContent[3].Text = "SPEED BOOSTER: ON"
@@ -1006,6 +1051,7 @@ local function disableGodMode()
 end
 
 playerContent[4].MouseButton1Click:Connect(function()
+    print("God Mode toggled")
     godModeToggle = not godModeToggle
     if godModeToggle then
         playerContent[4].Text = "GOD MODE: ON"
@@ -1051,6 +1097,7 @@ local function setWalkSpeed(speed)
 end
 
 playerContent[5].MouseButton1Click:Connect(function()
+    print("WalkSpeed toggled")
     walkSpeedToggle = not walkSpeedToggle
     if walkSpeedToggle then
         playerContent[5].Text = "WALKSPEED (50): ON"
@@ -1156,11 +1203,13 @@ do
     end
 
     dropdown.MouseButton1Click:Connect(function()
+        print("Shop dropdown clicked")
         dropdownList.Visible = not dropdownList.Visible
     end)
 
     for _, option in ipairs(dropdownOptions) do
         dropdownOptionsButtons[option].MouseButton1Click:Connect(function()
+            print("Shop option selected:", option)
             dropdown.Text = option
             dropdownList.Visible = false
             for _, item in pairs(allItems) do
@@ -1175,18 +1224,21 @@ do
                         end
                     end)
                     statusLabel.Text = success and ("Tried to buy: " .. item.Name .. " (Success)") or ("Error buying " .. item.Name .. ": " .. tostring(err))
+                    print("Shop purchase attempt:", success, err)
                 end
             end
         end)
     end
 
     shopContent[1].MouseButton1Click:Connect(function()
+        print("Shop button clicked")
         dropdownList.Visible = not dropdownList.Visible
     end)
 end
 
 -- ESP
 visualsContent[1].MouseButton1Click:Connect(function()
+    print("Player ESP toggled")
     espActive = not espActive
     if espActive then
         visualsContent[1].Text = "PLAYER ESP: ON"
@@ -1232,11 +1284,13 @@ Players.PlayerRemoving:Connect(function(otherPlayer)
     if espFolders[otherPlayer] then
         espFolders[otherPlayer]:Destroy()
         espFolders[otherPlayer] = nil
+        print("ESP folder removed for", otherPlayer.Name)
     end
 end)
 
 -- Fullbright
 visualsContent[2].MouseButton1Click:Connect(function()
+    print("Fullbright toggled")
     fullbrightActive = not fullbrightActive
     if fullbrightActive then
         visualsContent[2].Text = "FULLBRIGHT: ON"
@@ -1264,6 +1318,7 @@ end)
 
 -- Discord Button
 visualsContent[3].MouseButton1Click:Connect(function()
+    print("Discord button clicked")
     if setclipboard then
         setclipboard("https://discord.gg/jXSyQFnQCY")
         statusLabel.Text = "Discord link copied to clipboard!"
@@ -1277,6 +1332,7 @@ end)
 
 -- Auto-cleanup on character death
 player.CharacterAdded:Connect(function()
+    print("Character respawned")
     tweenActive = false
     flyActive = false
     floatActive = false
@@ -1343,6 +1399,7 @@ end)
 
 -- Cleanup on Script End
 game:BindToClose(function()
+    print("Cleaning up on script end")
     for key, connection in pairs(connections) do
         if typeof(connection) == "RBXScriptConnection" then
             connection:Disconnect()
