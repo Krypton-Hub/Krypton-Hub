@@ -9,20 +9,20 @@ local Workspace = game:GetService("Workspace")
 while not Players.LocalPlayer do task.wait() end
 local player = Players.LocalPlayer
 local ALLOWED_PLACE_ID = 109983668079237
-local RETRY_DELAY = 0.1
+local RETRY_DELAY = 0.5
 local SETTINGS_FILE = "ServerHopperSettings.json"
 local GUI_STATE_FILE = "ServerHopperGUIState.json"
 local API_STATE_FILE = "ServerHopperAPIState.json"
 
 local settings = {
-    minGeneration = 1000000,
-    targetNames = {"Noobini Pizzanini"}, -- Default pet name
+    minGeneration = 1000000, -- Default 1M/s
+    targetNames = {}, -- Empty by default (no Huge Dragon)
     blacklistNames = {},
     targetRarity = "",
     targetMutation = "",
     minPlayers = 2,
     sortOrder = "Desc",
-    autoStart = true,
+    autoStart = false, -- Controlled by GUI toggle
     customSoundId = "rbxassetid://9167433166",
     hopCount = 0,
     recentVisited = {},
@@ -30,7 +30,7 @@ local settings = {
 }
 
 local guiState = {
-    position = { XScale = 0.25, XOffset = 0, YScale = 0.2, YOffset = 0 }
+    position = { XScale = 0.35, XOffset = 0, YScale = 0.3, YOffset = 0 } -- Centered
 }
 
 local apiState = {
@@ -45,6 +45,7 @@ local currentConnection = nil
 local foundPodiumsData = {}
 local monitoringConnection = nil
 local setCoreSupported = false
+local bestPetESP = nil
 
 local function testSetCore()
     local success, _ = pcall(function()
@@ -429,6 +430,41 @@ local function isStolenPodium(overhead)
     return false
 end
 
+local function createESP(podium, name, genValue)
+    if bestPetESP then bestPetESP:Destroy() end
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PetESP"
+    billboard.Adornee = podium.base
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = podium.pod
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    frame.Parent = billboard
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, -10, 1, 0)
+    textLabel.Position = UDim2.new(0, 5, 0, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = name .. " (" .. formatGeneration(genValue) .. ")"
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextSize = 14
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextWrapped = true
+    textLabel.Parent = frame
+
+    bestPetESP = billboard
+end
+
 local function getAvailableServers()
     if apiState.mainApiUses >= 3 or apiState.useCachedServers then
         if not checkAPIAvailability() then
@@ -456,8 +492,12 @@ local function matchesFilters(labels, overhead)
     end
     local genValue = extractNumber(labels.Generation)
     print("Checking pet:", labels.DisplayName, "Generation:", genValue, "Mutation:", labels.Mutation, "Rarity:", labels.Rarity)
-    local hasTargetName = false
+    if genValue < settings.minGeneration then
+        print("Generation too low:", genValue, "Expected:", settings.minGeneration)
+        return false
+    end
     if #settings.targetNames > 0 then
+        local hasTargetName = false
         for i = 1, #settings.targetNames do
             local name = settings.targetNames[i]
             if name ~= "" and string.find(string.lower(labels.DisplayName), string.lower(name)) then
@@ -471,19 +511,7 @@ local function matchesFilters(labels, overhead)
             return false
         end
     else
-        print("No target names specified, checking other filters")
-    end
-    if settings.targetMutation ~= "" then
-        if string.lower(labels.Mutation) ~= string.lower(settings.targetMutation) then
-            print("Mutation mismatch:", labels.Mutation, "Expected:", settings.targetMutation)
-            return false
-        end
-        return true
-    end
-    if hasTargetName then return true end
-    if genValue < settings.minGeneration then
-        print("Generation too low:", genValue, "Expected:", settings.minGeneration)
-        return false
+        print("No target names specified, prioritizing generation")
     end
     if #settings.blacklistNames > 0 then
         for i = 1, #settings.blacklistNames do
@@ -500,8 +528,14 @@ local function matchesFilters(labels, overhead)
             return false
         end
     end
+    if settings.targetMutation ~= "" then
+        if string.lower(labels.Mutation) ~= string.lower(settings.targetMutation) then
+            print("Mutation mismatch:", labels.Mutation, "Expected:", settings.targetMutation)
+            return false
+        end
+    end
     print("Pet matches filters:", labels.DisplayName)
-    return true
+    return true, genValue
 end
 
 local function checkPodiumsForWebhooksAndFilters()
@@ -533,7 +567,8 @@ local function checkPodiumsForWebhooksAndFilters()
                 Mutation = mutText,
                 Rarity = rarityLabel.Text
             }
-            if matchesFilters(labels, podium.overhead) then
+            local matches, genValue = matchesFilters(labels, podium.overhead)
+            if matches then
                 local closestModel = findClosestModel(podium.base, workspaceModels)
                 table.insert(filteredPodiums, { 
                     base = podium.base, 
@@ -541,7 +576,8 @@ local function checkPodiumsForWebhooksAndFilters()
                     closestModel = closestModel, 
                     overhead = podium.overhead,
                     pod = podium.pod,
-                    plot = podium.plot
+                    plot = podium.plot,
+                    genValue = genValue
                 })
             end
         end
@@ -581,7 +617,7 @@ local function tryTeleportWithRetries()
     end
 end
 
-local function monitorFoundPodiums()
+local function monitorFoundPodiums(statusLabel)
     if monitoringConnection then monitoringConnection:Disconnect() end
     monitoringConnection = RunService.Heartbeat:Connect(function()
         if not isRunning or #foundPodiumsData == 0 then return end
@@ -598,7 +634,8 @@ local function monitorFoundPodiums()
                         Mutation = data.labels and data.labels.Mutation or "Normal",
                         Rarity = data.labels and data.labels.Rarity or "None"
                     }
-                    if not matchesFilters(currentLabels, data.overhead) then
+                    local matches, _ = matchesFilters(currentLabels, data.overhead)
+                    if not matches then
                         table.insert(lostPodiums, data.labels.DisplayName)
                         table.remove(foundPodiumsData, i)
                         lostAny = true
@@ -619,11 +656,14 @@ local function monitorFoundPodiums()
         if lostAny then
             local lostText = #lostPodiums > 0 and "Lost: " .. table.concat(lostPodiums, ", ") or "Lost podium(s)"
             showNotification("Not found", lostText)
+            statusLabel.Text = "Searching..."
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            if bestPetESP then bestPetESP:Destroy() bestPetESP = nil end
         end
     end)
 end
 
-local function runServerCheck()
+local function runServerCheck(statusLabel)
     if not isRunning then return end
     local success, foundPets, results = pcall(checkPodiumsForWebhooksAndFilters)
     if not success then
@@ -635,15 +675,15 @@ local function runServerCheck()
         foundPodiumsData = results
         local displayResults = {}
         for _, entry in ipairs(results) do
-            local genValue = extractNumber(entry.labels.Generation)
-            table.insert(displayResults, {entry = entry, gen = genValue})
+            table.insert(displayResults, {entry = entry, gen = entry.genValue})
         end
         table.sort(displayResults, function(a, b) return a.gen > b.gen end)
+        local bestPet = displayResults[1]
         local foundText = ""
         local numToShow = math.min(3, #displayResults)
         for i = 1, numToShow do
             local entry = displayResults[i].entry
-            local genFormatted = formatGeneration(entry.labels.Generation)
+            local genFormatted = formatGeneration(entry.genValue)
             foundText = foundText .. entry.labels.DisplayName .. " (" .. genFormatted .. ")"
             if i < numToShow then foundText = foundText .. ", " end
         end
@@ -651,9 +691,12 @@ local function runServerCheck()
             local extra = #displayResults - 3
             foundText = foundText .. " and " .. extra .. " more..."
         end
+        statusLabel.Text = "Best Pet: " .. bestPet.entry.labels.DisplayName .. " (" .. formatGeneration(bestPet.gen) .. ")"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        createESP(bestPet.entry, bestPet.entry.labels.DisplayName, bestPet.gen)
         showNotification("Found", foundText)
         playFoundSound()
-        monitorFoundPodiums()
+        monitorFoundPodiums(statusLabel)
         return
     end
     if not isRunning then return end
@@ -662,7 +705,7 @@ local function runServerCheck()
     tryTeleportWithRetries()
 end
 
-local function startHopping()
+local function startHopping(statusLabel)
     print("Starting server hopping...")
     if isRunning then
         showNotification("Warning", "Search is already running!")
@@ -678,9 +721,11 @@ local function startHopping()
         showNotification("Search started", "Looking for target pets...")
     end
     isRunning = true
+    statusLabel.Text = "Searching..."
+    statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     task.spawn(function()
         while isRunning do
-            local success, err = pcall(runServerCheck)
+            local success, err = pcall(function() runServerCheck(statusLabel) end)
             if not success then
                 print("Error in runServerCheck:", err)
                 showNotification("Error", "Server check failed: " .. tostring(err))
@@ -691,7 +736,7 @@ local function startHopping()
     end)
 end
 
-local function stopHopping()
+local function stopHopping(statusLabel)
     print("Stop button tapped")
     isRunning = false
     foundPodiumsData = {}
@@ -703,6 +748,12 @@ local function stopHopping()
         monitoringConnection:Disconnect()
         monitoringConnection = nil
     end
+    if bestPetESP then
+        bestPetESP:Destroy()
+        bestPetESP = nil
+    end
+    statusLabel.Text = "Search stopped."
+    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     showNotification("Stopped", "Pet search stopped.")
 end
 
@@ -721,71 +772,71 @@ local function createSettingsGUI()
         print("ScreenGui created and parented to PlayerGui")
         
         local mainFrame = Instance.new("Frame")
-        mainFrame.Size = UDim2.new(0.5, 0, 0.6, 0)
+        mainFrame.Size = UDim2.new(0.3, 0, 0.4, 0) -- Compact size
         mainFrame.Position = UDim2.new(guiState.position.XScale, guiState.position.XOffset, guiState.position.YScale, guiState.position.YOffset)
         mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
         mainFrame.BorderSizePixel = 0
         mainFrame.Parent = screenGui
         
         local mainCorner = Instance.new("UICorner")
-        mainCorner.CornerRadius = UDim.new(0, 12)
+        mainCorner.CornerRadius = UDim.new(0, 8)
         mainCorner.Parent = mainFrame
         
         local titleBar = Instance.new("Frame")
-        titleBar.Size = UDim2.new(1, 0, 0, 50)
+        titleBar.Size = UDim2.new(1, 0, 0, 40)
         titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         titleBar.BorderSizePixel = 0
         titleBar.Parent = mainFrame
         
         local titleLabel = Instance.new("TextLabel")
-        titleLabel.Size = UDim2.new(1, -80, 1, 0)
+        titleLabel.Size = UDim2.new(1, -60, 1, 0)
         titleLabel.Position = UDim2.new(0, 10, 0, 0)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = "Pet Search"
         titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        titleLabel.TextSize = 20
+        titleLabel.TextSize = 18
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
         titleLabel.Parent = titleBar
         
         local closeButton = Instance.new("TextButton")
-        closeButton.Size = UDim2.new(0, 40, 0, 40)
-        closeButton.Position = UDim2.new(1, -50, 0, 5)
+        closeButton.Size = UDim2.new(0, 30, 0, 30)
+        closeButton.Position = UDim2.new(1, -40, 0, 5)
         closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         closeButton.BorderSizePixel = 0
         closeButton.Text = "X"
         closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        closeButton.TextSize = 18
+        closeButton.TextSize = 16
         closeButton.Font = Enum.Font.GothamBold
         closeButton.Parent = titleBar
         
         local closeCorner = Instance.new("UICorner")
-        closeCorner.CornerRadius = UDim.new(0, 10)
+        closeCorner.CornerRadius = UDim.new(0, 8)
         closeCorner.Parent = closeButton
         
         local contentFrame = Instance.new("Frame")
-        contentFrame.Size = UDim2.new(1, 0, 1, -50)
-        contentFrame.Position = UDim2.new(0, 0, 0, 50)
+        contentFrame.Size = UDim2.new(1, 0, 1, -40)
+        contentFrame.Position = UDim2.new(0, 0, 0, 40)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Parent = mainFrame
         
         local scrollFrame = Instance.new("ScrollingFrame")
-        scrollFrame.Size = UDim2.new(1, -10, 1, -100)
+        scrollFrame.Size = UDim2.new(1, -10, 1, -80)
         scrollFrame.Position = UDim2.new(0, 5, 0, 5)
         scrollFrame.BackgroundTransparency = 1
-        scrollFrame.ScrollBarThickness = 8
+        scrollFrame.ScrollBarThickness = 6
         scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 130)
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 180)
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 200)
         scrollFrame.Parent = contentFrame
         
         local layout = Instance.new("UIListLayout")
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, 10)
+        layout.Padding = UDim.new(0, 15) -- Increased spacing
         layout.Parent = scrollFrame
         
         local function createInputField(name, placeholder, defaultValue, layoutOrder, settingKey)
             local container = Instance.new("Frame")
-            container.Size = UDim2.new(1, 0, 0, 60)
+            container.Size = UDim2.new(1, 0, 0, 50)
             container.BackgroundTransparency = 1
             container.LayoutOrder = layoutOrder
             container.Parent = scrollFrame
@@ -795,20 +846,20 @@ local function createSettingsGUI()
             label.BackgroundTransparency = 1
             label.Text = name
             label.TextColor3 = Color3.fromRGB(220, 220, 230)
-            label.TextSize = 18
+            label.TextSize = 16
             label.Font = Enum.Font.Gotham
             label.TextXAlignment = Enum.TextXAlignment.Left
             label.Parent = container
             
             local inputFrame = Instance.new("Frame")
-            inputFrame.Size = UDim2.new(1, -10, 0, 35)
-            inputFrame.Position = UDim2.new(0, 0, 0, 25)
+            inputFrame.Size = UDim2.new(1, -10, 0, 30)
+            inputFrame.Position = UDim2.new(0, 0, 0, 20)
             inputFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
             inputFrame.BorderSizePixel = 0
             inputFrame.Parent = container
             
             local inputCorner = Instance.new("UICorner")
-            inputCorner.CornerRadius = UDim.new(0, 8)
+            inputCorner.CornerRadius = UDim.new(0, 6)
             inputCorner.Parent = inputFrame
             
             local textBox = Instance.new("TextBox")
@@ -819,7 +870,7 @@ local function createSettingsGUI()
             textBox.PlaceholderText = placeholder
             textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
             textBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 150)
-            textBox.TextSize = 16
+            textBox.TextSize = 14
             textBox.Font = Enum.Font.Gotham
             textBox.Parent = inputFrame
             
@@ -842,53 +893,96 @@ local function createSettingsGUI()
             return textBox
         end
         
-        local targetNameInput = createInputField("Target Pet Name", "Huge Dragon, Noobini Pizzanini", settings.targetNames[1] or "", 1, "targetNames")
+        local function createToggle(name, defaultValue, layoutOrder, settingKey)
+            local container = Instance.new("Frame")
+            container.Size = UDim2.new(1, 0, 0, 50)
+            container.BackgroundTransparency = 1
+            container.LayoutOrder = layoutOrder
+            container.Parent = scrollFrame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(0.7, 0, 0, 20)
+            label.BackgroundTransparency = 1
+            label.Text = name
+            label.TextColor3 = Color3.fromRGB(220, 220, 230)
+            label.TextSize = 16
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = container
+            
+            local toggleButton = Instance.new("TextButton")
+            toggleButton.Size = UDim2.new(0, 40, 0, 20)
+            toggleButton.Position = UDim2.new(0.8, 0, 0, 20)
+            toggleButton.BackgroundColor3 = defaultValue and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(100, 100, 110)
+            toggleButton.BorderSizePixel = 0
+            toggleButton.Text = defaultValue and "ON" or "OFF"
+            toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            toggleButton.TextSize = 14
+            toggleButton.Font = Enum.Font.Gotham
+            toggleButton.Parent = container
+            
+            local toggleCorner = Instance.new("UICorner")
+            toggleCorner.CornerRadius = UDim.new(0, 6)
+            toggleCorner.Parent = toggleButton
+            
+            toggleButton.MouseButton1Click:Connect(function()
+                settings[settingKey] = not settings[settingKey]
+                toggleButton.Text = settings[settingKey] and "ON" or "OFF"
+                toggleButton.BackgroundColor3 = settings[settingKey] and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(100, 100, 110)
+                saveSettings()
+                print("Toggle changed:", settingKey, settings[settingKey])
+            end)
+            return toggleButton
+        end
+        
+        local targetNameInput = createInputField("Target Pet Name", "Noobini Pizzanini, Sigma Boy", settings.targetNames[1] or "", 1, "targetNames")
         local minGenInput = createInputField("Min. Generation", "1K/s, 1M/s", formatGeneration(settings.minGeneration), 2, "minGeneration")
         local rarityInput = createInputField("Rarity", "Secret, Mythical", settings.targetRarity, 3, "targetRarity")
+        local autoStartToggle = createToggle("Auto Start", settings.autoStart, 4, "autoStart")
         
         local buttonContainer = Instance.new("Frame")
-        buttonContainer.Size = UDim2.new(1, -10, 0, 60)
-        buttonContainer.Position = UDim2.new(0, 5, 1, -65)
+        buttonContainer.Size = UDim2.new(1, -10, 0, 50)
+        buttonContainer.Position = UDim2.new(0, 5, 1, -55)
         buttonContainer.BackgroundTransparency = 1
         buttonContainer.Parent = contentFrame
         
         local startButton = Instance.new("TextButton")
-        startButton.Size = UDim2.new(0.48, -5, 0, 50)
+        startButton.Size = UDim2.new(0.48, -5, 0, 40)
         startButton.Position = UDim2.new(0, 0, 0, 5)
         startButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
         startButton.BorderSizePixel = 0
         startButton.Text = "START"
         startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        startButton.TextSize = 18
+        startButton.TextSize = 16
         startButton.Font = Enum.Font.GothamBold
         startButton.Parent = buttonContainer
         
         local startCorner = Instance.new("UICorner")
-        startCorner.CornerRadius = UDim.new(0, 10)
+        startCorner.CornerRadius = UDim.new(0, 8)
         startCorner.Parent = startButton
         
         local stopButton = Instance.new("TextButton")
-        stopButton.Size = UDim2.new(0.48, -5, 0, 50)
+        stopButton.Size = UDim2.new(0.48, -5, 0, 40)
         stopButton.Position = UDim2.new(0.52, 5, 0, 5)
         stopButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         stopButton.BorderSizePixel = 0
         stopButton.Text = "STOP"
         stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        stopButton.TextSize = 18
+        stopButton.TextSize = 16
         stopButton.Font = Enum.Font.GothamBold
         stopButton.Parent = buttonContainer
         
         local stopCorner = Instance.new("UICorner")
-        stopCorner.CornerRadius = UDim.new(0, 10)
+        stopCorner.CornerRadius = UDim.new(0, 8)
         stopCorner.Parent = stopButton
         
         local statusLabel = Instance.new("TextLabel")
         statusLabel.Size = UDim2.new(1, -10, 0, 20)
-        statusLabel.Position = UDim2.new(0, 5, 1, -85)
+        statusLabel.Position = UDim2.new(0, 5, 1, -75)
         statusLabel.BackgroundTransparency = 1
-        statusLabel.Text = isRunning and "Searching..." or "Ready to search..."
-        statusLabel.TextColor3 = isRunning and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 160)
-        statusLabel.TextSize = 16
+        statusLabel.Text = "Ready to search..."
+        statusLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+        statusLabel.TextSize = 14
         statusLabel.Font = Enum.Font.Gotham
         statusLabel.TextXAlignment = Enum.TextXAlignment.Left
         statusLabel.Parent = contentFrame
@@ -901,20 +995,16 @@ local function createSettingsGUI()
         
         startButton.MouseButton1Click:Connect(function()
             print("Start button tapped")
-            statusLabel.Text = "Searching..."
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            startHopping()
+            startHopping(statusLabel)
         end)
         
         stopButton.MouseButton1Click:Connect(function()
-            stopHopping()
-            statusLabel.Text = "Search stopped."
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            stopHopping(statusLabel)
         end)
         
         closeButton.MouseButton1Click:Connect(function()
             print("Close button tapped")
-            stopHopping()
+            stopHopping(statusLabel)
             screenGui:Destroy()
             print("ScreenGui destroyed")
         end)
@@ -950,26 +1040,15 @@ local function createSettingsGUI()
                 dragging = false
             end
         end)
+
+        if settings.autoStart and game.PlaceId == ALLOWED_PLACE_ID then
+            print("Auto Start enabled, starting search...")
+            startHopping(statusLabel)
+        end
     end)
     if not success then
         print("Failed to create GUI:", err)
         showNotification("Error", "Failed to create GUI: " .. tostring(err))
-    end
-end
-
-local function autoExecute()
-    print("Checking for auto-execution...")
-    if game.PlaceId == ALLOWED_PLACE_ID then
-        print("Place ID matches, starting auto-execution...")
-        task.wait(0.1)
-        local success, err = pcall(startHopping)
-        if not success then
-            print("Auto-execution failed:", err)
-            showNotification("Error", "Auto-execution failed: " .. tostring(err))
-        end
-    else
-        print("Wrong Place ID:", game.PlaceId, "Expected:", ALLOWED_PLACE_ID)
-        showNotification("Error", "This script only works in Place ID " .. ALLOWED_PLACE_ID)
     end
 end
 
@@ -1020,4 +1099,3 @@ if not success then
 else
     print("GUI created successfully")
 end
-autoExecute()
