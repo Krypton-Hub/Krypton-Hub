@@ -9,14 +9,14 @@ local Workspace = game:GetService("Workspace")
 while not Players.LocalPlayer do task.wait() end
 local player = Players.LocalPlayer
 local ALLOWED_PLACE_ID = 109983668079237
-local RETRY_DELAY = 0.5
+local RETRY_DELAY = 0.1
 local SETTINGS_FILE = "ServerHopperSettings.json"
 local GUI_STATE_FILE = "ServerHopperGUIState.json"
 local API_STATE_FILE = "ServerHopperAPIState.json"
 
 local settings = {
     minGeneration = 1000000,
-    targetNames = {"La Grande"}, -- Default to search for "Huge Dragon"
+    targetNames = {"Noobini Pizzanini"}, -- Default pet name
     blacklistNames = {},
     targetRarity = "",
     targetMutation = "",
@@ -30,7 +30,7 @@ local settings = {
 }
 
 local guiState = {
-    position = { XScale = 0.1, XOffset = 0, YScale = 0.075, YOffset = 0 }
+    position = { XScale = 0.25, XOffset = 0, YScale = 0.2, YOffset = 0 }
 }
 
 local apiState = {
@@ -63,9 +63,9 @@ local function createNotificationGui(title, text, duration)
         print("Notification GUI created and parented to PlayerGui")
 
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.5, 0, 0.25, 0)
-        frame.Position = UDim2.new(0.25, 0, 0.05, 0)
-        frame.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        frame.Size = UDim2.new(0.4, 0, 0.2, 0)
+        frame.Position = UDim2.new(0.3, 0, 0.05, 0)
+        frame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
         frame.BorderSizePixel = 0
         frame.Parent = notificationGui
 
@@ -74,8 +74,8 @@ local function createNotificationGui(title, text, duration)
         corner.Parent = frame
 
         local titleLabel = Instance.new("TextLabel")
-        titleLabel.Size = UDim2.new(1, -15, 0, 30)
-        titleLabel.Position = UDim2.new(0, 7, 0, 7)
+        titleLabel.Size = UDim2.new(1, -10, 0, 25)
+        titleLabel.Position = UDim2.new(0, 5, 0, 5)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = title
         titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -85,11 +85,11 @@ local function createNotificationGui(title, text, duration)
         titleLabel.Parent = frame
 
         local textLabel = Instance.new("TextLabel")
-        textLabel.Size = UDim2.new(1, -15, 0, 60)
-        textLabel.Position = UDim2.new(0, 7, 0, 37)
+        textLabel.Size = UDim2.new(1, -10, 0, 50)
+        textLabel.Position = UDim2.new(0, 5, 0, 30)
         textLabel.BackgroundTransparency = 1
         textLabel.Text = text
-        textLabel.TextColor3 = Color3.fromRGB(230, 230, 240)
+        textLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
         textLabel.TextSize = 16
         textLabel.Font = Enum.Font.Gotham
         textLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -185,6 +185,32 @@ local function playFoundSound()
         sound:Destroy()
     end)
     if not success then print("Failed to play sound:", err) end
+end
+
+local function parseGenerationInput(input)
+    input = input:lower():gsub("[^0-9kmb/s]", "")
+    local number = input:match("(%d+%.?%d*)")
+    local multiplier = 1
+    if input:find("k") then
+        multiplier = 1000
+    elseif input:find("m") then
+        multiplier = 1000000
+    elseif input:find("b") then
+        multiplier = 1000000000
+    end
+    return tonumber(number) and (tonumber(number) * multiplier) or settings.minGeneration
+end
+
+local function formatGeneration(genValue)
+    if genValue >= 1000000000 then
+        return string.format("%.1fB/s", genValue / 1000000000)
+    elseif genValue >= 1000000 then
+        return string.format("%.1fM/s", genValue / 1000000)
+    elseif genValue >= 1000 then
+        return string.format("%.1fK/s", genValue / 1000)
+    else
+        return tostring(genValue) .. "/s"
+    end
 end
 
 local function extractNumber(str)
@@ -523,19 +549,6 @@ local function checkPodiumsForWebhooksAndFilters()
     return #filteredPodiums > 0, filteredPodiums
 end
 
-local function formatGeneration(genStr)
-    local genValue = extractNumber(genStr)
-    if genValue >= 1000000000 then
-        return string.format("%.1fB", genValue / 1000000000)
-    elseif genValue >= 1000000 then
-        return string.format("%.1fM", genValue / 1000000)
-    elseif genValue >= 1000 then
-        return string.format("%.1fK", genValue / 1000)
-    else
-        return tostring(genValue)
-    end
-end
-
 local function tryTeleportWithRetries()
     if not isRunning then return end
     local attempts = 0
@@ -678,6 +691,21 @@ local function startHopping()
     end)
 end
 
+local function stopHopping()
+    print("Stop button tapped")
+    isRunning = false
+    foundPodiumsData = {}
+    if currentConnection then
+        currentConnection:Disconnect()
+        currentConnection = nil
+    end
+    if monitoringConnection then
+        monitoringConnection:Disconnect()
+        monitoringConnection = nil
+    end
+    showNotification("Stopped", "Pet search stopped.")
+end
+
 local function createSettingsGUI()
     print("Attempting to create GUI...")
     local success, err = pcall(function()
@@ -693,9 +721,9 @@ local function createSettingsGUI()
         print("ScreenGui created and parented to PlayerGui")
         
         local mainFrame = Instance.new("Frame")
-        mainFrame.Size = UDim2.new(0.8, 0, 0.85, 0)
+        mainFrame.Size = UDim2.new(0.5, 0, 0.6, 0)
         mainFrame.Position = UDim2.new(guiState.position.XScale, guiState.position.XOffset, guiState.position.YScale, guiState.position.YOffset)
-        mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
         mainFrame.BorderSizePixel = 0
         mainFrame.Parent = screenGui
         
@@ -704,8 +732,8 @@ local function createSettingsGUI()
         mainCorner.Parent = mainFrame
         
         local titleBar = Instance.new("Frame")
-        titleBar.Size = UDim2.new(1, 0, 0, 60)
-        titleBar.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        titleBar.Size = UDim2.new(1, 0, 0, 50)
+        titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         titleBar.BorderSizePixel = 0
         titleBar.Parent = mainFrame
         
@@ -721,8 +749,8 @@ local function createSettingsGUI()
         titleLabel.Parent = titleBar
         
         local closeButton = Instance.new("TextButton")
-        closeButton.Size = UDim2.new(0, 50, 0, 50)
-        closeButton.Position = UDim2.new(1, -60, 0, 5)
+        closeButton.Size = UDim2.new(0, 40, 0, 40)
+        closeButton.Position = UDim2.new(1, -50, 0, 5)
         closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         closeButton.BorderSizePixel = 0
         closeButton.Text = "X"
@@ -736,18 +764,18 @@ local function createSettingsGUI()
         closeCorner.Parent = closeButton
         
         local contentFrame = Instance.new("Frame")
-        contentFrame.Size = UDim2.new(1, 0, 1, -60)
-        contentFrame.Position = UDim2.new(0, 0, 0, 60)
+        contentFrame.Size = UDim2.new(1, 0, 1, -50)
+        contentFrame.Position = UDim2.new(0, 0, 0, 50)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Parent = mainFrame
         
         local scrollFrame = Instance.new("ScrollingFrame")
-        scrollFrame.Size = UDim2.new(1, -15, 1, -80)
-        scrollFrame.Position = UDim2.new(0, 7, 0, 7)
+        scrollFrame.Size = UDim2.new(1, -10, 1, -100)
+        scrollFrame.Position = UDim2.new(0, 5, 0, 5)
         scrollFrame.BackgroundTransparency = 1
-        scrollFrame.ScrollBarThickness = 10
-        scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(130, 130, 140)
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 200)
+        scrollFrame.ScrollBarThickness = 8
+        scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 130)
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 180)
         scrollFrame.Parent = contentFrame
         
         local layout = Instance.new("UIListLayout")
@@ -763,10 +791,10 @@ local function createSettingsGUI()
             container.Parent = scrollFrame
             
             local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 0, 25)
+            label.Size = UDim2.new(1, 0, 0, 20)
             label.BackgroundTransparency = 1
             label.Text = name
-            label.TextColor3 = Color3.fromRGB(230, 230, 240)
+            label.TextColor3 = Color3.fromRGB(220, 220, 230)
             label.TextSize = 18
             label.Font = Enum.Font.Gotham
             label.TextXAlignment = Enum.TextXAlignment.Left
@@ -775,7 +803,7 @@ local function createSettingsGUI()
             local inputFrame = Instance.new("Frame")
             inputFrame.Size = UDim2.new(1, -10, 0, 35)
             inputFrame.Position = UDim2.new(0, 0, 0, 25)
-            inputFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+            inputFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
             inputFrame.BorderSizePixel = 0
             inputFrame.Parent = container
             
@@ -790,7 +818,7 @@ local function createSettingsGUI()
             textBox.Text = defaultValue or ""
             textBox.PlaceholderText = placeholder
             textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-            textBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 160)
+            textBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 150)
             textBox.TextSize = 16
             textBox.Font = Enum.Font.Gotham
             textBox.Parent = inputFrame
@@ -799,7 +827,8 @@ local function createSettingsGUI()
                 if enterPressed then
                     print("Input changed:", settingKey, textBox.Text)
                     if settingKey == "minGeneration" then
-                        settings[settingKey] = tonumber(textBox.Text) or settings[settingKey]
+                        settings[settingKey] = parseGenerationInput(textBox.Text)
+                        textBox.Text = formatGeneration(settings[settingKey])
                     elseif settingKey == "targetNames" then
                         local text = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
                         settings[settingKey] = text ~= "" and {text} or {}
@@ -813,24 +842,39 @@ local function createSettingsGUI()
             return textBox
         end
         
-        local targetNameInput = createInputField("Target Pet Name", "Huge Dragon, Titanic", settings.targetNames[1] or "", 1, "targetNames")
-        local minGenInput = createInputField("Min. Generation", "1000000", tostring(settings.minGeneration), 2, "minGeneration")
+        local targetNameInput = createInputField("Target Pet Name", "Huge Dragon, Noobini Pizzanini", settings.targetNames[1] or "", 1, "targetNames")
+        local minGenInput = createInputField("Min. Generation", "1K/s, 1M/s", formatGeneration(settings.minGeneration), 2, "minGeneration")
         local rarityInput = createInputField("Rarity", "Secret, Mythical", settings.targetRarity, 3, "targetRarity")
         
         local buttonContainer = Instance.new("Frame")
-        buttonContainer.Size = UDim2.new(1, -15, 0, 60)
-        buttonContainer.Position = UDim2.new(0, 7, 1, -70)
+        buttonContainer.Size = UDim2.new(1, -10, 0, 60)
+        buttonContainer.Position = UDim2.new(0, 5, 1, -65)
         buttonContainer.BackgroundTransparency = 1
         buttonContainer.Parent = contentFrame
         
+        local startButton = Instance.new("TextButton")
+        startButton.Size = UDim2.new(0.48, -5, 0, 50)
+        startButton.Position = UDim2.new(0, 0, 0, 5)
+        startButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        startButton.BorderSizePixel = 0
+        startButton.Text = "START"
+        startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        startButton.TextSize = 18
+        startButton.Font = Enum.Font.GothamBold
+        startButton.Parent = buttonContainer
+        
+        local startCorner = Instance.new("UICorner")
+        startCorner.CornerRadius = UDim.new(0, 10)
+        startCorner.Parent = startButton
+        
         local stopButton = Instance.new("TextButton")
-        stopButton.Size = UDim2.new(1, -5, 0, 50)
-        stopButton.Position = UDim2.new(0, 0, 0, 5)
+        stopButton.Size = UDim2.new(0.48, -5, 0, 50)
+        stopButton.Position = UDim2.new(0.52, 5, 0, 5)
         stopButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         stopButton.BorderSizePixel = 0
         stopButton.Text = "STOP"
         stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        stopButton.TextSize = 20
+        stopButton.TextSize = 18
         stopButton.Font = Enum.Font.GothamBold
         stopButton.Parent = buttonContainer
         
@@ -839,11 +883,11 @@ local function createSettingsGUI()
         stopCorner.Parent = stopButton
         
         local statusLabel = Instance.new("TextLabel")
-        statusLabel.Size = UDim2.new(1, -15, 0, 25)
-        statusLabel.Position = UDim2.new(0, 7, 1, -95)
+        statusLabel.Size = UDim2.new(1, -10, 0, 20)
+        statusLabel.Position = UDim2.new(0, 5, 1, -85)
         statusLabel.BackgroundTransparency = 1
         statusLabel.Text = isRunning and "Searching..." or "Ready to search..."
-        statusLabel.TextColor3 = isRunning and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(160, 160, 170)
+        statusLabel.TextColor3 = isRunning and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 160)
         statusLabel.TextSize = 16
         statusLabel.Font = Enum.Font.Gotham
         statusLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -855,35 +899,22 @@ local function createSettingsGUI()
         end
         updateScrollCanvas()
         
+        startButton.MouseButton1Click:Connect(function()
+            print("Start button tapped")
+            statusLabel.Text = "Searching..."
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            startHopping()
+        end)
+        
         stopButton.MouseButton1Click:Connect(function()
-            print("Stop button tapped")
-            isRunning = false
-            foundPodiumsData = {}
-            if currentConnection then
-                currentConnection:Disconnect()
-                currentConnection = nil
-            end
-            if monitoringConnection then
-                monitoringConnection:Disconnect()
-                monitoringConnection = nil
-            end
+            stopHopping()
             statusLabel.Text = "Search stopped."
             statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            showNotification("Stopped", "Pet search stopped.")
         end)
         
         closeButton.MouseButton1Click:Connect(function()
             print("Close button tapped")
-            isRunning = false
-            foundPodiumsData = {}
-            if currentConnection then
-                currentConnection:Disconnect()
-                currentConnection = nil
-            end
-            if monitoringConnection then
-                monitoringConnection:Disconnect()
-                monitoringConnection = nil
-            end
+            stopHopping()
             screenGui:Destroy()
             print("ScreenGui destroyed")
         end)
