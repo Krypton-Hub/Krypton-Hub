@@ -9,14 +9,14 @@ local Workspace = game:GetService("Workspace")
 while not Players.LocalPlayer do task.wait() end
 local player = Players.LocalPlayer
 local ALLOWED_PLACE_ID = 109983668079237
-local RETRY_DELAY = 0.5
+local RETRY_DELAY = 0.1
 local SETTINGS_FILE = "ServerHopperSettings.json"
 local GUI_STATE_FILE = "ServerHopperGUIState.json"
 local API_STATE_FILE = "ServerHopperAPIState.json"
 
 local settings = {
     minGeneration = 1000000, -- Default 1M/s
-    targetNames = {}, -- Empty by default (no Huge Dragon)
+    targetNames = {}, 
     blacklistNames = {},
     targetRarity = "",
     targetMutation = "",
@@ -1099,3 +1099,4 @@ if not success then
 else
     print("GUI created successfully")
 end
+
